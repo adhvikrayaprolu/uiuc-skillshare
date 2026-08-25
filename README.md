@@ -77,10 +77,16 @@ Deprioritized features: paid tutoring, payments, real-time chat, video calls, au
 
 ```text
 .
+├── .github/   # CI for frontend and backend
 ├── backend/    # Django REST API
 ├── frontend/   # React + Vite web app
 └── README.md   # Project overview and setup
 ```
+
+More detail:
+
+- [backend/README.md](backend/README.md): API structure, env vars, auth notes, Django commands.
+- [frontend/README.md](frontend/README.md): UI structure, env vars, routes, Vite commands.
 
 ## Tech Stack
 
@@ -130,6 +136,18 @@ VITE_USE_MOCKS=false
 VITE_GOOGLE_CLIENT_ID=
 ```
 
+Real `.env` files are not committed. They stay local because they may contain secrets. The repo commits only `.env.example` files so another developer knows what variables to create.
+
+Committed env templates:
+
+- `backend/.env.example`
+- `frontend/.env.example`
+
+Local-only env files:
+
+- `backend/.env`
+- `frontend/.env`
+
 ## Run Locally
 
 Start backend:
@@ -163,9 +181,14 @@ Do not use dev-login in production. Replace it with Illinois Google OAuth/SSO be
 ## Useful Commands
 
 ```bash
+npm run frontend:install
 npm run frontend:dev
 npm run frontend:build
 npm run frontend:lint
+npm run backend:venv
+npm run backend:install
+npm run backend:migrate
+npm run backend:seed
 npm run backend:check
 npm run backend:test
 npm run backend:dev

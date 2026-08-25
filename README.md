@@ -131,7 +131,7 @@ cp frontend/.env.example frontend/.env
 For real API mode, set this in `frontend/.env`:
 
 ```env
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
+VITE_API_BASE_URL=/api
 VITE_USE_MOCKS=false
 VITE_GOOGLE_CLIENT_ID=
 ```
@@ -167,7 +167,7 @@ npm --prefix frontend run dev
 
 Open:
 
-- Frontend: `http://localhost:5173`
+- Frontend: `http://127.0.0.1:5173` (or `http://localhost:5173`)
 - Backend API: `http://127.0.0.1:8000/api/`
 - API docs: `http://127.0.0.1:8000/api/docs/`
 - Django admin: `http://127.0.0.1:8000/admin/`

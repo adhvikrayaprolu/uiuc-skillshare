@@ -31,7 +31,7 @@ cp frontend/.env.example frontend/.env
 
 Main variables:
 
-- `VITE_API_BASE_URL`: backend API base URL.
+- `VITE_API_BASE_URL`: backend API base URL. Use `/api` in local dev so Vite proxies to Django on port 8000.
 - `VITE_USE_MOCKS`: `false` uses Django API; `true` uses local mock data.
 - `VITE_GOOGLE_CLIENT_ID`: Google OAuth client ID when real OAuth is wired.
 

@@ -31,7 +31,7 @@ Main variables:
 - `SECRET_KEY`: Django secret key.
 - `DEBUG`: `True` for local development.
 - `ALLOWED_HOSTS`: comma-separated host list.
-- `CORS_ALLOWED_ORIGINS`: frontend origins allowed by Django CORS.
+- `CORS_ALLOWED_ORIGINS`: frontend origins allowed by Django CORS. Include both `localhost` and `127.0.0.1` if you open the Vite dev server by either host.
 - `DATABASE_URL`: optional PostgreSQL URL. Leave blank for SQLite.
 - `GOOGLE_CLIENT_ID`: Google OAuth client ID for Illinois sign-in.
 - `OPENAI_API_KEY`: optional, reserved for AI-related experiments.

@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: .
+    command: gunicorn skillswap_backend.wsgi:application --bind 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://skillswap:skillswap@postgres:5432/skillswap
+    depends_on:
+      - postgres
+    volumes:
+      - media:/app/media
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: skillswap
+      POSTGRES_USER: skillswap
+      POSTGRES_PASSWORD: skillswap
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  media:
+  postgres_data:

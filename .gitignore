@@ -1,0 +1,25 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+*.local
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/src/imports/
+
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/**/*.pyc
+backend/db.sqlite3
+backend/media/
+backend/.coverage
+backend/htmlcov/
+
+# Editors
+.idea/
+.vscode/

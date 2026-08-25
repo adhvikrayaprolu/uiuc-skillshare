@@ -1,0 +1,19 @@
+{
+  "name": "uiuc-skillshare",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo for Illini SkillSwap, a UIUC-only student skill-sharing and peer networking platform.",
+  "scripts": {
+    "frontend:install": "npm --prefix frontend install",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:lint": "npm --prefix frontend run lint",
+    "backend:venv": "python3 -m venv backend/.venv",
+    "backend:install": "backend/.venv/bin/pip install -r backend/requirements.txt",
+    "backend:migrate": "cd backend && .venv/bin/python manage.py migrate",
+    "backend:seed": "cd backend && .venv/bin/python manage.py seed_demo_data",
+    "backend:dev": "cd backend && .venv/bin/python manage.py runserver 127.0.0.1:8000",
+    "backend:test": "cd backend && .venv/bin/python manage.py test",
+    "backend:check": "cd backend && .venv/bin/python manage.py check"
+  }
+}

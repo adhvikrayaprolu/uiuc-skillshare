@@ -5,6 +5,7 @@ from .views import (
     ContactMethodViewSet,
     CredentialViewSet,
     CurrentProfileView,
+    CurrentProfileAggregateView,
     ProfileSkillViewSet,
     PublicProfileDetailView,
     PublicProfileListView,
@@ -22,6 +23,7 @@ credential_list = CredentialViewSet.as_view({"get": "list", "post": "create"})
 credential_detail = CredentialViewSet.as_view({"patch": "partial_update", "delete": "destroy"})
 
 urlpatterns = [
+    path("profiles/me/aggregate/", CurrentProfileAggregateView.as_view(), name="profile-aggregate"),
     path("profiles/me/", CurrentProfileView.as_view(), name="profile-me"),
     path("profiles/", PublicProfileListView.as_view(), name="profiles-list"),
     path("profiles/<int:pk>/", PublicProfileDetailView.as_view(), name="profiles-detail"),

@@ -1,20 +1,4 @@
-import {
-  createAvailability,
-  createContactMethod,
-  createCredential,
-  createCurrentProfile,
-  createProfileSkill,
-  deleteAvailability,
-  deleteContactMethod,
-  deleteCredential,
-  deleteProfileSkill,
-  getAvailability,
-  getContactMethods,
-  getCredentials,
-  getCurrentProfile,
-  getProfileSkills,
-  updateCurrentProfile,
-} from './profilesApi';
+import {api} from './api';
 import type { ContactMethodType, CredentialType, ProfileDetail, SkillTag, StudentYear } from '../types/api';
 
 export interface ProfileFormState {
@@ -116,55 +100,16 @@ export async function saveProfileForm(form: ProfileFormState, rawSkills: SkillTa
     visibility: form.visibility,
   };
 
-  let profile: ProfileDetail;
-  let hasProfile = false;
-  try {
-    await getCurrentProfile();
-    hasProfile = true;
-  } catch {
-    hasProfile = false;
-  }
-
-  if (hasProfile) {
-    profile = await updateCurrentProfile(profilePayload);
-  } else {
-    profile = await createCurrentProfile(profilePayload);
-  }
-
-  const [skills, availability, contacts, credentials] = await Promise.all([
-    getProfileSkills(),
-    getAvailability(),
-    getContactMethods(),
-    getCredentials(),
-  ]);
-
-  await Promise.all([
-    ...skills.map((skill) => deleteProfileSkill(skill.id)),
-    ...availability.map((item) => deleteAvailability(item.id)),
-    ...contacts.map((contact) => deleteContactMethod(contact.id)),
-    ...credentials.map((credential) => deleteCredential(credential.id)),
-  ]);
-
-  await Promise.all([
-    ...form.selectedSkillIds.map((skillId, index) => {
-      const skill = rawSkills.find((item) => item.id === skillId);
-      return createProfileSkill({
-        skill: skillId,
-        confidence_level: index === 0 ? 'advanced' : 'intermediate',
-        description: skill ? `Happy to help with ${skill.name}.` : '',
-        is_featured: index < 3,
-      });
-    }),
-    ...form.availability
-      .filter((item) => item.day_of_week && item.time_block)
-      .map((item) => createAvailability(item)),
-    ...form.contacts
-      .filter((contact) => contact.value.trim())
-      .map((contact) => createContactMethod({ ...contact, value: contact.value.trim() })),
-    ...form.credentials
-      .filter((credential) => credential.title.trim() && credential.url.trim())
-      .map((credential) => createCredential({ ...credential, title: credential.title.trim(), url: credential.url.trim() })),
-  ]);
-
-  return profile;
+  const {data} = await api.put<ProfileDetail>('/profiles/me/aggregate/', {
+    profile: profilePayload,
+    skills: form.selectedSkillIds.map((skillId,index)=>({
+      skill:skillId, confidence_level:index===0?'advanced':'intermediate',
+      description:rawSkills.find(item=>item.id===skillId) ? `Happy to help with ${rawSkills.find(item=>item.id===skillId)?.name}.` : '',
+      is_featured:index<3,
+    })),
+    availability:form.availability.filter(item=>item.day_of_week && item.time_block),
+    contacts:form.contacts.filter(item=>item.value.trim()).map(item=>({...item,value:item.value.trim()})),
+    credentials:form.credentials.filter(item=>item.title.trim() && item.url.trim()).map(item=>({...item,title:item.title.trim(),url:item.url.trim()})),
+  });
+  return data;
 }

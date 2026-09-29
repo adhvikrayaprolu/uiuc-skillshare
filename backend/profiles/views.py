@@ -149,3 +149,35 @@ class ContactClickView(APIView):
         contact = get_object_or_404(ContactMethod, pk=contact_method_id, profile=profile, is_public=True)
         track_event(request.user, "contact_clicked", {"profile_id": profile.id, "contact_method_id": contact.id, "type": contact.type}, request)
         return Response({"success": True, "message": "Contact click recorded.", "data": {"contact_method_id": contact.id}})
+
+
+class CurrentProfileAggregateView(APIView):
+    """Replace the current user's edited profile as one validated transaction."""
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        from django.db import transaction
+        from accounts.models import User
+        from .serializers import ProfileAggregateSerializer
+        serializer = ProfileAggregateSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=request.user.pk)
+            profile = StudentProfile.objects.filter(user=request.user).first()
+            writer = StudentProfileCreateUpdateSerializer(profile, data=payload["profile"], partial=profile is not None, context={"request": request})
+            writer.is_valid(raise_exception=True)
+            profile = writer.save()
+            for key, relation, model in [("skills", "profile_skills", ProfileSkill),
+                                         ("availability", "availability", Availability),
+                                         ("contacts", "contact_methods", ContactMethod),
+                                         ("credentials", "credentials", Credential)]:
+                if key not in payload:
+                    continue
+                getattr(profile, relation).all().delete()
+                for row in payload[key]:
+                    model.objects.create(profile=profile, **row)
+            profile.update_profile_completeness()
+            rebuild_profile_search_index(profile)
+            track_event(request.user, "profile_updated", {"profile_id": profile.id}, request)
+        return Response(StudentProfileSerializer(profile, context={"request": request}).data)

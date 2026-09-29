@@ -275,3 +275,17 @@ class PublicStudentProfileDetailSerializer(serializers.ModelSerializer):
             .order_by("-count", "skill__name")[:5]
         )
         return [{"id": row["skill__id"], "name": row["skill__name"], "count": row["count"]} for row in rows]
+
+
+class ProfileAggregateSerializer(serializers.Serializer):
+    profile = serializers.DictField()
+    skills = ProfileSkillSerializer(many=True, max_length=100, required=False)
+    availability = AvailabilitySerializer(many=True, max_length=100, required=False)
+    contacts = ContactMethodSerializer(many=True, max_length=100, required=False)
+    credentials = CredentialSerializer(many=True, max_length=100, required=False)
+
+    def validate_skills(self, rows):
+        ids = [row["skill"].id for row in rows]
+        if len(ids) != len(set(ids)):
+            raise serializers.ValidationError("Choose each skill once.")
+        return rows

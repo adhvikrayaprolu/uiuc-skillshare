@@ -41,7 +41,7 @@ Runs Django system/migration checks and backend tests, then frontend regression 
 The local API demo provides seeded students and skills. [Product overview](docs/product-overview.md) preserves the fuller concept, user journeys and existing implementation notes. Mock demo activity is explicitly labeled; real sessions never fall back to invented notifications.
 
 ## Design decisions and known limitations
-The existing REST architecture and UI are preserved. Activity summaries derive from existing request/profile queries; they are not a durable notification inbox with read tracking. Large screens remain candidates for incremental decomposition. Profile editing uses several API requests rather than an atomic aggregate update, so partial failures need a follow-up design. Credential-backed Google sign-in and production deployment require human configuration and verification. No performance improvement is claimed without measurement.
+The existing REST architecture and UI are preserved. Activity summaries derive from existing request/profile queries; they are not a durable notification inbox with read tracking. Large screens remain candidates for incremental decomposition. Profile editing validates all details before saving them in one database transaction; failed saves preserve prior data. Credential-backed Google sign-in and production deployment require human configuration and verification. No performance improvement is claimed without measurement.
 
 ## Future work
-Prioritize atomic profile updates, credential-backed sign-in verification and focused accessibility checks before unrelated features or infrastructure. GitHub issues track milestones when issue write access is available.
+Prioritize credential-backed sign-in verification and focused accessibility checks before unrelated features or infrastructure. GitHub issues track milestones when issue write access is available.

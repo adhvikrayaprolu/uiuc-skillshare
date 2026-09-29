@@ -218,3 +218,7 @@ cd backend
 This is now a single monorepo:
 
 `https://github.com/adhvikrayaprolu/uiuc-skillshare`
+
+## Engineering workflow
+
+See [engineering setup, validation and known blockers](docs/engineering-control-plane.md) and [agent instructions](AGENTS.md). Canonical validation: `make check` after the documented dependency setup.

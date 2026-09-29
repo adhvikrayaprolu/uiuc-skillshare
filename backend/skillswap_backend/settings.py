@@ -8,8 +8,15 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-insecure-secret-key")
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY and DEBUG:
+    SECRET_KEY = "dev-only-local-secret-key-change-before-production-12345"
+if not SECRET_KEY or (not DEBUG and (len(SECRET_KEY) < 32 or SECRET_KEY.startswith("dev-only"))):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("Configure a private SECRET_KEY of at least 32 characters; DEBUG=True is required for local development defaults.")
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 INSTALLED_APPS = [

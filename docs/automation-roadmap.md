@@ -1,13 +1,17 @@
-# uiuc-skillshare roadmap
+# uiuc-skillshare reconciliation roadmap
 
-1. [Add frontend regression tests and truthful interaction states](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/1) — P1 / ready
-2. [Provide one root workflow while preserving established architecture](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/2) — P1 / ready
-3. [Save profile edits atomically without deleting existing data on failure](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/3) — P0 / ready
-4. [Review responsive accessibility and demo evidence for the core workflow](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/4) — P2 / human-review
-   Depends on #1, #3
+Integration awaiting human review: [https://github.com/adhvikrayaprolu/uiuc-skillshare/pull/7](https://github.com/adhvikrayaprolu/uiuc-skillshare/pull/7). Main is unchanged.
 
-NEXT AUTOMATION-READY ISSUE: [#3](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/3)
+## Already implemented in the active PR
+- [#1](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/1) — verified implementation; blocked from duplicate agent selection pending merge.
+- [#2](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/2) — verified implementation; blocked from duplicate agent selection pending merge.
+- [#3](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/3) — verified implementation; blocked from duplicate agent selection pending merge.
 
-Portfolio tracker: https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/5
+## Remaining work
+- #4
 
-Infrastructure PR: https://github.com/adhvikrayaprolu/uiuc-skillshare/pull/6
+See the current issue bodies for partial implementation, dependencies and human approval boundaries. No live credential rotation, production migration or deployment was performed.
+
+NEXT AUTOMATION-READY ISSUE: None until review/dependencies resolve. Do not recreate work in the active PR.
+
+Portfolio readiness tracker: https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/5

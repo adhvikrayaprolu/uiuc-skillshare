@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.test import SimpleTestCase
 from rest_framework.test import APITestCase
 
 from accounts.models import User
@@ -30,3 +31,23 @@ class FrontendReadinessTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["has_profile"])
         self.assertIn("create_profile", response.data["missing_steps"])
+
+
+class ProductionConfigurationTests(SimpleTestCase):
+    def run_settings(self, secret):
+        import os
+        import subprocess
+        import sys
+        from django.conf import settings
+        return subprocess.run([sys.executable, 'manage.py', 'check'], cwd=settings.BASE_DIR,
+                              env={**os.environ, 'DEBUG': 'False', 'SECRET_KEY': secret},
+                              capture_output=True, text=True)
+
+    def test_production_requires_private_key(self):
+        for key in ['', 'short', 'dev-only-local-secret-key-change-before-production-12345']:
+            result = self.run_settings(key)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Configure a private SECRET_KEY', result.stderr)
+
+    def test_private_production_key_passes_system_check(self):
+        self.assertEqual(self.run_settings('test-only-configuration-key-1234567890').returncode, 0)

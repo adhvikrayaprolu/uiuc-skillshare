@@ -156,7 +156,7 @@ export function LoginPage() {
             <div className="flex items-start gap-3">
               <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#13294B]" />
               <div>
-                <p className="text-sm font-medium text-[#0F172A]">Verified students</p>
+                <p className="text-sm font-medium text-[#0F172A]">Illinois student network</p>
                 <p className="text-xs text-[#64748B]">Dev login is limited to @illinois.edu on the backend.</p>
               </div>
             </div>

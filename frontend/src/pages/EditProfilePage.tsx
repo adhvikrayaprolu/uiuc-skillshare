@@ -1,25 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Save, Trash2 } from 'lucide-react';
-import { shouldUseMocks } from '../lib/api';
+import { api, shouldUseMocks } from '../lib/api';
 import { defaultProfileForm, formFromProfile, type ProfileFormState } from '../lib/profilePersistence';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
 import {
-  createAvailability,
-  createContactMethod,
-  createCredential,
   createProfileSkill,
-  deleteAvailability,
-  deleteContactMethod,
-  deleteCredential,
   deleteProfileSkill,
-  getAvailability,
-  getContactMethods,
-  getCredentials,
-  getProfileSkills,
   updateCurrentProfile,
 } from '../lib/profilesApi';
 import type { ContactMethodType, CredentialType, ProfileSkill, StudentYear } from '../types/api';
@@ -126,73 +116,17 @@ export function EditProfilePage() {
   };
 
   const saveSkills = async () => {
-    const current = await getProfileSkills();
-    await Promise.all(current.map((row) => deleteProfileSkill(row.id)));
-    const rows = skillsDraft.filter((row) => row.skill);
-    await Promise.all(
-      rows.map((row) =>
-        createProfileSkill({
-          skill: row.skill,
-          confidence_level: row.confidence_level,
-          description: row.description,
-          is_featured: row.is_featured,
-        }),
-      ),
-    );
+    await api.put('/profiles/me/aggregate/', {profile:{},skills:skillsDraft.filter(row=>row.skill).map(row=>({skill:row.skill,confidence_level:row.confidence_level,description:row.description,is_featured:row.is_featured}))});
   };
-
   const saveAvailabilityTab = async () => {
-    const current = await getAvailability();
-    await Promise.all(current.map((row) => deleteAvailability(row.id)));
-    const nextRows = form.availability.filter((row) => row.day_of_week && row.time_block);
-    await Promise.all(
-      nextRows.map((row) =>
-        createAvailability({
-          day_of_week: row.day_of_week,
-          time_block: row.time_block,
-          notes: row.notes || '',
-        }),
-      ),
-    );
-    await updateCurrentProfile({ availability_notes: form.availabilityNotes.trim() });
+    await api.put('/profiles/me/aggregate/', {profile:{availability_notes:form.availabilityNotes.trim()},availability:form.availability.filter(row=>row.day_of_week && row.time_block)});
   };
-
   const saveContacts = async () => {
-    if (!form.contacts.some((contact) => contact.value.trim())) {
-      throw new Error('Add at least one contact method before saving this tab.');
-    }
-    const current = await getContactMethods();
-    await Promise.all(current.map((row) => deleteContactMethod(row.id)));
-    await Promise.all(
-      form.contacts
-        .filter((row) => row.value.trim())
-        .map((row) =>
-          createContactMethod({
-            type: row.type,
-            value: row.value.trim(),
-            is_public: row.is_public,
-            label: row.label || '',
-          }),
-        ),
-    );
-    await updateCurrentProfile({ preferred_contact_method: form.preferredContactMethod });
+    if(!form.contacts.some(row=>row.value.trim()))throw new Error('Add at least one contact method before saving this tab.');
+    await api.put('/profiles/me/aggregate/',{profile:{preferred_contact_method:form.preferredContactMethod},contacts:form.contacts.filter(row=>row.value.trim()).map(row=>({...row,value:row.value.trim()}))});
   };
-
   const saveCredentials = async () => {
-    const current = await getCredentials();
-    await Promise.all(current.map((row) => deleteCredential(row.id)));
-    await Promise.all(
-      form.credentials
-        .filter((row) => row.title.trim() && row.url.trim())
-        .map((row) =>
-          createCredential({
-            credential_type: row.credential_type,
-            title: row.title.trim(),
-            url: row.url.trim(),
-            visibility: row.visibility,
-          }),
-        ),
-    );
+    await api.put('/profiles/me/aggregate/',{profile:{},credentials:form.credentials.filter(row=>row.title.trim() && row.url.trim()).map(row=>({...row,title:row.title.trim(),url:row.url.trim()}))});
   };
 
   const savePrivacy = async () => {
@@ -491,12 +425,12 @@ export function EditProfilePage() {
               <div className="space-y-4">
                 {form.contacts.map((contact, index) => (
                   <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-[#E2E8F0] p-4 md:grid-cols-[150px_1fr_100px]">
-                    <select value={contact.type} onChange={(event) => {
+                    <select aria-label={`Contact ${index+1} type`} value={contact.type} onChange={(event) => {
                       const contacts = [...form.contacts];
                       contacts[index] = { ...contact, type: event.target.value as ContactMethodType };
                       update('contacts', contacts);
                     }} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">{contactTypes.map((type) => <option key={type} value={type}>{titleCase(type)}</option>)}</select>
-                    <input value={contact.value} onChange={(event) => {
+                    <input aria-label={`Contact ${index+1} value`} value={contact.value} onChange={(event) => {
                       const contacts = [...form.contacts];
                       contacts[index] = { ...contact, value: event.target.value };
                       update('contacts', contacts);
@@ -542,7 +476,7 @@ export function EditProfilePage() {
               <div className="space-y-6">
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] p-4 hover:bg-[#F8FAFC]">
                   <input type="checkbox" checked={form.visibility === 'public'} onChange={(event) => update('visibility', event.target.checked ? 'public' : 'private')} className="h-5 w-5 rounded" />
-                  <div><p className="font-medium text-[#0F172A]">Profile Visibility</p><p className="text-sm text-[#64748B]">Make my profile visible to all verified students</p></div>
+                  <div><p className="font-medium text-[#0F172A]">Profile Visibility</p><p className="text-sm text-[#64748B]">Make my profile visible to all students</p></div>
                 </label>
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] p-4 hover:bg-[#F8FAFC]">
                   <input type="checkbox" checked={form.openToConnect} onChange={(event) => update('openToConnect', event.target.checked)} className="h-5 w-5 rounded" />

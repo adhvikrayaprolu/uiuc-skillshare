@@ -50,14 +50,17 @@ const sampleNotifications: NotificationItem[] = [
 interface NotificationDropdownProps {
   items?: NotificationItem[];
   showSamples?: boolean;
+  loading?: boolean;
+  error?: boolean;
+  onNavigate?: () => void;
 }
 
-export function NotificationDropdown({ items, showSamples = true }: NotificationDropdownProps) {
-  const list = items && items.length ? items : showSamples ? sampleNotifications : [];
+export function NotificationDropdown({ items, showSamples = false, loading = false, error = false, onNavigate }: NotificationDropdownProps) {
+  const list = items !== undefined ? items : showSamples ? sampleNotifications : [];
   const unreadCount = list.filter((n) => !n.read).length;
 
   return (
-    <div className="absolute right-0 top-12 w-96 bg-white rounded-xl shadow-lg border border-[#E2E8F0] overflow-hidden z-50">
+    <div className="absolute right-0 top-12 w-[min(24rem,calc(100vw-2rem))] bg-white rounded-xl shadow-lg border border-[#E2E8F0] overflow-hidden z-50">
       {/* Header */}
       <div className="px-4 py-3 border-b border-[#E2E8F0] flex items-center justify-between">
         <h3 className="font-semibold text-[#0F172A]">Notifications</h3>
@@ -70,11 +73,15 @@ export function NotificationDropdown({ items, showSamples = true }: Notification
 
       {/* Notifications List */}
       <div className="max-h-96 overflow-y-auto">
+        {loading && <p role="status" className="p-4">Loading activity…</p>}
+        {error && <p role="alert" className="p-4">Could not load recent activity. Open Requests to retry.</p>}
+        {showSamples && <p className="px-4 text-xs text-[#64748B]">Sample activity for demo mode</p>}
         {list.length > 0 ? (
           list.map((notification) => (
             <Link
               key={notification.id}
               to={notification.href}
+              onClick={onNavigate}
               className={`px-4 py-3 hover:bg-[#F8FAFC] transition-colors cursor-pointer border-b border-[#E2E8F0] last:border-0 ${
                 !notification.read ? 'border-l-4 border-l-[#FF5F05] bg-[#FFFBF7]' : ''
               }`}
@@ -97,7 +104,7 @@ export function NotificationDropdown({ items, showSamples = true }: Notification
             </Link>
           ))
         ) : (
-          <div className="px-4 py-8 text-center">
+          !loading && !error && <div className="px-4 py-8 text-center">
             <Bell className="w-8 h-8 text-[#64748B] mx-auto mb-2" />
             <p className="text-sm text-[#64748B]">No notifications yet</p>
           </div>
@@ -107,9 +114,9 @@ export function NotificationDropdown({ items, showSamples = true }: Notification
       {/* Footer */}
       {list.length > 0 && (
         <div className="px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-          <button type="button" className="text-sm text-[#13294B] font-medium hover:text-[#FF5F05] transition-colors">
-            View all notifications
-          </button>
+          <Link to="/requests" onClick={onNavigate} className="text-sm text-[#13294B] font-medium hover:text-[#FF5F05] transition-colors">
+            Open requests
+          </Link>
         </div>
       )}
     </div>

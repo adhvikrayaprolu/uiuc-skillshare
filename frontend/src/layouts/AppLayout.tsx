@@ -127,7 +127,7 @@ export function AppLayout() {
       });
     }
     const completeness = currentProfile.data?.profile_completeness || 0;
-    if (completeness < 85) {
+    if (currentProfile.data && completeness < 85) {
       items.push({
         id: 'profile-reminder',
         type: 'profile',
@@ -211,7 +211,7 @@ export function AppLayout() {
             <InitialsAvatar name={displayName} size="md" />
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-semibold text-[#0F172A]">{displayName}</p>
-              <p className="text-xs text-[#64748B]">Verified Student</p>
+              <p className="text-xs text-[#64748B]">Student profile</p>
             </div>
           </div>
           <button
@@ -267,6 +267,8 @@ export function AppLayout() {
               <div className="relative" ref={notifRef}>
                 <button
                   type="button"
+                  aria-label="Notifications"
+                  aria-expanded={showNotifications}
                   onClick={() => setShowNotifications(!showNotifications)}
                   className="relative rounded-lg p-2 transition-colors hover:bg-[#F8FAFC]"
                 >
@@ -275,7 +277,7 @@ export function AppLayout() {
                     <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#FF5F05]" />
                   )}
                 </button>
-                {showNotifications && <NotificationDropdown showSamples={useMocks} items={notificationItems} />}
+                {showNotifications && <NotificationDropdown onNavigate={()=>setShowNotifications(false)} showSamples={useMocks} items={useMocks ? undefined : notificationItems} loading={!useMocks && helpRequestsQuery.isLoading} error={!useMocks && helpRequestsQuery.isError} />}
               </div>
 
               <div className="relative" ref={userMenuRef}>

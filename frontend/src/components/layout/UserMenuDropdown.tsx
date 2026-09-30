@@ -29,7 +29,7 @@ export function UserMenuDropdown({
           </div>
         </div>
         <span className="inline-block rounded border border-[#FF5F05]/30 bg-[#FFF3EA] px-2 py-0.5 text-xs font-semibold text-[#C2410C]">
-          Verified Student
+          Student profile
         </span>
       </div>
 

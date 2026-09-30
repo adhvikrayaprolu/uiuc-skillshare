@@ -1,220 +1,42 @@
 # Illini SkillSwap
+A UIUC-focused peer network for finding classmates who can share practical skills, advice and project help.
 
-Illini SkillSwap is a UIUC-only skill-sharing and peer networking platform. It helps Illinois students find classmates who can share practical knowledge: technical tools, resume feedback, interview prep, research advice, startup experience, RSO guidance, design software, project collaboration, housing advice, course planning, and other informal support.
+## Overview
+Students build skill profiles, discover relevant peers, save profiles and exchange help requests. The goal is to make informal campus knowledge easier to find, beyond existing friend groups and chats.
 
-The project exists because much of the student knowledge network on campus is hidden inside friend groups, GroupMe chats, Discord servers, Reddit threads, Instagram stories, RSOs, and word of mouth. A student may be surrounded by people who can help them, but not know who they are or how to reach them. Illini SkillSwap makes that knowledge visible, searchable, and easier to access.
+## Project Context
+A UIUC-focused portfolio project. The current local experience is a seeded Django/React application; production Illinois-account verification is not claimed as deployed or verified.
 
-This platform does not replace course staff, office hours, or formal tutoring. Its focus is informal peer learning, mentorship, networking, career guidance, project help, and skill exchange across the UIUC community.
+## Key Features
+- Search/filter discovery and rich student profiles.
+- Saved profiles and request/connection interaction states.
+- Atomic onboarding/profile collection saves: failed edits preserve existing data.
+- API-derived notification summaries with honest empty/error states and explicitly labeled demo samples.
 
-## Core Idea
+## Architecture / Tech Stack
+React/TypeScript + Vite/Tailwind → Django REST Framework → SQLite locally. Django apps separate accounts, profiles, discovery, interactions and taxonomy. JWT authenticates APIs; Google sign-in is an optional configuration-dependent path.
 
-Students sign in with an Illinois account, create skill-based profiles, list what they are open to helping with, and become discoverable by other verified UIUC students. Other students can search by skill, experience, topic, major, year, availability, contact method, or optional course tag.
-
-Example tags:
-
-- Python
-- React
-- SQL
-- Excel
-- GitHub
-- Figma
-- Resume review
-- LinkedIn feedback
-- Interview prep
-- Consulting prep
-- Startup experience
-- Research
-- Photography
-- Public speaking
-- RSO leadership
-- Study abroad
-- Housing advice
-- Course planning
-
-## Target Users
-
-Illini SkillSwap serves two main groups:
-
-- Students seeking help, advice, collaborators, or networking beyond their immediate circle.
-- Students willing to share skills, experiences, or campus knowledge with others.
-
-It is especially useful for first-year students, transfer students, international students, students exploring career paths, students building projects, and students trying to expand their network.
-
-## Features
-
-- UIUC-only authentication layer.
-- Student profile creation and editing.
-- Skills, tools, courses, interests, and experience tags.
-- Search and filters by tag, major, year, availability, and contact method.
-- Public profile pages with bio, expertise, availability, credentials, and contact options.
-- Direct contact model through Illinois email, LinkedIn, Instagram, or another preferred method.
-- Saved profiles, help requests, reviews, endorsements, analytics, and profile completeness indicators.
-- AI-assisted discovery through a local rule-based semantic matcher.
-
-Deprioritized features: paid tutoring, payments, real-time chat, video calls, automatic calendar booking, and formal course-specific tutoring workflows.
-
-## Main Screens
-
-- Landing page: introduces Illini SkillSwap and shows example skill tags.
-- Onboarding/profile creation: collects major, year, bio, interests, contact preferences, availability, skills, and experience tags.
-- Discovery/search: lets students search and filter profiles.
-- Profile page: shows full bio, tags, availability, credentials, and contact info.
-- Dashboard: lets a student manage their profile, saved profiles, requests, availability, and open-to-connect status.
-
-## User Flow
-
-1. Student signs in with an Illinois Google account.
-2. Student creates a profile or searches for people.
-3. Profile creator adds skills, experiences, availability, and contact preferences.
-4. Profile becomes searchable by tags and filters.
-5. Searcher enters a skill, topic, experience, or course.
-6. System returns relevant student profiles.
-7. Searcher opens a profile and reviews background, tags, and availability.
-8. Searcher contacts the person through listed contact method.
-9. Student may save the profile or leave feedback after connecting.
-
-## Repository Structure
-
-```text
-.
-├── .github/   # CI for frontend and backend
-├── backend/    # Django REST API
-├── frontend/   # React + Vite web app
-└── README.md   # Project overview and setup
+## Quick Start
+Python3.13, Node22.23+ and npm:
+```sh
+make setup
+make dev
 ```
+Open http://127.0.0.1:5173. Setup installs dependencies and copies missing environment templates without overwriting local configuration. Startup migrates/seeds the backend at8000 and launches the frontend. Use local developer login with a disposable Illinois-format email; this is local/demo behavior, not proof of university identity. Ctrl-C stops both servers.
 
-More detail:
-
-- [backend/README.md](backend/README.md): API structure, env vars, auth notes, Django commands.
-- [frontend/README.md](frontend/README.md): UI structure, env vars, routes, Vite commands.
-
-## Tech Stack
-
-- Frontend: React 18, TypeScript, Vite, React Router, TanStack Query, Axios, Tailwind CSS, lucide-react.
-- Backend: Django 5, Django REST Framework, Simple JWT, django-filter, django-cors-headers, drf-spectacular.
-- Local database: SQLite.
-- Deploy database: PostgreSQL via `DATABASE_URL`.
-
-## Setup
-
-Prerequisites:
-
-- Node.js 18+
-- npm
-- Python 3.11+
-
-Install frontend:
-
-```bash
-npm --prefix frontend install
+## Validation / Tests
+```sh
+make check
 ```
+Django checks, migration consistency and backend regressions; frontend tests, lint, TypeScript and production build. Tests cover authentication/permissions, requests, demo isolation and aggregate profile validation/rollback.
 
-Install backend:
+## Environment Variables
+See `backend/.env.example` and `frontend/.env.example`. Local DEBUG enables developer login; deployment must disable it and supply a private strong `SECRET_KEY`, reviewed hosts/CORS and HTTPS settings. Google credentials are optional for the verified local flow. Never commit `.env` or use a development key in production.
 
-```bash
-python3 -m venv backend/.venv
-backend/.venv/bin/pip install -r backend/requirements.txt
-```
+## Project Structure
+`frontend/src/`: pages, shared components, hooks and API clients; `backend/`: Django domain apps; `scripts/`: setup/dev/check entry points; `docs/`: product notes and engineering workflow.
 
-Create backend environment file:
+## Current Status / Limitations
+Credential-backed Google authentication and production deployment remain unverified. Notifications summarize current API activity; durable read/unread history is not a completed feature. Targeted accessibility review remains useful; no framework rewrite or speculative optimization is required.
 
-```bash
-cp backend/.env.example backend/.env
-```
-
-Create frontend environment file:
-
-```bash
-cp frontend/.env.example frontend/.env
-```
-
-For real API mode, set this in `frontend/.env`:
-
-```env
-VITE_API_BASE_URL=/api
-VITE_USE_MOCKS=false
-VITE_GOOGLE_CLIENT_ID=
-```
-
-Real `.env` files are not committed. They stay local because they may contain secrets. The repo commits only `.env.example` files so another developer knows what variables to create.
-
-Committed env templates:
-
-- `backend/.env.example`
-- `frontend/.env.example`
-
-Local-only env files:
-
-- `backend/.env`
-- `frontend/.env`
-
-## Run Locally
-
-Start backend:
-
-```bash
-cd backend
-.venv/bin/python manage.py migrate
-.venv/bin/python manage.py seed_demo_data
-.venv/bin/python manage.py runserver 127.0.0.1:8000
-```
-
-Start frontend in another terminal:
-
-```bash
-npm --prefix frontend run dev
-```
-
-Open:
-
-- Frontend: `http://127.0.0.1:5173` (or `http://localhost:5173`)
-- Backend API: `http://127.0.0.1:8000/api/`
-- API docs: `http://127.0.0.1:8000/api/docs/`
-- Django admin: `http://127.0.0.1:8000/admin/`
-
-## Local Demo Login
-
-With `DEBUG=True`, use the frontend login page option `Continue as Local API Demo User`. The backend `POST /api/auth/dev-login/` endpoint accepts `@illinois.edu` emails and returns JWT access/refresh tokens.
-
-Do not use dev-login in production. Replace it with Illinois Google OAuth/SSO before real deployment.
-
-## Useful Commands
-
-```bash
-npm run frontend:install
-npm run frontend:dev
-npm run frontend:build
-npm run frontend:lint
-npm run backend:venv
-npm run backend:install
-npm run backend:migrate
-npm run backend:seed
-npm run backend:check
-npm run backend:test
-npm run backend:dev
-```
-
-## Validation
-
-Frontend:
-
-```bash
-npm --prefix frontend run build
-npm --prefix frontend run lint
-```
-
-Backend:
-
-```bash
-cd backend
-.venv/bin/python manage.py makemigrations --check
-.venv/bin/python manage.py migrate
-.venv/bin/python manage.py check
-.venv/bin/python manage.py test
-```
-
-## GitHub
-
-This is now a single monorepo:
-
-`https://github.com/adhvikrayaprolu/uiuc-skillshare`
+Read [AGENTS.md](AGENTS.md), the active PRs and the GitHub readiness tracker before choosing work. [Product notes](docs/product-overview.md) provide deeper context and may describe future goals.

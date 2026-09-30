@@ -364,10 +364,10 @@ export function ProfileDetailPage() {
                     </div>
                     {review.reviewer_profile_id ? (
                       <Link to={`/profiles/${review.reviewer_profile_id}`} className="text-sm font-medium text-[#13294B] hover:underline">
-                        {review.reviewer_name || 'Verified student'}
+                        {review.reviewer_name || 'Student'}
                       </Link>
                     ) : (
-                      <span className="text-sm font-medium text-[#0F172A]">{review.reviewer_name || 'Verified student'}</span>
+                      <span className="text-sm font-medium text-[#0F172A]">{review.reviewer_name || 'Student'}</span>
                     )}
                     <span className="text-xs text-[#64748B]">· {review.created_at?.slice(0, 10)}</span>
                   </div>

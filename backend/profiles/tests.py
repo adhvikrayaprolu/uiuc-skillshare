@@ -95,3 +95,56 @@ class ProfileTests(APITestCase):
         click = self.client.post(reverse("profile-contact-click", args=[profile.id]), {"contact_method_id": contact.id}, format="json")
         self.assertEqual(click.status_code, 200)
         self.assertTrue(click.data["success"])
+
+
+class ProfileAggregateTests(APITestCase):
+    def setUp(self):
+        from .models import ContactMethod
+        self.user = User.objects.create_user("aggregate@illinois.edu", "password-234", is_student_verified=True)
+        self.client.force_authenticate(self.user)
+        self.profile = StudentProfile.objects.create(user=self.user, display_name="Original", major="CS", year="junior", headline="Help", bio="Original bio")
+        ContactMethod.objects.create(profile=self.profile, type="email", value="original@illinois.edu", is_public=True)
+        self.payload = {"profile": {"display_name": "Updated", "major": "CS", "year": "junior", "headline": "Help", "bio": "New bio"},
+                        "skills": [], "availability": [], "contacts": [{"type": "email", "value": "new@illinois.edu", "is_public": True}], "credentials": []}
+
+    def test_invalid_nested_data_preserves_every_saved_value(self):
+        self.payload["credentials"] = [{"credential_type": "invalid", "title": "Bad", "url": "not-url"}]
+        self.assertEqual(self.client.put(reverse("profile-aggregate"), self.payload, format="json").status_code, 400)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.display_name, "Original")
+        self.assertEqual(self.profile.contact_methods.get().value, "original@illinois.edu")
+
+    def test_late_failure_rolls_back_profile_and_children(self):
+        from unittest.mock import patch
+        with patch("profiles.views.rebuild_profile_search_index", side_effect=RuntimeError("index failure")):
+            with self.assertRaises(RuntimeError):
+                self.client.put(reverse("profile-aggregate"), self.payload, format="json")
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.display_name, "Original")
+        self.assertEqual(self.profile.contact_methods.get().value, "original@illinois.edu")
+
+    def test_success_is_repeatable_and_scoped_to_current_user(self):
+        other = User.objects.create_user("other-aggregate@illinois.edu", "password-234", is_student_verified=True)
+        other_profile = StudentProfile.objects.create(user=other, display_name="Other", major="CS", year="junior", headline="Help", bio="Other bio")
+        self.payload["profile"]["id"] = other_profile.id
+        for _ in range(2):
+            response = self.client.put(reverse("profile-aggregate"), self.payload, format="json")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data["id"], self.profile.id)
+        self.assertEqual(self.profile.contact_methods.count(), 1)
+        other_profile.refresh_from_db()
+        self.assertEqual(other_profile.display_name, "Other")
+
+    def test_onboarding_creation_and_anonymous_denial(self):
+        self.profile.delete()
+        self.assertEqual(self.client.put(reverse("profile-aggregate"), self.payload, format="json").status_code, 200)
+        self.assertEqual(StudentProfile.objects.filter(user=self.user).count(), 1)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.has_completed_onboarding)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.put(reverse("profile-aggregate"), self.payload, format="json").status_code, 401)
+
+    def test_omitted_collection_is_preserved_during_section_save(self):
+        del self.payload["contacts"]
+        self.assertEqual(self.client.put(reverse("profile-aggregate"), self.payload, format="json").status_code, 200)
+        self.assertEqual(self.profile.contact_methods.get().value, "original@illinois.edu")

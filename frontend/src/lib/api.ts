@@ -2,7 +2,7 @@ import axios from 'axios';
 import { clearTokens, getAccessToken, getRefreshToken, isDemoSession, setTokens } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api';
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false';
+const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -63,7 +63,7 @@ api.interceptors.response.use(
 );
 
 export function shouldUseMocks() {
-  return USE_MOCKS;
+  return USE_MOCKS || isDemoSession();
 }
 
 export { API_BASE_URL };

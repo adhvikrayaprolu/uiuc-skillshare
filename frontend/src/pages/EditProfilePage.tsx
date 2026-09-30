@@ -476,7 +476,7 @@ export function EditProfilePage() {
               <div className="space-y-6">
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] p-4 hover:bg-[#F8FAFC]">
                   <input type="checkbox" checked={form.visibility === 'public'} onChange={(event) => update('visibility', event.target.checked ? 'public' : 'private')} className="h-5 w-5 rounded" />
-                  <div><p className="font-medium text-[#0F172A]">Profile Visibility</p><p className="text-sm text-[#64748B]">Make my profile visible to all verified students</p></div>
+                  <div><p className="font-medium text-[#0F172A]">Profile Visibility</p><p className="text-sm text-[#64748B]">Make my profile visible to all students</p></div>
                 </label>
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] p-4 hover:bg-[#F8FAFC]">
                   <input type="checkbox" checked={form.openToConnect} onChange={(event) => update('openToConnect', event.target.checked)} className="h-5 w-5 rounded" />

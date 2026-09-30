@@ -20,14 +20,14 @@ export function LandingPage() {
                 Find the right student to learn from, collaborate with, or connect to
               </h1>
               <p className="text-xl text-blue-100 mb-8">
-                Discover verified student profiles by skills, experiences, interests, and availability
+                Discover student profiles by skills, experiences, interests, and availability
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   to="/login"
                   className="px-8 py-4 bg-[#FF5F05] text-white font-semibold rounded-xl hover:bg-[#e55505] transition-colors inline-flex items-center justify-center gap-2"
                 >
-                  Sign in with Illinois Google
+                  Sign in or try the local demo
                   <ArrowRight className="w-5 h-5" />
                 </Link>
                 <button className="px-8 py-4 bg-white bg-opacity-10 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-opacity-20 transition-colors">
@@ -150,8 +150,8 @@ export function LandingPage() {
             {[
               {
                 icon: Shield,
-                title: 'Illinois email verification',
-                description: 'Only verified Illinois student emails are allowed'
+                title: 'Demo and account access',
+                description: 'Local demo access does not verify university identity. Optional Google sign-in requires configuration.'
               },
               {
                 icon: Shield,

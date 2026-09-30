@@ -57,7 +57,7 @@ export function SettingsPage() {
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-[#64748B]">{email || '—'}</p>
                   <span className="inline-block rounded border border-[#FF5F05]/30 bg-[#FFF3EA] px-2 py-0.5 text-xs font-semibold text-[#C2410C]">
-                    Verified Student
+                    Student profile
                   </span>
                 </div>
               </div>
@@ -66,7 +66,7 @@ export function SettingsPage() {
             <div className="flex items-center justify-between py-3">
               <div>
                 <p className="font-medium text-[#0F172A]">Student Status</p>
-                <p className="text-sm text-[#64748B]">Illinois Student (Verified)</p>
+                <p className="text-sm text-[#64748B]">Illinois-format email</p>
               </div>
             </div>
           </div>
@@ -85,7 +85,7 @@ export function SettingsPage() {
             <label className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-xl cursor-pointer">
               <div>
                 <p className="font-medium text-[#0F172A]">Public Profile</p>
-                <p className="text-sm text-[#64748B]">Make your profile visible to all verified students</p>
+                <p className="text-sm text-[#64748B]">Make your profile visible to all students</p>
               </div>
               <input
                 type="checkbox"

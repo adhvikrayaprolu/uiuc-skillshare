@@ -211,7 +211,7 @@ export function AppLayout() {
             <InitialsAvatar name={displayName} size="md" />
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-semibold text-[#0F172A]">{displayName}</p>
-              <p className="text-xs text-[#64748B]">Verified Student</p>
+              <p className="text-xs text-[#64748B]">Student profile</p>
             </div>
           </div>
           <button

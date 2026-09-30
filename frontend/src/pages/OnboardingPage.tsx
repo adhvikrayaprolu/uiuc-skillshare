@@ -191,7 +191,7 @@ export function OnboardingPage() {
               <div className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#E8EEF7]"><CheckCircle2 className="h-8 w-8 text-[#13294B]" /></div>
                 <h3 className="mb-2 text-2xl font-bold text-[#0F172A]">You're all set</h3>
-                <p className="mb-6 text-[#64748B]">Publish your profile so other verified students can discover and connect with you.</p>
+                <p className="mb-6 text-[#64748B]">Publish your profile so other students can discover and connect with you.</p>
                 <label className="mb-6 flex cursor-pointer items-center justify-center gap-2">
                   <input type="checkbox" className="h-5 w-5 rounded" checked={form.openToConnect} onChange={(event) => update('openToConnect', event.target.checked)} />
                   <span className="text-sm text-[#0F172A]">I'm open to connect with other students</span>

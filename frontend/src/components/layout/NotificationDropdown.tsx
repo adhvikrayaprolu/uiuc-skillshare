@@ -71,7 +71,7 @@ export function NotificationDropdown({ items, showSamples = false, loading = fal
       <div className="px-4 py-3 border-b border-[#E2E8F0] flex items-center justify-between">
         <h3 className="font-semibold text-[#0F172A]">Notifications</h3>
         {unreadCount > 0 && (
-          <span className="px-2 py-0.5 bg-[#FF5F05] text-white text-xs font-medium rounded-full">
+          <span className="px-2 py-0.5 bg-[#B83E00] text-white text-xs font-medium rounded-full">
             {unreadCount} new
           </span>
         )}
@@ -101,7 +101,7 @@ export function NotificationDropdown({ items, showSamples = false, loading = fal
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <h4 className="text-sm font-medium text-[#0F172A]">{notification.title}</h4>
                     {!notification.read && (
-                      <div className="w-2 h-2 bg-[#FF5F05] rounded-full flex-shrink-0 mt-1"></div>
+                      <div className="w-2 h-2 bg-[#B83E00] rounded-full flex-shrink-0 mt-1"></div>
                     )}
                   </div>
                   <p className="text-xs text-[#64748B] mb-1">{notification.description}</p>
@@ -124,7 +124,7 @@ export function NotificationDropdown({ items, showSamples = false, loading = fal
       {/* Footer */}
       {list.length > 0 && (
         <div className="px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-          <Link to="/requests" onClick={onNavigate} className="text-sm text-[#13294B] font-medium hover:text-[#FF5F05] transition-colors">
+          <Link to="/requests" onClick={onNavigate} className="text-sm text-[#13294B] font-medium hover:text-[#B83E00] transition-colors">
             Open requests
           </Link>
         </div>

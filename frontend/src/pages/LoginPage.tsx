@@ -134,7 +134,7 @@ export function LoginPage() {
           </div>
 
           <div className="mt-8 text-center">
-            <Link to="/" className="text-sm text-[#13294B] transition-colors hover:text-[#FF5F05]">
+            <Link to="/" className="text-sm text-[#13294B] transition-colors hover:text-[#B83E00]">
               ← Back to home
             </Link>
           </div>

@@ -2,8 +2,8 @@ import { Outlet } from 'react-router-dom';
 
 export function PublicLayout() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <main className="min-h-screen bg-[#F8FAFC]">
       <Outlet />
-    </div>
+    </main>
   );
 }

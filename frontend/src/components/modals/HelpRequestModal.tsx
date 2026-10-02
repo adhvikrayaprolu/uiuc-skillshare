@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { X, Send } from 'lucide-react';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 
 interface HelpRequestModalProps {
@@ -25,6 +26,9 @@ export function HelpRequestModal({
   onSubmitRequest,
   isSubmitting = false
 }: HelpRequestModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState('');
+  useDialogFocus(isOpen, dialogRef, onClose, isSubmitting);
   const [topic, setTopic] = useState('');
   const [relatedSkill, setRelatedSkill] = useState('');
   const [message, setMessage] = useState('');
@@ -35,29 +39,35 @@ export function HelpRequestModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmitRequest?.({
-      topic,
-      relatedSkill,
-      message,
-      urgency: urgency.toLowerCase() as 'low' | 'medium' | 'high',
-      preferredContactMethod: preferredContact,
-    });
-    onClose();
+    setError('');
+    try {
+      await onSubmitRequest?.({
+        topic,
+        relatedSkill,
+        message,
+        urgency: urgency.toLowerCase() as 'low' | 'medium' | 'high',
+        preferredContactMethod: preferredContact,
+      });
+      onClose();
+    } catch {
+      setError('The request was not sent. Check the details and try again.');
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div onMouseDown={event => {if (event.target === event.currentTarget && !isSubmitting) onClose();}} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="help-title" tabIndex={-1} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-[#E2E8F0] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <InitialsAvatar name={recipientName} size="sm" />
             <div>
-              <h2 className="text-xl font-bold text-[#0F172A]">Send Help Request</h2>
+              <h2 id="help-title" className="text-xl font-bold text-[#0F172A]">Send Help Request</h2>
               <p className="text-sm text-[#64748B]">to {recipientName}</p>
             </div>
           </div>
           <button
+            aria-label="Close help request" disabled={isSubmitting}
             onClick={onClose}
             className="p-2 hover:bg-[#F8FAFC] rounded-lg transition-colors"
           >
@@ -69,11 +79,11 @@ export function HelpRequestModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Topic */}
           <div>
-            <label className="block text-sm font-medium text-[#0F172A] mb-2">
+            <label htmlFor="help-topic" className="block text-sm font-medium text-[#0F172A] mb-2">
               Topic <span className="text-[#DC2626]">*</span>
             </label>
             <input
-              type="text"
+              id="help-topic" type="text" maxLength={180}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g., Resume review for internship applications"
@@ -84,10 +94,10 @@ export function HelpRequestModal({
 
           {/* Related Skill */}
           <div>
-            <label className="block text-sm font-medium text-[#0F172A] mb-2">
+            <label htmlFor="help-skill" className="block text-sm font-medium text-[#0F172A] mb-2">
               Related Skill <span className="text-[#64748B] font-normal">(optional)</span>
             </label>
-            <select
+            <select id="help-skill"
               value={relatedSkill}
               onChange={(e) => setRelatedSkill(e.target.value)}
               className="w-full px-4 py-3 border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#13294B] transition-colors"
@@ -101,10 +111,10 @@ export function HelpRequestModal({
 
           {/* Message */}
           <div>
-            <label className="block text-sm font-medium text-[#0F172A] mb-2">
+            <label htmlFor="help-message" className="block text-sm font-medium text-[#0F172A] mb-2">
               Message <span className="text-[#DC2626]">*</span>
             </label>
-            <textarea
+            <textarea id="help-message" maxLength={4000}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Describe what you need help with..."
@@ -127,6 +137,7 @@ export function HelpRequestModal({
                 <button
                   key={level}
                   type="button"
+                  aria-pressed={urgency === level}
                   onClick={() => setUrgency(level)}
                   className={`flex-1 px-4 py-2 rounded-xl font-medium text-sm transition-colors ${
                     urgency === level
@@ -142,10 +153,10 @@ export function HelpRequestModal({
 
           {/* Preferred Contact */}
           <div>
-            <label className="block text-sm font-medium text-[#0F172A] mb-2">
+            <label htmlFor="help-contact" className="block text-sm font-medium text-[#0F172A] mb-2">
               Your Preferred Contact Method
             </label>
-            <select
+            <select id="help-contact"
               value={preferredContact}
               onChange={(e) => setPreferredContact(e.target.value)}
               className="w-full px-4 py-3 border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#13294B] transition-colors"
@@ -164,11 +175,12 @@ export function HelpRequestModal({
             </p>
           </div>
 
+          {error && <p role="alert" className="text-red-700">{error}</p>}
           {/* Actions */}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
-              onClick={onClose}
+              disabled={isSubmitting} onClick={onClose}
               className="flex-1 px-6 py-3 border-2 border-[#E2E8F0] text-[#64748B] font-medium rounded-xl hover:bg-[#F8FAFC] transition-colors"
             >
               Cancel

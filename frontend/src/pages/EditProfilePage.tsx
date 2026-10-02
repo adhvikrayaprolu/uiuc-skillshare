@@ -117,6 +117,7 @@ export function EditProfilePage() {
     return <div className="mx-auto max-w-5xl rounded-2xl border border-[#E2E8F0] bg-white p-6 text-[#64748B]">Loading your profile...</div>;
   }
 
+  if (!shouldUseMocks() && currentProfile.isError) return <div role="alert">Could not load your profile. <button onClick={() => void currentProfile.refetch()}>Try again</button></div>;
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">

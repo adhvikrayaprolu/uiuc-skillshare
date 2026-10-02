@@ -19,13 +19,13 @@ export function LandingPage() {
               <h1 className="text-5xl font-bold mb-6 leading-tight">
                 Find the right student to learn from, collaborate with, or connect to
               </h1>
-              <p className="text-xl text-blue-100 mb-8">
+              <p className="text-xl text-white mb-8">
                 Discover student profiles by skills, experiences, interests, and availability
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   to="/login"
-                  className="px-8 py-4 bg-[#FF5F05] text-white font-semibold rounded-xl hover:bg-[#e55505] transition-colors inline-flex items-center justify-center gap-2"
+                  className="px-8 py-4 bg-[#B83E00] text-white font-semibold rounded-xl hover:bg-[#e55505] transition-colors inline-flex items-center justify-center gap-2"
                 >
                   Sign in or try the local demo
                   <ArrowRight className="w-5 h-5" />
@@ -52,16 +52,16 @@ export function LandingPage() {
                   {['Riya Patel', 'Daniel Kim'].map((name, i) => (
                     <div key={i} className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4">
                       <div className="flex gap-3 items-start">
-                        <div className="w-10 h-10 rounded-full bg-[#FF5F05] flex-shrink-0"></div>
+                        <div className="w-10 h-10 rounded-full bg-[#B83E00] flex-shrink-0"></div>
                         <div className="flex-1">
                           <p className="font-semibold text-sm">{name}</p>
-                          <p className="text-xs text-blue-100">Computer Science · Junior</p>
+                          <p className="text-xs text-white">Computer Science · Junior</p>
                           <div className="flex gap-2 mt-2 flex-wrap">
                             <span className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">Figma</span>
                             <span className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">React</span>
                           </div>
                         </div>
-                        <span className="px-2 py-1 bg-[#FF5F05] bg-opacity-90 rounded-full text-xs font-semibold">Top Match</span>
+                        <span className="px-2 py-1 bg-[#B83E00] bg-opacity-90 rounded-full text-xs font-semibold">Top Match</span>
                       </div>
                     </div>
                   ))}
@@ -130,7 +130,7 @@ export function LandingPage() {
                 <ul className="space-y-2">
                   {category.items.map((item, j) => (
                     <li key={j} className="flex items-center gap-2 text-sm text-[#64748B]">
-                      <CheckCircle className="w-4 h-4 text-[#16A34A]" />
+                      <CheckCircle className="w-4 h-4 text-[#15803D]" />
                       {item}
                     </li>
                   ))}
@@ -168,7 +168,7 @@ export function LandingPage() {
               return (
                 <div key={i} className="text-center">
                   <div className="w-16 h-16 bg-[#FFF3EA] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-8 h-8 text-[#FF5F05]" />
+                    <Icon className="w-8 h-8 text-[#B83E00]" />
                   </div>
                   <h3 className="text-lg font-semibold text-[#0F172A] mb-2">{item.title}</h3>
                   <p className="text-[#64748B]">{item.description}</p>
@@ -183,12 +183,12 @@ export function LandingPage() {
       <section className="py-20 bg-[#13294B] text-white">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-4xl font-bold mb-6">Ready to connect with your peers?</h2>
-          <p className="text-xl text-blue-100 mb-8">
+          <p className="text-xl text-white mb-8">
             Join Illini SkillSwap and discover your student network
           </p>
           <Link
             to="/login"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-[#FF5F05] text-white font-semibold rounded-xl hover:bg-[#e55505] transition-colors"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[#B83E00] text-white font-semibold rounded-xl hover:bg-[#e55505] transition-colors"
           >
             Get Started
             <ArrowRight className="w-5 h-5" />
@@ -197,7 +197,7 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#0F172A] text-[#64748B] py-8">
+      <footer className="bg-[#0F172A] text-[#CBD5E1] py-8">
         <div className="max-w-6xl mx-auto px-6 text-center">
           <p className="text-sm">© 2026 Illini SkillSwap. A student networking platform for the University of Illinois.</p>
         </div>

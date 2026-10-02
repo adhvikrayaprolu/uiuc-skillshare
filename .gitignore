@@ -27,3 +27,6 @@ backend/htmlcov/
 backend/staticfiles/
 frontend/test-results/
 frontend/playwright-report/
+
+frontend/test-results/
+frontend/playwright-report/

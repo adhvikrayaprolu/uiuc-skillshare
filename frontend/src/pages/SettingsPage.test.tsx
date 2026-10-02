@@ -35,3 +35,16 @@ it('loads actual blocks and keeps failures visible when unblocking fails', async
   await screen.findByRole('alert');
   expect(screen.queryByText('No blocked users.')).toBeNull();
 });
+
+it('shows a pending privacy choice immediately and restores it when saving fails', async () => {
+  let rejectSave: (reason: unknown) => void = () => undefined;
+  state.update.mockImplementation(() => new Promise((_resolve,reject) => {rejectSave=reject;}));
+  view();
+  const publish=screen.getByLabelText('Published for eligible signed-in members') as HTMLInputElement;
+  await userEvent.click(publish);
+  expect(publish.checked).toBe(false);
+  expect(publish.disabled).toBe(true);
+  rejectSave({response:{data:{detail:'Could not save preference'}}});
+  await screen.findByRole('alert');
+  expect(publish.checked).toBe(true);
+});

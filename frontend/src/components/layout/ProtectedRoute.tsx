@@ -24,6 +24,7 @@ export function ProtectedRoute() {
     );
   }
 
+  if (!shouldUseMocks() && !auth.isDemo && onboardingStatus.isError) return <div role="alert" className="p-6">Could not check your profile status. <button onClick={() => void onboardingStatus.refetch()}>Try again</button></div>;
   const hasCompletedOnboarding = onboardingStatus.data?.has_completed_onboarding ?? auth.hasCompletedOnboarding;
   if (!shouldUseMocks() && !auth.isDemo && hasCompletedOnboarding === false && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace state={{ from: location.pathname }} />;

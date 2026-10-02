@@ -8,7 +8,7 @@ import time
 
 root=Path(__file__).resolve().parent.parent
 os.chdir(root / 'backend')
-for args in [('migrate',), ('seed_demo_data',)]:
+for args in [('migrate',), ('seed_taxonomy',)]:
     subprocess.run([sys.executable, 'manage.py', *args], check=True)
 processes = []
 try:

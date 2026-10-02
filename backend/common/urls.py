@@ -1,10 +1,12 @@
 from django.urls import path
 
-from .views import analytics_summary, bootstrap, dashboard, health, onboarding_status
+from .views import analytics_summary, bootstrap, dashboard, health, readiness, onboarding_status
 
 
 urlpatterns = [
     path("health/", health, name="health"),
+    path("health/live/", health, name="liveness"),
+    path("health/ready/", readiness, name="readiness"),
     path("dashboard/", dashboard, name="dashboard"),
     path("bootstrap/", bootstrap, name="bootstrap"),
     path("onboarding/status/", onboarding_status, name="onboarding-status"),

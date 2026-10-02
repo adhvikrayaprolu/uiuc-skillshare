@@ -1,6 +1,6 @@
 from django.db.models import Count, Q
 from drf_spectacular.utils import extend_schema
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
@@ -19,8 +19,24 @@ from .models import AnalyticsEvent
 @extend_schema(responses=dict)
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([])
 def health(request):
     return Response({"status": "ok", "service": "uiuc-skillshare-backend"})
+
+
+@extend_schema(responses=dict)
+@api_view(["GET"])
+@permission_classes([AllowAny])
+@throttle_classes([])
+def readiness(request):
+    from django.db import connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception:
+        return Response({"status": "unavailable"}, status=503)
+    return Response({"status": "ready"})
 
 
 @extend_schema(responses=dict)

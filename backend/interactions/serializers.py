@@ -36,7 +36,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ["id", "reviewer", "reviewer_name", "reviewer_profile_id", "profile", "rating", "comment", "related_skill", "created_at", "updated_at"]
+        fields = ["id", "reviewer", "reviewer_name", "reviewer_profile_id", "profile", "help_request", "rating", "comment", "related_skill", "created_at", "updated_at"]
         read_only_fields = ["id", "reviewer", "profile", "created_at", "updated_at"]
 
     def get_reviewer_name(self, obj):
@@ -55,6 +55,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         profile = self.context.get("profile") or getattr(self.instance, "profile", None)
         if profile and profile.user_id == self.context["request"].user.id:
             raise serializers.ValidationError("You cannot review your own profile.")
+        from .lifecycle import validate_feedback
+        validate_feedback(attrs, self.context, self.instance)
         return attrs
 
     def create(self, validated_data):
@@ -72,7 +74,7 @@ class EndorsementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Endorsement
-        fields = ["id", "endorser", "endorser_name", "endorser_profile_id", "profile", "skill", "skill_name", "note", "created_at"]
+        fields = ["id", "endorser", "endorser_name", "endorser_profile_id", "profile", "help_request", "skill", "skill_name", "note", "created_at"]
         read_only_fields = ["id", "endorser", "profile", "created_at"]
 
     def get_endorser_name(self, obj):
@@ -92,6 +94,8 @@ class EndorsementSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("You can only endorse skills listed on this profile.")
         if profile and Endorsement.objects.filter(endorser=request.user, profile=profile, skill=skill).exists():
             raise serializers.ValidationError("You have already endorsed this profile for that skill.")
+        from .lifecycle import validate_feedback
+        validate_feedback(attrs, self.context, self.instance, endorsement=True)
         return attrs
 
     def create(self, validated_data):
@@ -132,6 +136,8 @@ class HelpRequestSerializer(serializers.ModelSerializer):
             "related_skill_name",
             "urgency",
             "preferred_contact_method",
+            "version",
+            "idempotency_key",
             "status",
             "response_message",
             "helper_contact_methods",
@@ -222,7 +228,7 @@ class HelpRequestSerializer(serializers.ModelSerializer):
             if attrs.get("status", "pending") != "pending" or attrs.get("response_message"):
                 raise serializers.ValidationError("New requests must start pending without a helper response.")
         else:
-            immutable = set(self.initial_data) - {"status", "response_message"}
+            immutable = set(self.initial_data) - {"status", "response_message", "version"}
             if immutable:
                 raise serializers.ValidationError({field: "Cannot change a submitted request." for field in immutable})
             if users_blocked(request.user, self.instance.helper_profile.user if request.user == self.instance.seeker else self.instance.seeker):
@@ -251,19 +257,12 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        from common.analytics import track_event
-
-        validated_data.setdefault("seeker", self.context["request"].user)
-        validated_data["status"] = HelpRequest.Status.PENDING
-        help_request = HelpRequest.objects.create(**validated_data)
-        track_event(self.context["request"].user, "help_request_created", {"help_request_id": help_request.id, "helper_profile_id": help_request.helper_profile_id}, self.context["request"])
-        return help_request
+        from .lifecycle import create_request
+        return create_request(self, validated_data)
 
     def update(self, instance, validated_data):
-        instance = super().update(instance, validated_data)
-        instance.mark_status_timestamp()
-        instance.save()
-        return instance
+        from .lifecycle import transition_request
+        return transition_request(self, instance, validated_data)
 
 
 class ReportSerializer(serializers.ModelSerializer):
@@ -318,6 +317,7 @@ class BlockedUserSerializer(serializers.ModelSerializer):
                 if help_request.status in {"pending", "accepted"}:
                     help_request.status = "cancelled"
                     help_request.cancelled_at = timezone.now()
+                    help_request.version += 1
                 help_request.topic, help_request.message, help_request.response_message = "Connection removed", "", ""
                 help_request.save()
             return record

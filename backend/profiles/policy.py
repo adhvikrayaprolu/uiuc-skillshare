@@ -34,3 +34,8 @@ def can_share_contacts(viewer, profile):
         Q(seeker=viewer, helper_profile=profile) |
         Q(seeker=profile.user, helper_profile__user=viewer)
     ).exists()
+
+
+def visible_feedback(queryset, viewer, author_field="reviewer"):
+    from profiles.models import StudentProfile
+    return queryset.filter(help_request__status="completed", **{f"{author_field}_id__in": visible_profiles(StudentProfile.objects.all(), viewer).values("user_id")})

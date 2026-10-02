@@ -8,6 +8,7 @@ export interface ConnectionRow {
   peerProfileId: number;
   peer: ProfileListItem | null;
   topic: string;
+  status: 'accepted' | 'completed';
   relatedSkillLabel: string;
   acceptedAt: string;
   preferredContactMethod: string;
@@ -24,7 +25,7 @@ export function useConnections() {
     if (!myId) return [];
 
     return helpQuery.data.raw
-      .filter((r) => r.status === 'accepted')
+      .filter((r) => ['accepted', 'completed'].includes(r.status))
       .map((r) => {
         const imSeeker = r.seeker === myId;
         const peerProfileId = imSeeker ? r.helper_profile : r.seeker_profile_id ?? 0;
@@ -35,6 +36,7 @@ export function useConnections() {
           peerProfileId,
           peer: peerDetail,
           topic: r.topic,
+          status: r.status as 'accepted' | 'completed',
           relatedSkillLabel: r.related_skill_name || (r.related_skill ? `Skill #${r.related_skill}` : 'General'),
           acceptedAt: r.accepted_at || r.updated_at || r.created_at,
           preferredContactMethod: r.preferred_contact_method || 'email',

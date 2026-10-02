@@ -21,6 +21,7 @@ class SavedProfile(models.Model):
 class Review(models.Model):
     reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="written_reviews", on_delete=models.CASCADE)
     profile = models.ForeignKey("profiles.StudentProfile", related_name="reviews", on_delete=models.CASCADE)
+    help_request = models.OneToOneField("HelpRequest", null=True, blank=True, on_delete=models.CASCADE, related_name="review")
     rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField()
     related_skill = models.ForeignKey("taxonomy.SkillTag", null=True, blank=True, on_delete=models.SET_NULL)
@@ -38,6 +39,7 @@ class Endorsement(models.Model):
     endorser = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="given_endorsements", on_delete=models.CASCADE)
     profile = models.ForeignKey("profiles.StudentProfile", related_name="endorsements", on_delete=models.CASCADE)
     skill = models.ForeignKey("taxonomy.SkillTag", null=True, blank=True, on_delete=models.CASCADE)
+    help_request = models.ForeignKey("HelpRequest", null=True, blank=True, on_delete=models.CASCADE, related_name="endorsements")
     note = models.CharField(max_length=160, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -86,6 +88,10 @@ class HelpRequest(models.Model):
         default="email",
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    version = models.PositiveIntegerField(default=1)
+    idempotency_key = models.UUIDField(null=True, blank=True)
+    content_hash = models.CharField(max_length=64, blank=True)
+    topic_key = models.CharField(max_length=64, blank=True)
     response_message = models.TextField(blank=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     declined_at = models.DateTimeField(null=True, blank=True)
@@ -96,6 +102,10 @@ class HelpRequest(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["seeker", "idempotency_key"], condition=models.Q(idempotency_key__isnull=False), name="unique_request_submission"),
+            models.UniqueConstraint(fields=["seeker", "helper_profile", "topic_key"], condition=models.Q(status__in=["pending", "accepted"]) & ~models.Q(topic_key=""), name="unique_active_help_topic"),
+        ]
 
     def __str__(self):
         return f"{self.topic} -> {self.helper_profile}"

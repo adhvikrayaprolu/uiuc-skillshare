@@ -1,17 +1,7 @@
-# uiuc-skillshare reconciliation roadmap
+# Readiness roadmap
 
-Integration awaiting human review: [https://github.com/adhvikrayaprolu/uiuc-skillshare/pull/7](https://github.com/adhvikrayaprolu/uiuc-skillshare/pull/7). Main is unchanged.
+PR #7 is merged; issues #1–#3 are closed. The approved user-ready implementation is a dependency-ordered draft stack, PRs #17–#26. Main does not contain this stack until human review and merge.
 
-## Already implemented in the active PR
-- [#1](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/1) — verified implementation; blocked from duplicate agent selection pending merge.
-- [#2](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/2) — verified implementation; blocked from duplicate agent selection pending merge.
-- [#3](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/3) — verified implementation; blocked from duplicate agent selection pending merge.
+The [readiness tracker #5](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/5) records issues, PR bases, verification and remaining integration limits. Issue #4 covers browser/mobile/accessibility evidence; #8–#16 cover security through final readiness. Do not recreate any work already represented by these drafts.
 
-## Remaining work
-- #4
-
-See the current issue bodies for partial implementation, dependencies and human approval boundaries. No live credential rotation, production migration or deployment was performed.
-
-NEXT AUTOMATION-READY ISSUE: None until review/dependencies resolve. Do not recreate work in the active PR.
-
-Portfolio readiness tracker: https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/5
+Next action: human review in stack order. Live Google/SMTP/Supabase and paid semantic verification require separate credentials/authorization. Infrastructure cannot be marked STABLE on main until the accepted implementation and relevant CI/setup evidence are present. Never merge, deploy or provision services automatically.

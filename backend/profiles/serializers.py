@@ -66,7 +66,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     learning_goals = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     profile_picture = serializers.SerializerMethodField()
 
-    def get_profile_picture(self, obj):
+    def get_profile_picture(self, obj) -> str | None:
         return f"/api/profiles/{obj.pk}/avatar/" if obj.profile_picture else None
 
     contact_methods = ContactMethodSerializer(many=True, read_only=True)
@@ -172,7 +172,7 @@ class FeedbackPolicyMixin:
 class PublicStudentProfileListSerializer(FeedbackPolicyMixin, serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
 
-    def get_profile_picture(self, obj):
+    def get_profile_picture(self, obj) -> str | None:
         return f"/api/profiles/{obj.pk}/avatar/" if obj.profile_picture else None
 
     top_skills = serializers.SerializerMethodField()
@@ -208,12 +208,12 @@ class PublicStudentProfileListSerializer(FeedbackPolicyMixin, serializers.ModelS
             "availability_summary",
         ]
 
-    def get_top_skills(self, obj):
+    def get_top_skills(self, obj) -> list[str]:
         skills = getattr(obj, "offered_skills", None)
         if skills is None: skills = list(obj.profile_skills.select_related("skill").order_by("-is_featured", "id"))
         return [ps.skill.name for ps in sorted(skills, key=lambda ps: (not ps.is_featured, ps.pk))[:3]]
 
-    def get_top_categories(self, obj):
+    def get_top_categories(self, obj) -> list[str]:
         seen = []
         skills = getattr(obj, "offered_skills", None)
         if skills is None: skills = obj.profile_skills.select_related("skill__category").order_by("-is_featured", "id")
@@ -225,32 +225,32 @@ class PublicStudentProfileListSerializer(FeedbackPolicyMixin, serializers.ModelS
                 break
         return seen
 
-    def get_average_rating(self, obj):
+    def get_average_rating(self, obj) -> float | None:
         value = getattr(obj, "average_rating", None)
         if not hasattr(obj, "average_rating"):
             value = self._reviews(obj).aggregate(avg=Avg("rating"))["avg"]
         return round(value, 2) if value is not None else None
 
-    def get_review_count(self, obj):
+    def get_review_count(self, obj) -> int:
         value = getattr(obj, "review_count", None)
         return value if value is not None else self._reviews(obj).count()
 
-    def get_match_score(self, obj):
+    def get_match_score(self, obj) -> float | None:
         return getattr(obj, "match_score", None)
 
-    def get_match_reasons(self, obj):
+    def get_match_reasons(self, obj) -> list[str]:
         return getattr(obj, "match_reasons", [])
 
-    def get_semantic_reasons(self, obj):
+    def get_semantic_reasons(self, obj) -> list[str]:
         return getattr(obj, "semantic_reasons", [])
 
-    def get_has_resume(self, obj):
+    def get_has_resume(self, obj) -> bool:
         preset = getattr(obj, "has_resume", None)
         if preset is not None:
             return bool(preset)
         return obj.credentials.filter(credential_type="resume", visibility="public").exists()
 
-    def get_availability_summary(self, obj):
+    def get_availability_summary(self, obj) -> str:
         preset = getattr(obj, "availability_summary", None)
         if preset is not None:
             return preset
@@ -265,7 +265,7 @@ class PublicStudentProfileDetailSerializer(FeedbackPolicyMixin, serializers.Mode
     user_id = serializers.IntegerField(read_only=True)
     profile_picture = serializers.SerializerMethodField()
 
-    def get_profile_picture(self, obj):
+    def get_profile_picture(self, obj) -> str | None:
         return f"/api/profiles/{obj.pk}/avatar/" if obj.profile_picture else None
 
     profile_skills = ProfileSkillSerializer(many=True, read_only=True)
@@ -308,37 +308,37 @@ class PublicStudentProfileDetailSerializer(FeedbackPolicyMixin, serializers.Mode
             "top_endorsed_skills",
         ]
 
-    def get_contact_methods(self, obj):
+    def get_contact_methods(self, obj) -> list[dict]:
         from .policy import can_share_contacts
         if not can_share_contacts(self.context["request"].user, obj):
             return []
         return ContactMethodSerializer(obj.contact_methods.filter(is_public=True), many=True, context=self.context).data
 
-    def get_credentials(self, obj):
+    def get_credentials(self, obj) -> list[dict]:
         return CredentialSerializer(obj.credentials.filter(visibility="public"), many=True, context=self.context).data
 
-    def get_reviews_summary(self, obj):
+    def get_reviews_summary(self, obj) -> dict:
         summary = self._reviews(obj).aggregate(average_rating=Avg("rating"), review_count=Count("id"))
         return {"average_rating": summary["average_rating"], "review_count": summary["review_count"]}
 
-    def get_average_rating(self, obj):
+    def get_average_rating(self, obj) -> float | None:
         value = self._reviews(obj).aggregate(avg=Avg("rating"))["avg"]
         return round(value, 2) if value is not None else None
 
-    def get_review_count(self, obj):
+    def get_review_count(self, obj) -> int:
         return self._reviews(obj).count()
 
-    def get_reviews_preview(self, obj):
+    def get_reviews_preview(self, obj) -> list[dict]:
         from interactions.serializers import ReviewSerializer
 
         from .policy import visible_profiles
         allowed = visible_profiles(StudentProfile.objects.all(), self.context["request"].user).values("user_id")
         return ReviewSerializer(self._reviews(obj).filter(reviewer_id__in=allowed).select_related("reviewer", "related_skill")[:3], many=True, context=self.context).data
 
-    def get_endorsement_count(self, obj):
+    def get_endorsement_count(self, obj) -> int:
         return self._endorsements(obj).count()
 
-    def get_top_endorsed_skills(self, obj):
+    def get_top_endorsed_skills(self, obj) -> list[dict]:
         rows = (
             self._endorsements(obj).exclude(skill__isnull=True)
             .values("skill__id", "skill__name")

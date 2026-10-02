@@ -1,34 +1,23 @@
 # Project
-UIUC students discover peers by skills, maintain a profile and exchange help requests.
+UIUC SkillShare helps Illinois-email members discover peers, request help and exchange feedback after completed interactions.
 
 # Architecture
-frontend/src: React/TypeScript pages, hooks and shared components; backend: Django REST accounts, profiles, discovery and interactions; SQLite by default, optional PostgreSQL/Google auth.
+React/TypeScript in frontend; Django REST accounts, profiles, taxonomy, discovery and interactions in backend. PostgreSQL/pgvector is canonical; Redis supports throttling and RQ jobs. Django sessions and CSRF protect browser requests. Django is the authorization boundary; Supabase is a future database/private-storage provider.
 
-# Local Development
-Follow the verified root README workflow. Root Makefiles coordinate Python/React environments where present; Spring defaults to persistent local H2; Android needs JDK17 and an explicit SDK path. Do not use source-level credentials or mutate live Firebase.
-
-# Validation
-Canonical setup/run/check commands: `make setup; make dev; make check` (run as separate commands). See README for prerequisites. Behavioral tests are mandatory and CI runs them; do not reduce checks to syntax or zero-test builds. Provider tests use fakes or demo-gatherlink emulators.
+# Local Development and Validation
+Use the root README: copy .env.example, then docker compose up --build --wait. Run make check for PostgreSQL, frontend, browser/accessibility, production configuration, permissions and backup/restore checks. Native editing instructions are in docs/development.md; native SQLite is not the complete validation baseline.
 
 # Frontend Rules
-Reuse existing React design-system components and shadcn/ui where appropriate; use Figma MCP before substantial redesign. Preserve keyboard access and responsive layouts; test loading/error/empty states.
+Reuse the existing design system and components. Use Figma MCP before substantial redesign. Preserve keyboard access and responsive layouts; test loading/error/empty states.
 
-# Backend Rules
-Preserve existing API behavior unless the selected issue explicitly changes it. Validate ownership, inputs and provider failures. Add rollback/permission tests before splitting responsibilities. Never print credentials or use real paid/cloud integrations in tests without explicit authorization.
-
-# Testing Rules
-Add meaningful regression tests for the selected workflow, including failure/authorization paths. Use fakes or local emulators; document remaining test gaps. Measure a baseline before any performance claim.
+# Backend and Testing Rules
+Enforce ownership, verified membership, privacy, blocking, contact consent and request transitions on the server. Preserve atomic saves. Test rollback, authorization, concurrency and provider failure paths. Use local services/fakes. Never use real paid/cloud integrations without explicit authorization; semantic calls default disabled with allowance zero. Measure performance before claiming improvements.
 
 # GitHub Workflow
-Read open GitHub issues as the work source. Branch from current main as codex/<issue>-<scope>; link the real issue in a draft PR, record validation and verification limits. Use Closes #N only when all criteria are met; issue closes on human merge, not when the draft opens. Never merge or push directly to main.
+Audit issue #5, open issues and open PRs before selecting work. Reuse active implementations; do not duplicate them. Use a dedicated codex/<issue>-<scope> branch and a draft PR linked to its real issue. Default to main; stack dependent work only when explicitly authorized and document its base. Report exact local/hosted verification separately. Issues close on human merge; never merge or enable auto-merge.
 
 # Do Not
-Do not commit secrets, migrate frameworks, change unrelated features, deploy, rotate credentials or mutate live cloud data. Inspect open PRs before selecting an issue; the quality integration PR publishes earlier product and control-plane work. Never redo work already present in an active PR.
+Never commit secrets, copy real environment files, deploy, create cloud resources, rotate credentials, rewrite history or change unrelated repositories. Preserve user work. Once infrastructure is supported by verified setup/tests/CI/documentation and accepted review, record STABLE and stop unnecessary tooling churn.
 
-# Issue Selection Rules
-1. Read the Portfolio readiness tracking meta issue; stop if complete.
-2. Search open issues labelled automation:ready; exclude any blocked/human-review/do-not-touch issue.
-3. Select P0, then P1, then P2; confirm all dependencies are closed and accepted. Within a priority choose foundations first, then oldest issue.
-4. Choose one coherent issue; skip work already covered by an open PR.
-5. If credentials/decisions/failed baseline block it, document the blocker and remove ready eligibility.
-6. Implement, run canonical checks and issue-specific tests, open a linked draft PR. Never merge.
+# Automation Issue Selection
+Work on one coherent non-duplicated milestone unless the user explicitly authorizes a larger implementation. Respect blocked/human-review/do-not-touch labels and dependency ordering. If real credentials or decisions block live verification, preserve reviewable work and report that exact gap. Do not treat draft implementation as merged main.

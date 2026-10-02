@@ -15,3 +15,15 @@ class MemberSessionAuthentication(SessionAuthentication):
             if not user.is_staff and user.email.rpartition("@")[2].lower() != "illinois.edu":
                 raise AuthenticationFailed("Illinois email access is required.")
         return result
+
+
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
+
+
+class MemberSessionScheme(OpenApiAuthenticationExtension):
+    target_class = 'accounts.authentication.MemberSessionAuthentication'
+    name = 'memberSession'
+
+    def get_security_definition(self, auto_schema):
+        return {'type': 'apiKey', 'in': 'cookie', 'name': 'sessionid',
+                'description': 'Verified member session. Unsafe methods also require X-CSRFToken.'}

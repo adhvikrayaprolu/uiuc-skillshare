@@ -10,7 +10,8 @@ x-application: &application
     DEBUG: "False"
     SECRET_KEY: ${SECRET_KEY:-dev-only-local-secret-key-change-before-production-12345}
     ALLOWED_HOSTS: localhost,127.0.0.1,app,skillshare-app,testserver
-    DATABASE_URL: postgresql://skillshare:${POSTGRES_PASSWORD:-local-skillshare-only}@db:5432/skillshare
+    DATABASE_URL: postgresql://skillshare_app:${POSTGRES_APP_PASSWORD:-local-skillshare-app-only}@db:5432/skillshare
+    DB_SSLMODE: disable
     REDIS_URL: redis://redis:6379/0
     EMAIL_HOST: mail
     EMAIL_PORT: "1025"
@@ -47,11 +48,27 @@ services:
   mail:
     image: axllent/mailpit:v1.29.2
     ports: ["127.0.0.1:${MAIL_PORT:-8025}:8025"]
-  migrate:
-    <<: *application
-    command: [sh, -c, "python manage.py migrate --noinput && python manage.py seed_taxonomy"]
+  database-role:
+    image: pgvector/pgvector:0.8.2-pg16-bookworm
+    environment:
+      PGHOST: db
+      PGUSER: skillshare
+      PGDATABASE: skillshare
+      PGPASSWORD: ${POSTGRES_PASSWORD:-local-skillshare-only}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-local-skillshare-app-only}
+    volumes: [./scripts/database/local-roles.sql:/roles.sql:ro]
+    entrypoint: [sh, -c]
+    command: ['psql -q -v runtime_password="$$POSTGRES_APP_PASSWORD" -f /roles.sql']
     depends_on:
       db: {condition: service_healthy}
+  migrate:
+    <<: *application
+    environment:
+      <<: *environment
+      DATABASE_URL: postgresql://skillshare:${POSTGRES_PASSWORD:-local-skillshare-only}@db:5432/skillshare
+    command: [sh, -c, "python manage.py migrate --noinput && python manage.py seed_taxonomy"]
+    depends_on:
+      database-role: {condition: service_completed_successfully}
   app:
     networks:
       default:
@@ -71,6 +88,7 @@ services:
       start_period: 15s
   worker:
     <<: *application
+    volumes: [avatar-data:/data/media]
     command: [python, manage.py, rqworker, default, --with-scheduler]
     depends_on:
       migrate: {condition: service_completed_successfully}
@@ -82,6 +100,13 @@ services:
     depends_on:
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
+  backend-check:
+    <<: *application
+    profiles: [checks]
+    environment:
+      <<: *environment
+      DATABASE_URL: postgresql://skillshare:${POSTGRES_PASSWORD:-local-skillshare-only}@db:5432/skillshare
+    command: [python, manage.py, test, --settings=skillswap_backend.test_settings, --noinput]
   frontend-check:
     profiles: [checks]
     build: {context: ., target: frontend-check}

@@ -39,10 +39,10 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ["id", "reviewer", "reviewer_name", "reviewer_profile_id", "profile", "help_request", "rating", "comment", "related_skill", "created_at", "updated_at"]
         read_only_fields = ["id", "reviewer", "profile", "created_at", "updated_at"]
 
-    def get_reviewer_name(self, obj):
+    def get_reviewer_name(self, obj) -> str:
         return f"{obj.reviewer.first_name} {obj.reviewer.last_name}".strip() or "Member"
 
-    def get_reviewer_profile_id(self, obj):
+    def get_reviewer_profile_id(self, obj) -> int | None:
         profile = getattr(obj.reviewer, "profile", None)
         return profile.id if profile and can_view_profile(self.context["request"].user, profile) else None
 
@@ -79,10 +79,10 @@ class EndorsementSerializer(serializers.ModelSerializer):
         fields = ["id", "endorser", "endorser_name", "endorser_profile_id", "profile", "help_request", "skill", "skill_name", "note", "created_at"]
         read_only_fields = ["id", "endorser", "profile", "created_at"]
 
-    def get_endorser_name(self, obj):
+    def get_endorser_name(self, obj) -> str:
         return f"{obj.endorser.first_name} {obj.endorser.last_name}".strip() or "Member"
 
-    def get_endorser_profile_id(self, obj):
+    def get_endorser_profile_id(self, obj) -> int | None:
         profile = getattr(obj.endorser, "profile", None)
         return profile.id if profile and can_view_profile(self.context["request"].user, profile) else None
 
@@ -156,38 +156,38 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "seeker", "accepted_at", "declined_at", "completed_at", "cancelled_at", "created_at", "updated_at"]
 
-    def get_helper_display_name(self, obj):
+    def get_helper_display_name(self, obj) -> str:
         return obj.helper_profile.display_name if can_view_profile(self.context["request"].user, obj.helper_profile) else "Unavailable member"
 
-    def get_helper_profile_detail(self, obj):
+    def get_helper_profile_detail(self, obj) -> dict | None:
         if not can_view_profile(self.context["request"].user, obj.helper_profile):
             return None
         return PublicStudentProfileListSerializer(obj.helper_profile, context=self.context).data
 
-    def get_seeker_email(self, obj):
+    def get_seeker_email(self, obj) -> str | None:
         return None
 
-    def get_seeker_display_name(self, obj):
+    def get_seeker_display_name(self, obj) -> str:
         profile = getattr(obj.seeker, "profile", None)
         if not profile or not can_view_profile(self.context["request"].user, profile):
             return "Unavailable member"
         full_name = f"{obj.seeker.first_name} {obj.seeker.last_name}".strip()
         return full_name or "Member"
 
-    def get_seeker_profile_id(self, obj):
+    def get_seeker_profile_id(self, obj) -> int | None:
         profile = getattr(obj.seeker, "profile", None)
         return profile.id if profile and can_view_profile(self.context["request"].user, profile) else None
 
-    def get_seeker_profile_detail(self, obj):
+    def get_seeker_profile_detail(self, obj) -> dict | None:
         profile = getattr(obj.seeker, "profile", None)
         if not profile or not can_view_profile(self.context["request"].user, profile):
             return None
         return PublicStudentProfileListSerializer(profile, context=self.context).data
 
-    def get_related_skill_name(self, obj):
+    def get_related_skill_name(self, obj) -> str | None:
         return obj.related_skill.name if obj.related_skill_id else None
 
-    def get_helper_contact_methods(self, obj):
+    def get_helper_contact_methods(self, obj) -> list[dict]:
         request = self.context.get("request")
         if not request or request.user.id not in {obj.seeker_id, obj.helper_profile.user_id}:
             return []
@@ -199,7 +199,7 @@ class HelpRequestSerializer(serializers.ModelSerializer):
 
         return ContactMethodSerializer(obj.helper_profile.contact_methods.filter(is_public=True), many=True, context=self.context).data
 
-    def get_seeker_contact_methods(self, obj):
+    def get_seeker_contact_methods(self, obj) -> list[dict]:
         request = self.context.get("request")
         if not request or request.user.id not in {obj.seeker_id, obj.helper_profile.user_id}:
             return []
@@ -212,7 +212,7 @@ class HelpRequestSerializer(serializers.ModelSerializer):
 
         return ContactMethodSerializer(seeker_profile.contact_methods.filter(is_public=True), many=True, context=self.context).data
 
-    def get_next_step(self, obj):
+    def get_next_step(self, obj) -> str:
         if obj.status == HelpRequest.Status.ACCEPTED:
             return "Request accepted. Coordinate directly using the shared contact method."
         return ""

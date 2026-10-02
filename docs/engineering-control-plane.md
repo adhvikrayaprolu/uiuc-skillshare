@@ -1,7 +1,7 @@
 # Engineering workflow
 
-Read [README](../README.md) for project purpose, setup, validation and current limitations. Read [AGENTS.md](../AGENTS.md) before coding.
+Read [README](../README.md), [AGENTS](../AGENTS.md) and [tracker #5](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/5) before changing tooling. Audit open issues/PRs and preserve user work.
 
-GitHub issues are the remaining-work source. Read the Portfolio readiness tracking issue and open PRs first. Exclude implemented work in an active PR even if its issue is still open. Work on one automation:ready issue, respect priorities/dependencies, validate, and open a draft PR. Issue closure occurs only on human merge.
+PR #7 is merged. The user-ready implementation is in ten dependent draft PRs (#17–#26), awaiting human review. Each PR names its issue, parent branch, checks and remaining limits. Main is not the final draft branch.
 
-The portfolio-quality integration branch combines the earlier local implementation history with the published control-plane branch. Until human merge, main does not contain these improvements. Do not claim otherwise.
+Use `make check`; distinguish local results from actual GitHub CI. CI runs all PR targets, locks dependency installation, limits permissions and audits dependencies. Dependabot groups weekly updates with small open-PR limits; it never auto-merges. Avoid duplicate issues and unnecessary tooling changes after the baseline is stable.

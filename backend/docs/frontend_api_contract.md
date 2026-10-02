@@ -1,123 +1,43 @@
-# Frontend API Contract
+# Browser API contract
 
-## Auth Flow
+Django authorizes verified eligible members. Use same-origin requests with cookies (`credentials: include`); unsafe methods also send `X-CSRFToken` from the current `csrftoken` cookie. Never store access tokens in localStorage. Domain schemas are at `/api/schema/` and `/api/docs/`; the allauth-based authentication endpoints below are documented separately.
 
-1. Frontend signs in with Google.
-2. Frontend sends the Google ID token to `POST /api/auth/google/`.
-3. Backend validates the token, requires `@illinois.edu`, and returns `access`, `refresh`, and `user`.
-4. Frontend sends `Authorization: Bearer <access>` on authenticated requests.
-5. On `401`, call `POST /api/auth/token/refresh/`.
+## Authentication
 
-## Startup After Login
+| Endpoint | Behavior |
+|---|---|
+| GET `/api/auth/csrf/` | CSRF bootstrap and `googleEnabled`; obtain before unsafe requests and again after login. |
+| POST `/api/auth/email/request/` | `{email}` with exact Illinois domain; returns allauth 401/code-required response without authenticating. Local codes arrive in Mailpit. |
+| POST `/api/auth/email/confirm/` | `{code}`; success 200 creates a server-controlled session. Five-minute expiry, three failed attempts; replay/stale process fails. |
+| POST `/api/auth/email/resend/` | Throttled resend within the active verification process. |
+| POST `/api/auth/google/` | `{provider:"google", process:"login", token:{client_id, id_token}}`; configured audience and authoritative Illinois ownership required. Non-authoritative ownership falls back to an email code. |
+| GET / PATCH `/api/auth/me/` | Current member and editable account preferences; session restoration uses GET. |
+| POST `/api/auth/logout/` | Deletes server session; client clears account-specific query/cache state. |
+| GET `/api/auth/export/` | Own account data download, no-store. |
+| POST `/api/auth/delete/` | `{confirmation:"<own account email>"}`; confirmed deletion/session revocation and durable avatar cleanup. |
 
-Call `GET /api/bootstrap/`.
+Allauth validation errors use `{status, errors:[{message,...}]}`; domain APIs use DRF field/detail errors. Suspended/inactive/demo users cannot authenticate. JWT refresh/developer-login routes are absent. A 401 domain response expires frontend session state; refresh cannot resurrect it.
 
-Use response fields:
-- `has_profile`: route to onboarding if false.
-- `profile.profile_completeness`: show completion nudges.
-- `skill_categories` and `popular_skills`: hydrate forms/search controls.
-- `dashboard`: render dashboard summary.
+## Profiles / taxonomy
 
-## Onboarding Flow
+GET `/api/bootstrap/` supplies current user/profile, approved categories/skills and dashboard tasks; GET `/api/onboarding/status/` supplies missing steps. PUT `/api/profiles/me/aggregate/` atomically saves `{profile, skills?, availability?, contacts?, credentials?}`. Omitted relation lists are preserved; supplied lists replace that relation. Field errors roll back the entire save. Profile fields include learning goals, contact/embedding/email consent and visibility; evidence uses HTTP/HTTPS links. POST `/api/profiles/me/avatar/` uses multipart `avatar` (up to 2 MB, 4096px input); GET `/api/profiles/<id>/avatar/` enforces peer privacy.
 
-Call `GET /api/onboarding/status/` to show missing steps.
+GET `/api/profiles/` and `/api/profiles/<id>/` show visible peers only. Selected contact methods appear only after accepted/completed interaction and sharing consent; block/privacy/removal revokes access. Authentication emails and private goals never appear in public serializers. GET `/api/skills/`, `/api/skill-categories/` and `/api/skills/popular/` supply taxonomy; POST `/api/skills/suggest/` creates a pending suggestion for staff approval.
 
-Create profile:
-```json
-POST /api/profiles/me/
-{
-  "display_name": "Riya Patel",
-  "major": "Computer Science",
-  "year": "junior",
-  "headline": "Product designer for student startup teams",
-  "bio": "I help teams prototype ideas in Figma.",
-  "preferred_contact_method": "linkedin"
-}
-```
+## Discovery and pagination
 
-Then add skills, contact methods, availability, and credentials via `/api/profiles/me/...`.
+GET `/api/discovery/search/` accepts `q`, `mode`, taxonomy `skills`/`category`, `availability_day`/`availability_time`, `open_to_connect` and explicit background filters. GET `/api/discovery/recommended/` uses private learning goals or clearly labeled discovery suggestions. Responses retain `{count,next,previous,results,matching}`. Matching metadata reports actual mode, fallback reason, candidate limit/truncation and recommendation basis. Reasons come from facts; match scores are internal ordering values, not probabilities. [Matching design](../../docs/matching.md) specifies weights and semantic gates.
 
-## Discovery Flow
+Follow pagination for discovery, saved profiles, requests, notifications and taxonomy. Discovery pages are server-backed; finite personal lists retain all server pages and the UI pages them in groups of 20. A candidate cap bounds ranking and is disclosed; it is not the entire campus count.
 
-Use `GET /api/discovery/search/?q=figma&availability_time=evening`.
+## Requests / feedback
 
-Results include:
-- `match_score`
-- `match_reasons`
-- lightweight profile fields
-- top skills/categories
-- rating counts
+POST `/api/help-requests/` accepts helper profile, offered skill, topic/message, urgency/preferred contact and a UUID `idempotency_key`; new status is always pending. GET lists/retrieves participant history. PATCH `/<id>/` accepts the next `status`, current `version` and optional response message; stale conflicts return 409. Participants/content cannot be reassigned. The helper accepts/declines; seeker cancels; either participant completes accepted help. Identical retries are idempotent and do not duplicate notifications. Accepted/completed help remains in Connections.
 
-Use `GET /api/discovery/recommended/` for the dashboard recommendation rail.
+POST `/api/profiles/<id>/reviews/` and `/endorsements/` require a completed `help_request`; review is unique per request and endorsement uses its offered skill. Feedback confirms an interaction, not independent expertise. Saved profiles use `/api/saved-profiles/`; blocked/private entries are suppressed. POST `/api/blocked-users/`, DELETE `/<id>/` and POST `/api/reports/` back the corresponding Settings/profile controls. Blocking cancels active requests and scrubs their contact/message data.
 
-## Public Profile Flow
+## Notifications and statistics
 
-Use `GET /api/profiles/{id}/`.
+GET `/api/notifications/` includes paginated results plus `unread_count`; POST `/<id>/read/` and `/read-all/` persist read state. Transactional domain events create notifications; optional email retries independently. GET `/api/dashboard/` and `/api/analytics/summary/` respect peer visibility in personal counts. Network administration is staff-only at `/api/admin/analytics/summary/`.
 
-Public detail includes public contact methods only, public credentials only, reviews preview, endorsement summary, availability, and profile skills.
-
-Use `GET /api/profiles/{id}/similar/` for similar profile suggestions.
-
-## Save Profile Flow
-
-```json
-POST /api/saved-profiles/
-{
-  "saved_profile": 3,
-  "note": "Could help with Figma and startup ideas"
-}
-```
-
-## Help Request Flow
-
-Create:
-```json
-POST /api/help-requests/
-{
-  "helper_profile": 3,
-  "topic": "Resume feedback",
-  "message": "Would you be open to reviewing my resume?",
-  "urgency": "medium"
-}
-```
-
-Update:
-```json
-PATCH /api/help-requests/{id}/
-{
-  "status": "accepted",
-  "response_message": "Sure, send me a few times."
-}
-```
-
-## Review And Endorsement Flow
-
-Review:
-```json
-POST /api/profiles/{id}/reviews/
-{
-  "rating": 5,
-  "comment": "Very helpful and specific."
-}
-```
-
-Endorse:
-```json
-POST /api/profiles/{id}/endorsements/
-{
-  "skill": 12,
-  "note": "Great Figma feedback."
-}
-```
-
-## Contact Click Tracking
-
-When a user clicks a public contact method:
-```json
-POST /api/profiles/{id}/contact-click/
-{
-  "contact_method_id": 12
-}
-```
-
-This records analytics only; it does not message the student.
+Health endpoints are unauthenticated: `/api/health/live/` (process) and `/api/health/ready/` (PostgreSQL and Redis). Provider outages return truthful fallback/error states; email failures do not roll back requests.

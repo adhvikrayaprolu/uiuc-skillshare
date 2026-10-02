@@ -1,0 +1,82 @@
+name: skillshare-local
+x-application: &application
+  image: skillshare-local-app
+  build:
+    context: .
+    args:
+      VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  environment: &environment
+    ENVIRONMENT: ${ENVIRONMENT:-local}
+    DEBUG: "False"
+    SECRET_KEY: ${SECRET_KEY:-dev-only-local-secret-key-change-before-production-12345}
+    ALLOWED_HOSTS: localhost,127.0.0.1,app,testserver
+    DATABASE_URL: postgresql://skillshare:${POSTGRES_PASSWORD:-local-skillshare-only}@db:5432/skillshare
+    REDIS_URL: redis://redis:6379/0
+    EMAIL_HOST: mail
+    EMAIL_PORT: "1025"
+    EMAIL_USE_TLS: "False"
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    AI_PAID_CALLS_ENABLED: ${AI_PAID_CALLS_ENABLED:-false}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    MEDIA_ROOT: /data/media
+  init: true
+services:
+  db:
+    image: pgvector/pgvector:0.8.2-pg16-bookworm
+    environment:
+      POSTGRES_DB: skillshare
+      POSTGRES_USER: skillshare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-skillshare-only}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U skillshare -d skillshare"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4.5-alpine
+    command: [redis-server, --appendonly, "yes"]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  mail:
+    image: axllent/mailpit:v1.29.2
+    ports: ["127.0.0.1:${MAIL_PORT:-8025}:8025"]
+  migrate:
+    <<: *application
+    command: [sh, -c, "python manage.py migrate --noinput && python manage.py seed_taxonomy"]
+    depends_on:
+      db: {condition: service_healthy}
+  app:
+    <<: *application
+    ports: ["127.0.0.1:${APP_PORT:-8080}:8000"]
+    volumes: [avatar-data:/data/media]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      mail: {condition: service_started}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/ready/', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+  worker:
+    <<: *application
+    command: [python, manage.py, rqworker, default, --with-scheduler]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      mail: {condition: service_started}
+  frontend-check:
+    profiles: [checks]
+    build: {context: ., target: frontend-check}
+    command: [sh, -c, "npm test && npm run lint && npm run build"]
+volumes:
+  postgres-data:
+  redis-data:
+  avatar-data:

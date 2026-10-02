@@ -8,6 +8,8 @@ export function ProtectedRoute() {
   const location = useLocation();
   const onboardingStatus = useOnboardingStatus(auth.isAuthenticated && !auth.isDemo);
 
+  if (auth.isLoading) return <p role="status" className="p-6">Restoring your session…</p>;
+
   if (!auth.isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }

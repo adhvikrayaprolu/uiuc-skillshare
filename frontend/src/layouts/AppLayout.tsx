@@ -150,10 +150,12 @@ export function AppLayout() {
     return items.slice(0, 5);
   }, [auth.user?.id, currentProfile.data, helpRequestsQuery.data?.raw, savedProfilesQuery.data?.profiles.length, useMocks]);
 
-  const handleLogout = () => {
-    auth.logout();
-    setShowUserMenu(false);
-    navigate('/login', { replace: true });
+  const handleLogout = async () => {
+    try {
+      await auth.logout();
+      setShowUserMenu(false);
+      navigate('/login', { replace: true });
+    } catch {toast.error('Could not sign out. Please try again.');}
   };
 
   const patchAvailability = async (status: AvailabilityUi) => {

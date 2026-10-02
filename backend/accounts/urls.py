@@ -1,12 +1,14 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
-
-from .views import DevLoginView, GoogleAuthView, MeView
-
+from allauth.headless.account.views import ConfirmLoginCodeView
+from allauth.headless.constants import Client
+from .views import EmailCodeRequestView, EmailCodeResendView, GoogleAuthView, MeView, csrf, session_logout
 
 urlpatterns = [
-    path("dev-login/", DevLoginView.as_view(), name="dev-login"),
-    path("google/", GoogleAuthView.as_view(), name="google-auth"),
-    path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+    path("csrf/", csrf, name="auth-csrf"),
+    path("google/", GoogleAuthView.as_api_view(client=Client.BROWSER), name="google-auth"),
+    path("email/request/", EmailCodeRequestView.as_api_view(client=Client.BROWSER), name="email-code-request"),
+    path("email/confirm/", ConfirmLoginCodeView.as_api_view(client=Client.BROWSER), name="email-code-confirm"),
+    path("email/resend/", EmailCodeResendView.as_api_view(client=Client.BROWSER), name="email-code-resend"),
+    path("logout/", session_logout, name="auth-logout"),
     path("me/", MeView.as_view(), name="auth-me"),
 ]

@@ -1,25 +1,27 @@
-import { api } from './api';
-import { clearDemoUser, setTokens } from './auth';
-import type { AuthResponse, User } from '../types/api';
-
-const DEFAULT_DEV_DEMO_EMAIL = 'adhvik.rayaprolu@illinois.edu';
+import { api, ensureCsrf } from './api';
+import { clearAuth } from './auth';
+import type { User } from '../types/api';
 
 export async function loginWithGoogleIdToken(idToken: string) {
-  const { data } = await api.post<AuthResponse>('/auth/google/', { id_token: idToken });
-  clearDemoUser();
-  setTokens(data.access, data.refresh);
-  return data;
+  await ensureCsrf();
+  await api.post('/auth/google/', {provider: 'google', process: 'login', token: {client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID, id_token: idToken}});
+  clearAuth();
+  return {user: await getCurrentUser()};
 }
-
-/** Local DEBUG-only login; same JWT shape as Google. */
-export async function loginWithDevEmail(email: string = DEFAULT_DEV_DEMO_EMAIL) {
-  const { data } = await api.post<AuthResponse>('/auth/dev-login/', { email });
-  clearDemoUser();
-  setTokens(data.access, data.refresh);
-  return data;
+export async function requestEmailCode(email: string) {
+  await ensureCsrf();
+  try {await api.post('/auth/email/request/', {email});}
+  catch (error) {if (!isPendingChallenge(error)) throw error;}
 }
-
-export async function getCurrentUser() {
-  const { data } = await api.get<User>('/auth/me/');
-  return data;
+function isPendingChallenge(error: unknown) {
+  const e = error as {response?: {status: number; data?: {data?: {flows?: {id: string; is_pending?: boolean}[]}}}};
+  return e.response?.status === 401 && e.response.data?.data?.flows?.some((flow) => flow.id === 'login_by_code' && flow.is_pending);
 }
+export async function confirmEmailCode(code: string) {
+  await api.post('/auth/email/confirm/', {code});
+  clearAuth();
+  return getCurrentUser();
+}
+export async function resendEmailCode() {await api.post('/auth/email/resend/');}
+export async function logoutServer() {await api.post('/auth/logout/');}
+export async function getCurrentUser() {return (await api.get<User>('/auth/me/')).data;}

@@ -28,7 +28,8 @@ export function useCreateHelpRequest() {
       if (shouldUseMocks()) return Promise.resolve(null);
       return createHelpRequest(payload);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['help-requests'] }),
+    onSuccess: () => queryClient.invalidateQueries(),
+    onError: () => queryClient.invalidateQueries(),
   });
 }
 
@@ -37,8 +38,10 @@ export function useUpdateHelpRequest() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Partial<HelpRequest> }) => {
       if (shouldUseMocks()) return Promise.resolve(null);
-      return updateHelpRequest(id, payload);
+      const snapshot = queryClient.getQueryData<{ raw: HelpRequest[] }>(['help-requests']);
+      return updateHelpRequest(id, { ...payload, version: snapshot?.raw.find(row => row.id === id)?.version });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['help-requests'] }),
+    onSuccess: () => queryClient.invalidateQueries(),
+    onError: () => queryClient.invalidateQueries(),
   });
 }

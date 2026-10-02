@@ -4,7 +4,7 @@ from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from profiles.models import StudentProfile
-from profiles.policy import visible_profiles
+from profiles.policy import visible_feedback, visible_profiles
 from .models import BlockedUser, Endorsement, HelpRequest, Report, Review, SavedProfile
 from .permissions import IsHelpRequestParticipant, IsReviewOwnerOrReadOnly
 from .serializers import BlockedUserSerializer, EndorsementSerializer, HelpRequestSerializer, ReportSerializer, ReviewSerializer, SavedProfileSerializer
@@ -25,13 +25,22 @@ class ProfileReviewListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ReviewSerializer
 
+    def perform_create(self, serializer):
+        from django.db import transaction
+        from .lifecycle import lock_pair
+        with transaction.atomic():
+            profile = self.get_profile()
+            lock_pair(self.request.user.pk, profile.user_id)
+            serializer.validate(serializer.validated_data)
+            serializer.save()
+
     def get_profile(self):
         return get_object_or_404(visible_profiles(StudentProfile.objects.all(), self.request.user), pk=self.kwargs["profile_id"])
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Review.objects.none()
-        return Review.objects.filter(profile=self.get_profile()).select_related("reviewer", "related_skill")
+        return visible_feedback(Review.objects.filter(profile=self.get_profile()), self.request.user).select_related("reviewer", "related_skill")
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -53,13 +62,22 @@ class ProfileEndorsementListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EndorsementSerializer
 
+    def perform_create(self, serializer):
+        from django.db import transaction
+        from .lifecycle import lock_pair
+        with transaction.atomic():
+            profile = self.get_profile()
+            lock_pair(self.request.user.pk, profile.user_id)
+            serializer.validate(serializer.validated_data)
+            serializer.save()
+
     def get_profile(self):
         return get_object_or_404(visible_profiles(StudentProfile.objects.all(), self.request.user), pk=self.kwargs["profile_id"])
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Endorsement.objects.none()
-        return Endorsement.objects.filter(profile=self.get_profile()).select_related("endorser", "skill")
+        return visible_feedback(Endorsement.objects.filter(profile=self.get_profile()), self.request.user, "endorser").select_related("endorser", "skill")
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

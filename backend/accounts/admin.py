@@ -39,6 +39,10 @@ class UserAdmin(DjangoUserAdmin):
         for user in queryset:
             user.is_active = True
             user.save(update_fields=["is_active"])
+            profile = getattr(user, "profile", None)
+            if profile:
+                from discovery.services import rebuild_profile_search_index
+                rebuild_profile_search_index(profile)
             ModerationAudit.objects.create(actor=request.user, subject=user, action="restored")
 
     readonly_fields = ("date_joined", "updated_at")

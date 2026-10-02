@@ -18,3 +18,11 @@ On Docker PostgreSQL 16, a before/after benchmark of 225 synthetic published hel
 | Bounded scorer with shared prefetch | 8 | 32.7 ms | 200 |
 
 Single-run local measurements include the intentional candidate bound; they are not hosting latency guarantees. The automated test records five samples and enforces a query budget without asserting machine-dependent timing. PostgreSQL uses an English full-text GIN index. SQLite is a native-development fallback and does not exercise that index. Live semantic relevance remains unverified until separate paid-call approval.
+
+## Gated semantic integration
+
+The adapter uses [`text-embedding-3-small` with 1,536 dimensions](https://developers.openai.com/api/docs/guides/embeddings). `AI_PAID_CALLS_ENABLED=false` and `AI_DAILY_CALL_LIMIT=0` are the defaults. An API key alone never permits a call. Any live enablement requires separate approval, a positive daily allowance and provider-side spending limits; the application call ceiling is not a dollar billing guarantee. Provider calls have a five-second timeout and no automatic SDK retries. Queries are bounded and hashed for a five-minute vector cache without retaining plaintext queries there.
+
+Only opted-in, published headline/bio and offered-skill descriptions are sent. Emails, phone patterns and URLs are redacted even if entered into those fields; contact/goal/demographic/document fields are excluded. No linked site is scraped. Django commits keyword changes and a durable embedding job together; workers update vectors later. Content hashes include model and text-format version. New text clears stale vectors, and consent withdrawal, privacy changes, suspension or deletion remove vectors/jobs. The worker rechecks current consent/hash after the provider call, so an old result cannot restore withdrawn content.
+
+pgvector retrieves semantic candidates independently of keyword retrieval, after the same eligibility/filter policy. Only matching model, dimension/version and content-hash vectors are compared. The bounded union interleaves retrieval branches before deterministic ranking. Provider, cache or budget failure returns keyword/taxonomy results with a factual fallback reason. Fixture vectors test this pipeline locally; no live semantic call or quality claim has been made.

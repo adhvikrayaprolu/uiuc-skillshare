@@ -1,177 +1,30 @@
-import { LogOut, Shield, Eye, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useCurrentProfile, useProfileEditor } from '../hooks/useProfileEditor';
-import { useToast } from '../components/ui/ToastProvider';
+import {useState} from 'react';
+import {Link, useNavigate} from 'react-router-dom';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useAuth} from '../hooks/useAuth';
+import {useCurrentProfile, useProfileEditor} from '../hooks/useProfileEditor';
+import {useToast} from '../components/ui/ToastProvider';
+import {api} from '../lib/api';
+import {getAllPages} from '../lib/pagination';
+import {apiErrorMessage} from '../lib/errors';
 
 export function SettingsPage() {
-  const auth = useAuth();
-  const navigate = useNavigate();
-  const toast = useToast();
-  const profileQuery = useCurrentProfile();
-  const editor = useProfileEditor();
-
-  const profile = profileQuery.data;
-  const displayName =
-    profile?.display_name ||
-    (auth.user ? `${auth.user.firstName} ${auth.user.lastName}`.trim() || auth.user.email : '');
-  const email = auth.user?.email ?? '';
-  const visibility = profile?.visibility ?? 'public';
-  const openToConnect = profile?.open_to_connect ?? true;
-
-  return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-[#0F172A] mb-2">Settings</h1>
-        <p className="text-[#64748B]">Manage your account and privacy preferences</p>
-      </div>
-
-      {profileQuery.isLoading && (
-        <div className="mb-6 rounded-2xl border border-[#E2E8F0] bg-white p-6 text-[#64748B]">Loading settings…</div>
-      )}
-
-      <div className="space-y-6">
-        {/* Account Section */}
-        <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-[#E8EEF7] rounded-xl flex items-center justify-center">
-              <User className="w-5 h-5 text-[#13294B]" />
-            </div>
-            <h2 className="text-xl font-semibold text-[#0F172A]">Account</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b border-[#E2E8F0]">
-              <div>
-                <p className="font-medium text-[#0F172A]">Name</p>
-                <p className="text-sm text-[#64748B]">{displayName || '—'}</p>
-              </div>
-              <button onClick={() => navigate('/profile/edit')} className="text-sm text-[#13294B] hover:underline">
-                Edit
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between py-3 border-b border-[#E2E8F0]">
-              <div>
-                <p className="font-medium text-[#0F172A]">Email</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-[#64748B]">{email || '—'}</p>
-                  <span className="inline-block rounded border border-[#FF5F05]/30 bg-[#FFF3EA] px-2 py-0.5 text-xs font-semibold text-[#C2410C]">
-                    Student profile
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <p className="font-medium text-[#0F172A]">Student Status</p>
-                <p className="text-sm text-[#64748B]">Illinois-format email</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Profile Visibility */}
-        <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-[#FFF3EA] rounded-xl flex items-center justify-center">
-              <Eye className="w-5 h-5 text-[#FF5F05]" />
-            </div>
-            <h2 className="text-xl font-semibold text-[#0F172A]">Profile Visibility</h2>
-          </div>
-
-          <div className="space-y-4">
-            <label className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-xl cursor-pointer">
-              <div>
-                <p className="font-medium text-[#0F172A]">Public Profile</p>
-                <p className="text-sm text-[#64748B]">Make your profile visible to all students</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={visibility === 'public'}
-                onChange={async (e) => {
-                  try {
-                    await editor.updateProfile.mutateAsync({ visibility: e.target.checked ? 'public' : 'private' });
-                    toast.success('Visibility updated.');
-                  } catch {
-                    toast.error('Could not update visibility.');
-                  }
-                }}
-                className="w-5 h-5 rounded"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-xl cursor-pointer">
-              <div>
-                <p className="font-medium text-[#0F172A]">Open to Connect</p>
-                <p className="text-sm text-[#64748B]">Show that you're available to help other students</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={openToConnect}
-                onChange={async (e) => {
-                  try {
-                    await editor.updateProfile.mutateAsync({ open_to_connect: e.target.checked });
-                    toast.success('Availability updated.');
-                  } catch {
-                    toast.error('Could not update availability.');
-                  }
-                }}
-                className="w-5 h-5 rounded"
-              />
-            </label>
-          </div>
-        </div>
-
-        {/* Privacy Settings */}
-        <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-[#E8EEF7] rounded-xl flex items-center justify-center">
-              <Shield className="w-5 h-5 text-[#13294B]" />
-            </div>
-            <h2 className="text-xl font-semibold text-[#0F172A]">Privacy</h2>
-          </div>
-
-          <div className="space-y-3">
-            <div className="p-4 bg-[#F8FAFC] rounded-xl">
-              <h3 className="font-medium text-[#0F172A] mb-2">Contact Visibility</h3>
-              <p className="text-sm text-[#64748B] mb-3">
-                You control which contact methods are visible to other students. Update these in your profile settings.
-              </p>
-              <button className="text-sm text-[#13294B] hover:underline">Manage Contact Methods</button>
-            </div>
-
-            <div className="p-4 bg-[#F8FAFC] rounded-xl">
-              <h3 className="font-medium text-[#0F172A] mb-2">Credentials Visibility</h3>
-              <p className="text-sm text-[#64748B] mb-3">
-                Choose which credentials (resume, portfolio, etc.) are public, private, or hidden.
-              </p>
-              <button className="text-sm text-[#13294B] hover:underline">Manage Credentials</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Blocked Users */}
-        <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
-          <h2 className="text-xl font-semibold text-[#0F172A] mb-4">Blocked Users</h2>
-          <p className="text-sm text-[#64748B] text-center py-8">No blocked users</p>
-        </div>
-
-        {/* Logout */}
-        <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
-          <button
-            onClick={() => {
-              auth.logout();
-              navigate('/login');
-            }}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-[#DC2626] text-[#DC2626] font-medium rounded-xl hover:bg-[#DC2626] hover:text-white transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const auth = useAuth(); const navigate = useNavigate(); const toast = useToast(); const client = useQueryClient();
+  const profile = useCurrentProfile(); const editor = useProfileEditor();
+  const blocks = useQuery({queryKey: ['blocked-users'], queryFn: () => getAllPages<{id: number; blocked_label: string}>('/blocked-users/')});
+  const [confirmation, setConfirmation] = useState(''); const [pending, setPending] = useState(false); const [error, setError] = useState('');
+  const change = async (payload: Parameters<typeof editor.updateProfile.mutateAsync>[0]) => {try {await editor.updateProfile.mutateAsync(payload); toast.success('Preference saved.');} catch (e) {setError(apiErrorMessage(e));}};
+  return <div className="mx-auto max-w-3xl space-y-6"><div><h1 className="text-3xl font-bold">Settings</h1><p className="text-[#475569]">Manage your account and privacy.</p></div>{error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">{error}</p>}
+    <section className="space-y-3 rounded-2xl border bg-white p-6"><h2 className="text-xl font-semibold">Account</h2><p>{auth.user?.email}</p><p className="text-sm text-[#475569]">Illinois email ownership was verified. This does not imply university approval or current enrollment.</p><Link className="underline" to="/profile/edit">Edit profile and avatar</Link></section>
+    <section className="space-y-4 rounded-2xl border bg-white p-6"><h2 className="text-xl font-semibold">Privacy and availability</h2>{profile.isLoading ? <p role="status">Loading preferences…</p> : profile.isError ? <p role="alert">Preferences could not be loaded.</p> : <>
+      <label className="flex items-center gap-3"><input type="checkbox" disabled={editor.updateProfile.isPending} checked={profile.data?.visibility === 'public'} onChange={e => void change({visibility: e.target.checked ? 'public' : 'private'})}/>Published for eligible signed-in members</label>
+      <label className="flex items-center gap-3"><input type="checkbox" disabled={editor.updateProfile.isPending} checked={profile.data?.open_to_connect || false} onChange={e => void change({open_to_connect: e.target.checked})}/>Willing to help</label>
+      <label className="flex items-center gap-3"><input type="checkbox" disabled={editor.updateProfile.isPending} checked={profile.data?.share_contacts || false} onChange={e => void change({share_contacts: e.target.checked})}/>Share selected contacts after acceptance</label>
+      <label className="flex items-center gap-3"><input type="checkbox" disabled={editor.updateProfile.isPending} checked={profile.data?.embedding_consent || false} onChange={e => void change({embedding_consent: e.target.checked})}/>Allow published skill text for semantic matching when enabled</label>
+      <p className="text-sm text-[#475569]">Paid calls are disabled. Withdrawing consent or blocking a peer revokes further sharing.</p>
+    </>}<div className="flex flex-wrap gap-4"><Link className="underline" to="/profile/edit?tab=contact">Manage contact methods</Link><Link className="underline" to="/profile/edit?tab=credentials">Manage evidence links</Link><Link className="underline" to="/profile/edit?tab=basic">Manage learning goals</Link></div></section>
+    <section className="space-y-3 rounded-2xl border bg-white p-6"><h2 className="text-xl font-semibold">Blocked users</h2>{blocks.isLoading ? <p role="status">Loading blocks…</p> : blocks.isError ? <p role="alert">Could not load blocked users.</p> : blocks.data?.length ? blocks.data.map(block => <div key={block.id} className="flex justify-between gap-3"><span>{block.blocked_label}</span><button className="underline" onClick={async () => {try {await api.delete(`/blocked-users/${block.id}/`); await client.invalidateQueries(); toast.success('User unblocked. Cancelled requests remain cancelled.');} catch (e) {setError(apiErrorMessage(e));}}}>Unblock {block.blocked_label}</button></div>) : <p>No blocked users.</p>}</section>
+    <section className="space-y-3 rounded-2xl border bg-white p-6"><h2 className="text-xl font-semibold">Your data</h2><button disabled={pending} className="rounded-lg border px-4 py-2" onClick={async () => {setPending(true); try {const {data} = await api.get('/auth/export/', {responseType: 'blob'}); const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = 'skillshare-account.json'; link.click(); URL.revokeObjectURL(url);} catch (e) {setError(apiErrorMessage(e));} finally {setPending(false);}}}>Export my account data</button><p className="text-sm text-[#475569]">Deletion removes your profile, avatar, search data, contacts and interactions, and revokes every session. Minimal moderation audit records remain without your account identity.</p><label className="block text-sm">Type your email to confirm permanent deletion<input className="mt-2 w-full rounded-lg border p-3" value={confirmation} onChange={e => setConfirmation(e.target.value)}/></label><button disabled={pending || confirmation !== auth.user?.email} className="rounded-lg border border-red-700 px-4 py-2 text-red-700 disabled:opacity-40" onClick={async () => {setPending(true); try {await api.post('/auth/delete/', {confirmation}); await auth.refreshSession(); navigate('/login', {replace: true});} catch (e) {setError(apiErrorMessage(e));} finally {setPending(false);}}}>Delete my account permanently</button></section>
+    <button className="w-full rounded-xl border p-3" onClick={async () => {try {await auth.logout(); navigate('/login', {replace: true});} catch (e) {setError(apiErrorMessage(e));}}}>Sign out</button>
+  </div>;
 }

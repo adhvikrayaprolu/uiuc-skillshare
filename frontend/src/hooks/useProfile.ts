@@ -11,7 +11,8 @@ export function useProfile(id?: string | number) {
     queryFn: async () => {
       const fallback = mockProfiles.find((profile) => profile.id === Number(id)) || mockProfiles[0];
       if (shouldUseMocks() || !id) return { profile: fallback, isMock: true };
-      return { profile: mapBackendProfileDetailToProfile(await getProfile(id)), isMock: false };
+      const raw = await getProfile(id);
+      return { profile: mapBackendProfileDetailToProfile(raw), raw, isMock: false };
     },
     retry: 1,
   });

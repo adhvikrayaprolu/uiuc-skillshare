@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .avatars import AvatarView, AvatarUploadView
 from .views import (
     AvailabilityViewSet,
     ContactMethodViewSet,
@@ -23,6 +24,8 @@ credential_list = CredentialViewSet.as_view({"get": "list", "post": "create"})
 credential_detail = CredentialViewSet.as_view({"patch": "partial_update", "delete": "destroy"})
 
 urlpatterns = [
+    path("profiles/me/avatar/", AvatarUploadView.as_view(), name="avatar-upload"),
+    path("profiles/<int:pk>/avatar/", AvatarView.as_view(), name="avatar-detail"),
     path("profiles/me/aggregate/", CurrentProfileAggregateView.as_view(), name="profile-aggregate"),
     path("profiles/me/", CurrentProfileView.as_view(), name="profile-me"),
     path("profiles/", PublicProfileListView.as_view(), name="profiles-list"),

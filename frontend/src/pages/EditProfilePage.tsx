@@ -2,16 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Save, Trash2 } from 'lucide-react';
 import { api, shouldUseMocks } from '../lib/api';
-import { defaultProfileForm, formFromProfile, type ProfileFormState } from '../lib/profilePersistence';
+import { defaultProfileForm, formFromProfile, saveProfileForm, type ProfileFormState } from '../lib/profilePersistence';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
-import {
-  createProfileSkill,
-  deleteProfileSkill,
-  updateCurrentProfile,
-} from '../lib/profilesApi';
+import {LearningGoals, SharingPreferences} from '../components/profile/ProfilePreferences';
+import {AvailabilityFields} from '../components/profile/AvailabilityFields';
+import {SkillSuggestion} from '../components/profile/SkillSuggestion';
+import {useUnsavedChanges} from '../hooks/useUnsavedChanges';
+import {apiErrorMessage} from '../lib/errors';
+import {useQueryClient} from '@tanstack/react-query';
 import type { ContactMethodType, CredentialType, ProfileSkill, StudentYear } from '../types/api';
 
 const tabs = ['Basic Info', 'Skills', 'Availability', 'Contact', 'Credentials', 'Privacy'];
@@ -25,8 +26,6 @@ const tabParamMap: Record<string, number> = {
 };
 const years: StudentYear[] = ['freshman', 'sophomore', 'junior', 'senior', 'graduate', 'alumni', 'other'];
 const contactTypes: ContactMethodType[] = ['email', 'phone', 'instagram', 'linkedin', 'github', 'portfolio', 'website', 'other'];
-const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'flexible'];
-const times = ['morning', 'afternoon', 'evening', 'night', 'flexible'];
 const confidenceLevels: Array<ProfileSkill['confidence_level']> = ['beginner', 'intermediate', 'advanced', 'expert'];
 const titleCase = (value: string) => value.replace(/(^|_)\w/g, (match) => match.replace('_', ' ').toUpperCase());
 
@@ -42,6 +41,7 @@ export function EditProfilePage() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(0);
   const auth = useAuth();
+  const queryClient = useQueryClient();
   const toast = useToast();
   const currentProfile = useCurrentProfile();
   const taxonomy = useTaxonomy();
@@ -59,7 +59,8 @@ export function EditProfilePage() {
   const [newSkillQuery, setNewSkillQuery] = useState('');
   const [showSkillResults, setShowSkillResults] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isAddingSkill, setIsAddingSkill] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [avatarPending, setAvatarPending] = useState(false);
 
   useEffect(() => {
     const key = (searchParams.get('tab') || '').toLowerCase();
@@ -99,65 +100,17 @@ export function EditProfilePage() {
     [newSkillId, skillsById],
   );
 
-  const saveBasicInfo = async () => {
-    if (!form.displayName.trim() || !form.major.trim() || !form.headline.trim()) {
-      throw new Error('Display name, major, and headline are required.');
-    }
-    await updateCurrentProfile({
-      display_name: form.displayName.trim(),
-      major: form.major.trim(),
-      year: form.year,
-      headline: form.headline.trim(),
-      bio: form.bio.trim(),
-      interests: form.interests.trim(),
-      location: form.location.trim(),
-      preferred_contact_method: form.preferredContactMethod,
-    });
-  };
-
-  const saveSkills = async () => {
-    await api.put('/profiles/me/aggregate/', {profile:{},skills:skillsDraft.filter(row=>row.skill).map(row=>({skill:row.skill,confidence_level:row.confidence_level,description:row.description,is_featured:row.is_featured}))});
-  };
-  const saveAvailabilityTab = async () => {
-    await api.put('/profiles/me/aggregate/', {profile:{availability_notes:form.availabilityNotes.trim()},availability:form.availability.filter(row=>row.day_of_week && row.time_block)});
-  };
-  const saveContacts = async () => {
-    if(!form.contacts.some(row=>row.value.trim()))throw new Error('Add at least one contact method before saving this tab.');
-    await api.put('/profiles/me/aggregate/',{profile:{preferred_contact_method:form.preferredContactMethod},contacts:form.contacts.filter(row=>row.value.trim()).map(row=>({...row,value:row.value.trim()}))});
-  };
-  const saveCredentials = async () => {
-    await api.put('/profiles/me/aggregate/',{profile:{},credentials:form.credentials.filter(row=>row.title.trim() && row.url.trim()).map(row=>({...row,title:row.title.trim(),url:row.url.trim()}))});
-  };
-
-  const savePrivacy = async () => {
-    await updateCurrentProfile({
-      visibility: form.visibility,
-      open_to_connect: form.openToConnect,
-      preferred_contact_method: form.preferredContactMethod,
-    });
-  };
-
+  const dirty = Boolean(currentProfile.data && (JSON.stringify(form) !== JSON.stringify(formFromProfile(currentProfile.data)) || JSON.stringify(skillsDraft) !== JSON.stringify(currentProfile.data.profile_skills.map(skill => ({id: skill.id, skill: skill.skill, confidence_level: skill.confidence_level, description: skill.description || '', is_featured: skill.is_featured})))));
+  useUnsavedChanges(dirty && !isSaving);
   const handleSave = async () => {
-    if (shouldUseMocks() || auth.isDemo) {
-      toast.success('Demo profile changes saved locally for this session.');
-      return;
-    }
-    setIsSaving(true);
+    if (shouldUseMocks()) {toast.info('Synthetic demo edits are not persisted.'); return;}
+    setIsSaving(true); setSaveError('');
     try {
-      if (activeTab === 0) await saveBasicInfo();
-      if (activeTab === 1) await saveSkills();
-      if (activeTab === 2) await saveAvailabilityTab();
-      if (activeTab === 3) await saveContacts();
-      if (activeTab === 4) await saveCredentials();
-      if (activeTab === 5) await savePrivacy();
-      await currentProfile.refetch();
-      toast.success(`${tabs[activeTab]} saved.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not save this section.';
-      toast.error(message);
-    } finally {
-      setIsSaving(false);
-    }
+      await saveProfileForm({...form, selectedSkillIds: skillsDraft.map(row => row.skill), skillDetails: Object.fromEntries(skillsDraft.map(row => [row.skill, {confidence_level: row.confidence_level, description: row.description, is_featured: row.is_featured}]))});
+      await currentProfile.refetch(); await queryClient.invalidateQueries();
+      toast.success('All profile changes saved together.');
+    } catch (error) {setSaveError(apiErrorMessage(error)); toast.error('Profile was not saved. Review the field errors.');}
+    finally {setIsSaving(false);}
   };
 
   if (currentProfile.isLoading && !shouldUseMocks()) {
@@ -185,13 +138,13 @@ export function EditProfilePage() {
         <div className="space-y-6 lg:col-span-3">
           <div className="rounded-2xl bg-gradient-to-br from-[#13294B] to-[#1a3a6b] p-6 text-white">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-semibold">Profile Strength: {currentProfile.data?.profile_completeness ?? 75}%</h3>
+              <h3 className="font-semibold">Profile Strength: {currentProfile.data?.profile_completeness ?? 0}%</h3>
               <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium">Live profile</span>
             </div>
             <div className="mb-3 h-2 overflow-hidden rounded-full bg-white/20">
-              <div className="h-full bg-white" style={{ width: `${currentProfile.data?.profile_completeness ?? 75}%` }} />
+              <div className="h-full bg-white" style={{ width: `${currentProfile.data?.profile_completeness ?? 0}%` }} />
             </div>
-            <p className="text-sm text-blue-100">Initials avatars only. No profile photos or upload fields.</p>
+            <p className="text-sm text-blue-100">Skill experience is self-declared. Links provide context, not independent verification.</p>
           </div>
 
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
@@ -207,12 +160,15 @@ export function EditProfilePage() {
                 <Input label="Headline" value={form.headline} onChange={(value) => update('headline', value)} />
                 <Textarea label="Bio" value={form.bio} onChange={(value) => update('bio', value)} />
                 <Input label="Interests" value={form.interests} onChange={(value) => update('interests', value)} placeholder="Comma-separated interests" />
+                <LearningGoals form={form} skills={taxonomy.data?.rawSkills || []} onChange={setForm}/>
+                <label className="block text-sm">Optional avatar (image up to 2 MB)<input type="file" accept="image/*" disabled={avatarPending || shouldUseMocks() || dirty} onChange={async event => {const file = event.target.files?.[0]; if (!file) return; const payload = new FormData(); payload.append('avatar', file); setAvatarPending(true); try {await api.post('/profiles/me/avatar/', payload, {headers: {'Content-Type': 'multipart/form-data'}}); await currentProfile.refetch(); toast.success('Avatar saved.');} catch (error) {setSaveError(apiErrorMessage(error));} finally {setAvatarPending(false);}}}/></label>
               </div>
             )}
 
             {activeTab === 1 && (
               <div className="space-y-4">
                 <p className="text-sm text-[#64748B]">Add your core skills with confidence and context.</p>
+                <SkillSuggestion categories={taxonomy.data?.rawCategories || []}/>
 
                 {skillsDraft.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm text-[#64748B]">
@@ -226,19 +182,7 @@ export function EditProfilePage() {
                           <p className="text-sm font-semibold text-[#0F172A]">{skillsById[row.skill] || `Skill ${row.skill}`}</p>
                           <button
                             type="button"
-                            onClick={async () => {
-                              const current = skillsDraft[index];
-                              if (!shouldUseMocks() && current?.id) {
-                                try {
-                                  await deleteProfileSkill(current.id);
-                                } catch {
-                                  toast.error('Could not remove this skill.');
-                                  return;
-                                }
-                              }
-                              setSkillsDraft((cur) => cur.filter((_, i) => i !== index));
-                              toast.success('Skill removed.');
-                            }}
+                            onClick={() => setSkillsDraft(cur => cur.filter((_, i) => i !== index))}
                             className="rounded-lg p-1.5 text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#DC2626]"
                             aria-label="Remove skill"
                           >
@@ -363,49 +307,16 @@ export function EditProfilePage() {
                   </label>
                   <button
                     type="button"
-                    disabled={isAddingSkill || !newSkillId}
-                    onClick={async () => {
-                      const skillId = Number(newSkillId || 0);
-                      if (!skillId) {
-                        toast.error('Pick a skill before adding.');
-                        return;
-                      }
-                      if (skillsDraft.some((row) => row.skill === skillId)) {
-                        toast.error('This skill is already listed.');
-                        return;
-                      }
-                      const draft: SkillDraft = { ...newSkill, skill: skillId };
-                      if (shouldUseMocks() || auth.isDemo) {
-                        setSkillsDraft((cur) => [...cur, draft]);
-                        setNewSkill({ skill: 0, confidence_level: 'intermediate', description: '', is_featured: false });
-                        setNewSkillId('');
-                        setNewSkillQuery('');
-                        toast.success('Skill added.');
-                        return;
-                      }
-                      setIsAddingSkill(true);
-                      try {
-                        const created = await createProfileSkill({
-                          skill: draft.skill,
-                          confidence_level: draft.confidence_level,
-                          description: draft.description,
-                          is_featured: draft.is_featured,
-                        });
-                        setSkillsDraft((cur) => [...cur, { ...draft, id: created.id }]);
-                        setNewSkill({ skill: 0, confidence_level: 'intermediate', description: '', is_featured: false });
-                        setNewSkillId('');
-                        setNewSkillQuery('');
-                        await currentProfile.refetch();
-                        toast.success('Skill added.');
-                      } catch {
-                        toast.error('Could not add this skill.');
-                      } finally {
-                        setIsAddingSkill(false);
-                      }
+                    disabled={!newSkillId}
+                    onClick={() => {
+                      const skillId = Number(newSkillId);
+                      if (skillsDraft.some(row => row.skill === skillId)) {toast.error('This skill is already listed.'); return;}
+                      setSkillsDraft(cur => [...cur, {...newSkill, skill: skillId}]);
+                      setNewSkillId(''); setNewSkillQuery(''); setNewSkill({skill: 0, confidence_level: 'intermediate', description: '', is_featured: false});
                     }}
                     className="rounded-xl bg-[#13294B] px-4 py-2 text-sm font-medium text-white hover:bg-[#1a3a6b] disabled:opacity-60"
                   >
-                    {isAddingSkill ? 'Adding...' : 'Add Skill'}
+                    Add Skill
                   </button>
                 </div>
               </div>
@@ -413,10 +324,7 @@ export function EditProfilePage() {
 
             {activeTab === 2 && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <Select label="Day" value={form.availability[0]?.day_of_week || 'flexible'} options={days} onChange={(value) => update('availability', [{ ...(form.availability[0] || {}), day_of_week: value, time_block: form.availability[0]?.time_block || 'flexible' }])} />
-                  <Select label="Time block" value={form.availability[0]?.time_block || 'flexible'} options={times} onChange={(value) => update('availability', [{ ...(form.availability[0] || {}), day_of_week: form.availability[0]?.day_of_week || 'flexible', time_block: value }])} />
-                </div>
+                <AvailabilityFields form={form} onChange={setForm}/>
                 <Textarea label="Availability notes" value={form.availabilityNotes} onChange={(value) => update('availabilityNotes', value)} />
               </div>
             )}
@@ -439,7 +347,7 @@ export function EditProfilePage() {
                       const contacts = [...form.contacts];
                       contacts[index] = { ...contact, is_public: event.target.checked };
                       update('contacts', contacts);
-                    }} /> Public</label>
+                    }} /> Share after acceptance</label>
                   </div>
                 ))}
                 <button type="button" onClick={() => update('contacts', [...form.contacts, { type: 'linkedin', value: '', is_public: true }])} className="w-full rounded-xl border-2 border-dashed border-[#E2E8F0] px-4 py-3 text-[#64748B] hover:border-[#13294B]">Add Contact Method</button>
@@ -474,6 +382,7 @@ export function EditProfilePage() {
 
             {activeTab === 5 && (
               <div className="space-y-6">
+                <SharingPreferences form={form} onChange={setForm}/>
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] p-4 hover:bg-[#F8FAFC]">
                   <input type="checkbox" checked={form.visibility === 'public'} onChange={(event) => update('visibility', event.target.checked ? 'public' : 'private')} className="h-5 w-5 rounded" />
                   <div><p className="font-medium text-[#0F172A]">Profile Visibility</p><p className="text-sm text-[#64748B]">Make my profile visible to all students</p></div>
@@ -486,6 +395,7 @@ export function EditProfilePage() {
             )}
           </div>
 
+          {saveError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{saveError}</p>}
           <div className="flex justify-end">
             <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 rounded-xl bg-[#13294B] px-6 py-3 font-medium text-white transition-colors hover:bg-[#1a3a6b] disabled:opacity-60">
               <Save className="h-5 w-5" />{isSaving ? 'Saving...' : 'Save Changes'}

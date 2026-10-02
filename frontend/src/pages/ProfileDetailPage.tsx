@@ -2,7 +2,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { MapPin, Clock, Star, Bookmark, Mail, Linkedin, Github, ExternalLink, ArrowLeft } from 'lucide-react';
 import { mockProfiles } from '../data/mockData';
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
 import { SkillChip } from '../components/ui/SkillChip';
 import { InsightChips } from '../lib/profileInsightBadges';
@@ -13,7 +13,7 @@ import { useCreateHelpRequest } from '../hooks/useHelpRequests';
 import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
-import { shouldUseMocks } from '../lib/api';
+import { api, shouldUseMocks } from '../lib/api';
 import type { ContactMethodType } from '../types/api';
 import { createEndorsement, createReview, getEndorsements, getReviews } from '../lib/interactionsApi';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
@@ -22,6 +22,7 @@ export function ProfileDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   const myProfileQuery = useCurrentProfile();
+  const queryClient = useQueryClient();
   const fallbackProfile = mockProfiles.find(p => p.id === Number(id)) || mockProfiles[0];
   const profileQuery = useProfile(id);
   const similarQuery = useSimilarProfiles(id);
@@ -81,6 +82,8 @@ export function ProfileDetailPage() {
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [location.hash]);
 
+  if (!shouldUseMocks() && (profileQuery.isLoading || !profileQuery.data && !profileQuery.isError)) return <p role="status" className="p-6">Loading profile…</p>;
+
   if (!shouldUseMocks() && profileQuery.isError) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white p-10 text-center">
@@ -95,7 +98,7 @@ export function ProfileDetailPage() {
   const similarProfiles =
     !shouldUseMocks() && similarQuery.isError
       ? []
-      : similarQuery.data?.profiles ?? mockProfiles.filter((p) => p.id !== profile.id).slice(0, 3);
+      : similarQuery.data?.profiles ?? (shouldUseMocks() ? mockProfiles.filter((p) => p.id !== profile.id).slice(0, 3) : []);
   const isProfileSaved = profileQuery.data?.isMock ? isSaved : savedActions.savedProfileIds.has(profile.id);
 
   const handleToggleSave = async () => {
@@ -156,7 +159,7 @@ export function ProfileDetailPage() {
           {/* Profile Header */}
           <div className="bg-white rounded-2xl p-8 border border-[#E2E8F0]">
             <div className="flex items-start gap-6 mb-6">
-              <InitialsAvatar name={profile.name} size="xl" />
+              <InitialsAvatar src={profileQuery.data?.raw?.profile_picture || undefined} name={profile.name} size="xl" />
               <div className="flex-1">
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -425,6 +428,9 @@ export function ProfileDetailPage() {
         <div className="lg:col-span-1">
           <div id="contact" className="bg-white rounded-2xl p-6 border border-[#E2E8F0] sticky top-6">
             <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Contact Information</h3>
+
+            {!profile.contacts.length && <p className="mb-4 text-sm text-[#475569]">Selected contacts are shared after a request is accepted, when this member consents.</p>}
+            {!isOwnProfile && profileQuery.data?.raw?.user_id && <div className="mb-4 flex gap-4 text-sm"><button className="underline" onClick={async () => {if (!window.confirm("Block this member and cancel active requests?")) return; try {await api.post("/blocked-users/", {blocked_user: profileQuery.data?.raw?.user_id}); await queryClient.invalidateQueries(); toast.success("Member blocked.");} catch {toast.error("Could not block this member.");}}}>Block member</button><button className="underline" onClick={async () => {const description = window.prompt("Describe the concern for the moderation team:"); if (!description) return; try {await api.post("/reports/", {reported_profile: profileId, reason: "other", description}); toast.success("Report sent to moderators.");} catch {toast.error("Could not send the report.");}}}>Report member</button></div>}
 
             {/* Preferred Contact */}
             <div className="mb-4">

@@ -33,6 +33,11 @@ class StudentProfile(models.Model):
     headline = models.CharField(max_length=255)
     bio = models.TextField()
     interests = models.TextField(blank=True)
+    learning_goals = models.ManyToManyField("taxonomy.SkillTag", blank=True, related_name="learners")
+    learning_goal_notes = models.CharField(max_length=500, blank=True)
+    share_contacts = models.BooleanField(default=False)
+    embedding_consent = models.BooleanField(default=False)
+    availability_confirmed_at = models.DateTimeField(null=True, blank=True)
     location = models.CharField(max_length=160, blank=True)
     profile_picture = models.ImageField(upload_to="profile_pictures/", blank=True, null=True)
     open_to_connect = models.BooleanField(default=True)
@@ -65,6 +70,10 @@ class StudentProfile(models.Model):
     def update_profile_completeness(self):
         self.profile_completeness = self.calculate_profile_completeness()
         self.save(update_fields=["profile_completeness", "updated_at"])
+
+    def update_onboarding(self):
+        complete = bool(self.display_name and self.major and self.year and self.headline and self.bio and self.profile_skills.exists() and (self.availability.exists() or self.availability_notes))
+        type(self.user).objects.filter(pk=self.user_id).update(has_completed_onboarding=complete)
 
     def __str__(self):
         return self.display_name

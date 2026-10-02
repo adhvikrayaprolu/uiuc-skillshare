@@ -6,6 +6,7 @@ import type { ProfileDetail } from '../types/api';
 export function useCurrentProfile() {
   return useQuery({
     queryKey: ['current-profile'],
+    refetchOnWindowFocus: false,
     queryFn: getCurrentProfile,
     enabled: !shouldUseMocks(),
     retry: 1,
@@ -16,11 +17,11 @@ export function useProfileEditor() {
   const queryClient = useQueryClient();
   const updateProfile = useMutation({
     mutationFn: (payload: Partial<ProfileDetail>) => (shouldUseMocks() ? Promise.resolve(payload) : updateCurrentProfile(payload)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['current-profile'] }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
   const createProfile = useMutation({
     mutationFn: (payload: Partial<ProfileDetail>) => (shouldUseMocks() ? Promise.resolve(payload) : createCurrentProfile(payload)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['current-profile'] }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
   return { updateProfile, createProfile };
 }

@@ -289,11 +289,11 @@ class ReportSerializer(serializers.ModelSerializer):
 
 
 class BlockedUserSerializer(serializers.ModelSerializer):
-    blocked_user_email = serializers.EmailField(source="blocked_user.email", read_only=True)
+    blocked_label = serializers.CharField(read_only=True)
 
     class Meta:
         model = BlockedUser
-        fields = ["id", "blocked_user", "blocked_user_email", "created_at"]
+        fields = ["id", "blocked_user", "blocked_label", "created_at"]
         read_only_fields = ["id", "created_at"]
 
     def validate_blocked_user(self, blocked_user):
@@ -302,4 +302,22 @@ class BlockedUserSerializer(serializers.ModelSerializer):
         return blocked_user
 
     def create(self, validated_data):
-        return BlockedUser.objects.create(blocker=self.context["request"].user, **validated_data)
+        from django.db import transaction
+        from django.db.models import Q
+        from django.utils import timezone
+        from accounts.models import User
+        blocker = self.context["request"].user
+        blocked = validated_data["blocked_user"]
+        with transaction.atomic():
+            list(User.objects.select_for_update().filter(pk__in=[blocker.pk, blocked.pk]).order_by("pk"))
+            profile = getattr(blocked, "profile", None)
+            label = profile.display_name if profile and can_view_profile(blocker, profile) else "Unavailable member"
+            record, _ = BlockedUser.objects.get_or_create(blocker=blocker, blocked_user=blocked, defaults={"blocked_label": label})
+            requests = HelpRequest.objects.select_for_update().filter(Q(seeker=blocker, helper_profile__user=blocked) | Q(seeker=blocked, helper_profile__user=blocker))
+            for help_request in requests:
+                if help_request.status in {"pending", "accepted"}:
+                    help_request.status = "cancelled"
+                    help_request.cancelled_at = timezone.now()
+                help_request.topic, help_request.message, help_request.response_message = "Connection removed", "", ""
+                help_request.save()
+            return record

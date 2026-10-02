@@ -11,21 +11,6 @@ export interface DemoUser {
   isStudentVerified: boolean;
 }
 
-export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
-}
-
-export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-}
-
-export function setTokens(access: string, refresh?: string) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, access);
-  if (refresh) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-  }
-}
-
 export function clearTokens() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -44,11 +29,11 @@ export function clearDemoUser() {
 export function startDemoSession() {
   const demoUser: DemoUser = {
     id: 1,
-    email: 'rpatel@illinois.edu',
-    firstName: 'Riya',
-    lastName: 'Patel',
+    email: 'sample@example.invalid',
+    firstName: 'Synthetic',
+    lastName: 'Demo',
     hasCompletedOnboarding: true,
-    isStudentVerified: true,
+    isStudentVerified: false,
   };
 
   localStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));
@@ -70,7 +55,7 @@ export function getDemoUser(): DemoUser | null {
 }
 
 export function isDemoSession() {
-  return Boolean(getDemoUser()) && !getAccessToken();
+  return Boolean(getDemoUser());
 }
 
 export function logout() {

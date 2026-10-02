@@ -4,6 +4,7 @@ import { Shield } from 'lucide-react';
 import { Logo } from '../components/ui/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/ui/ToastProvider';
+import { requestEmailCode, resendEmailCode } from '../lib/authApi';
 import { shouldUseMocks } from '../lib/api';
 
 declare global {
@@ -27,7 +28,13 @@ export function LoginPage() {
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [googleReady, setGoogleReady] = useState(false);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  const from = (location.state as { from?: string } | null)?.from || '/dashboard';
+  const destination = (location.state as { from?: string } | null)?.from;
+  const from = destination?.startsWith('/') && !destination.startsWith('//') ? destination : '/dashboard';
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [challenge, setChallenge] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
   const useMocks = shouldUseMocks();
 
   useEffect(() => {
@@ -58,7 +65,7 @@ export function LoginPage() {
           toast.success('Signed in with your Illinois Google account.');
           navigate(user.hasCompletedOnboarding ? from : '/onboarding', { replace: true });
         } catch {
-          toast.error('Google sign-in failed. Use an Illinois account or local API demo login.');
+          toast.error('Google could not verify this account. Continue with an Illinois email code.');
         }
       },
     });
@@ -66,7 +73,7 @@ export function LoginPage() {
     window.google.accounts.id.renderButton(googleButtonRef.current, {
       theme: 'outline',
       size: 'large',
-      width: 360,
+      width: 280,
       text: 'continue_with',
     });
   }, [auth, from, googleClientId, googleReady, navigate, toast]);
@@ -77,14 +84,13 @@ export function LoginPage() {
     navigate('/dashboard');
   };
 
-  const handleLocalApiDemoLogin = async () => {
+  const submitCode = async (event: React.FormEvent) => {
+    event.preventDefault(); setPending(true); setError('');
     try {
-      const user = await auth.loginLocalApiDemoUser();
-      toast.success('Signed in as local API demo user (Django database).');
-      navigate(user.hasCompletedOnboarding ? from : '/onboarding', { replace: true });
-    } catch {
-      toast.error('Dev login failed. Run Django with DEBUG=True and check the API URL in .env.');
-    }
+      if (!challenge) {await requestEmailCode(email.trim().toLowerCase()); setChallenge(true);}
+      else {const user = await auth.confirmEmailCode(code); navigate(user.hasCompletedOnboarding ? from : '/onboarding', {replace: true});}
+    } catch {setError(challenge ? 'Code is incorrect or expired. After three failed attempts, request a new code.' : 'Could not send a code. Use an Illinois email address and wait before trying again.');}
+    finally {setPending(false);}
   };
 
   return (
@@ -96,75 +102,33 @@ export function LoginPage() {
           </div>
 
           <div className="mb-6 text-center">
-            <span
-              className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                useMocks
-                  ? 'border border-[#13294B]/20 bg-[#E8EEF7] text-[#13294B]'
-                  : 'border border-[#FF5F05]/30 bg-[#FFF3EA] text-[#C2410C]'
-              }`}
-            >
-              {useMocks ? 'Mock demo mode' : 'Local API mode'}
-            </span>
-            <h2 className="mt-4 text-2xl font-bold text-[#0F172A]">Sign in to Illini SkillSwap</h2>
-            <p className="mt-2 text-[#64748B]">
-              {useMocks
-                ? 'Mock mode uses in-browser demo data (no Django required).'
-                : 'API mode uses your Django database with JWT authentication.'}
-            </p>
+            <h2 className="text-2xl font-bold text-[#0F172A]">Sign in to UIUC SkillShare</h2>
+            <p className="mt-2 text-[#64748B]">Find peers who can help, and share what you know.</p>
           </div>
-
-          {googleClientId ? (
-            <div className="mb-4">
-              <p className="mb-2 text-center text-xs font-medium text-[#64748B]">Illinois Google (optional)</p>
-              <div ref={googleButtonRef} className="flex justify-center" />
-            </div>
-          ) : (
-            <div className="mb-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-center">
-              <p className="text-sm font-medium text-[#0F172A]">Google sign-in</p>
-              <p className="mt-1 text-xs text-[#64748B]">Set VITE_GOOGLE_CLIENT_ID to enable. Not required for class demo.</p>
-            </div>
-          )}
-
-          {useMocks ? (
-            <button
-              type="button"
-              onClick={handleMockDemoLogin}
-              className="mb-4 flex w-full items-center justify-center gap-3 rounded-xl bg-[#13294B] px-6 py-4 font-semibold text-white transition-colors hover:bg-[#1a3a6b]"
-            >
-              Continue as Mock Demo User
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleLocalApiDemoLogin}
-              disabled={auth.isLoading}
-              className="mb-4 flex w-full items-center justify-center gap-3 rounded-xl bg-[#13294B] px-6 py-4 font-semibold text-white transition-colors hover:bg-[#1a3a6b] disabled:opacity-60"
-            >
-              {auth.isLoading ? 'Signing in…' : 'Continue as Local API Demo User'}
-            </button>
-          )}
-
-          {!useMocks && (
-            <p className="mb-4 text-center text-xs text-[#64748B]">
-              Signs in as <strong className="text-[#0F172A]">Adhvik Rayaprolu</strong> (adhvik.rayaprolu@illinois.edu) via{' '}
-              <code className="rounded bg-[#F1F5F9] px-1 text-[#0F172A]">POST /api/auth/dev-login/</code> when{' '}
-              <code className="rounded bg-[#F1F5F9] px-1">DEBUG=True</code>.
-            </p>
-          )}
+          {googleClientId ? <div className="mb-6"><div ref={googleButtonRef} className="flex justify-center" /></div> : <p className="mb-4 text-center text-sm text-[#64748B]">Google sign-in is unavailable here. Use an Illinois email code.</p>}
+          <form onSubmit={submitCode} className="mb-6 space-y-3">
+            <label className="block text-sm font-medium" htmlFor="login-email">Illinois email</label>
+            <input id="login-email" type="email" autoComplete="email" required disabled={challenge || pending} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@illinois.edu" className="w-full rounded-lg border border-[#CBD5E1] p-3" />
+            {challenge && <><label className="block text-sm font-medium" htmlFor="login-code">Email code</label><input id="login-code" autoComplete="one-time-code" required value={code} onChange={(event) => setCode(event.target.value)} className="w-full rounded-lg border border-[#CBD5E1] p-3" /><p className="text-xs text-[#64748B]">Check your inbox. Codes expire in five minutes.</p></>}
+            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+            <button disabled={pending} className="w-full rounded-xl bg-[#13294B] p-3 font-semibold text-white disabled:opacity-60">{pending ? 'Please wait…' : challenge ? 'Verify and sign in' : 'Send email code'}</button>
+            {challenge && <div className="flex justify-between text-sm"><button type="button" disabled={pending} onClick={async () => {setPending(true); try {await resendEmailCode(); toast.success('A new code was sent.');} catch {setError('Please wait before resending, or start again.');} finally {setPending(false);}}}>Resend code</button><button type="button" onClick={() => {setChallenge(false); setCode(''); setError('');}}>Use another email</button></div>}
+          </form>
+          {useMocks && <button type="button" onClick={handleMockDemoLogin} className="mb-4 w-full rounded-lg border p-3">Explore synthetic demo data</button>}
 
           <div className="space-y-4 border-t border-[#E2E8F0] pt-6">
             <div className="flex items-start gap-3">
               <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#13294B]" />
               <div>
-                <p className="text-sm font-medium text-[#0F172A]">Illinois student network</p>
-                <p className="text-xs text-[#64748B]">Dev login is limited to @illinois.edu on the backend.</p>
+                <p className="text-sm font-medium text-[#0F172A]">Illinois email access</p>
+                <p className="text-xs text-[#64748B]">An Illinois email establishes access, not university approval or verified current enrollment.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#13294B]" />
               <div>
                 <p className="text-sm font-medium text-[#0F172A]">You control your privacy</p>
-                <p className="text-xs text-[#64748B]">Choose what contact information appears on your profile.</p>
+                <p className="text-xs text-[#64748B]">Selected contacts are shared only after a help request is accepted.</p>
               </div>
             </div>
           </div>

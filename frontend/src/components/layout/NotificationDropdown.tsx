@@ -53,11 +53,17 @@ interface NotificationDropdownProps {
   loading?: boolean;
   error?: boolean;
   onNavigate?: () => void;
+  onRead?: (id: string) => void;
+  onReadAll?: () => void;
+  unreadCount?: number;
+  isUpdating?: boolean;
+  hasNext?: boolean; hasPrevious?: boolean;
+  onNext?: () => void; onPrevious?: () => void;
 }
 
-export function NotificationDropdown({ items, showSamples = false, loading = false, error = false, onNavigate }: NotificationDropdownProps) {
+export function NotificationDropdown({ items, showSamples = false, loading = false, error = false, onNavigate, onRead, onReadAll, unreadCount: totalUnread, isUpdating = false, hasNext, hasPrevious, onNext, onPrevious }: NotificationDropdownProps) {
   const list = items !== undefined ? items : showSamples ? sampleNotifications : [];
-  const unreadCount = list.filter((n) => !n.read).length;
+  const unreadCount = totalUnread ?? list.filter((n) => !n.read).length;
 
   return (
     <div className="absolute right-0 top-12 w-[min(24rem,calc(100vw-2rem))] bg-white rounded-xl shadow-lg border border-[#E2E8F0] overflow-hidden z-50">
@@ -71,6 +77,7 @@ export function NotificationDropdown({ items, showSamples = false, loading = fal
         )}
       </div>
 
+      {onReadAll && unreadCount > 0 && <button type="button" disabled={isUpdating} onClick={onReadAll} className="p-3 text-sm text-[#13294B]">Mark all read</button>}
       {/* Notifications List */}
       <div className="max-h-96 overflow-y-auto">
         {loading && <p role="status" className="p-4">Loading activity…</p>}
@@ -81,7 +88,7 @@ export function NotificationDropdown({ items, showSamples = false, loading = fal
             <Link
               key={notification.id}
               to={notification.href}
-              onClick={onNavigate}
+              onClick={() => { onRead?.(notification.id); onNavigate?.(); }}
               className={`px-4 py-3 hover:bg-[#F8FAFC] transition-colors cursor-pointer border-b border-[#E2E8F0] last:border-0 ${
                 !notification.read ? 'border-l-4 border-l-[#FF5F05] bg-[#FFFBF7]' : ''
               }`}
@@ -111,6 +118,9 @@ export function NotificationDropdown({ items, showSamples = false, loading = fal
         )}
       </div>
 
+      {(hasPrevious || hasNext) && <div className="flex justify-between p-3" aria-label="Notification pages">
+        <button disabled={!hasPrevious} onClick={onPrevious}>Previous</button><button disabled={!hasNext} onClick={onNext}>Next</button>
+      </div>}
       {/* Footer */}
       {list.length > 0 && (
         <div className="px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">

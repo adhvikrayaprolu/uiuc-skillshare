@@ -64,6 +64,8 @@ class ReviewSerializer(serializers.ModelSerializer):
 
         review = Review.objects.create(reviewer=self.context["request"].user, profile=self.context["profile"], **validated_data)
         track_event(self.context["request"].user, "review_created", {"profile_id": review.profile_id, "review_id": review.id}, self.context["request"])
+        from common.notifications import notify_request
+        notify_request(review.help_request, "reviewed", review.reviewer_id)
         return review
 
 
@@ -103,6 +105,8 @@ class EndorsementSerializer(serializers.ModelSerializer):
 
         endorsement = Endorsement.objects.create(endorser=self.context["request"].user, profile=self.context["profile"], **validated_data)
         track_event(self.context["request"].user, "endorsement_created", {"profile_id": endorsement.profile_id, "endorsement_id": endorsement.id}, self.context["request"])
+        from common.notifications import notify_request
+        notify_request(endorsement.help_request, f"endorsed-{endorsement.skill_id}", endorsement.endorser_id)
         return endorsement
 
 

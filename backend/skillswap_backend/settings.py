@@ -177,3 +177,8 @@ SESSION_COOKIE_AGE = 60 * 60 * 24
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_TRUSTED_ORIGINS = [x for x in os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173").split(",") if x]
 CORS_ALLOW_CREDENTIALS = True
+
+APP_PUBLIC_URL = os.getenv("APP_PUBLIC_URL", "http://localhost:8080").rstrip("/")
+EMAIL_TIMEOUT = 10
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")

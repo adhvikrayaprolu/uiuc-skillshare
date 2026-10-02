@@ -34,7 +34,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         obj = self.get_object()
         Notification.objects.filter(pk=obj.pk, read_at__isnull=True).update(read_at=timezone.now())
         return Response({"read": True})
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], url_path="read-all")
     def read_all(self, request):
         self.get_queryset().filter(read_at__isnull=True).update(read_at=timezone.now())
         return Response({"unread_count": 0})

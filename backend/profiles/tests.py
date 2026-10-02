@@ -148,3 +148,18 @@ class ProfileAggregateTests(APITestCase):
         del self.payload["contacts"]
         self.assertEqual(self.client.put(reverse("profile-aggregate"), self.payload, format="json").status_code, 200)
         self.assertEqual(self.profile.contact_methods.get().value, "original@illinois.edu")
+
+    def test_first_profile_with_real_session_user(self):
+        self.profile.delete()
+        category = SkillCategory.objects.create(name="Session", slug="session")
+        skill = SkillTag.objects.create(category=category, name="React", slug="react")
+        self.client.force_authenticate(None)
+        self.client.force_login(self.user, backend="django.contrib.auth.backends.ModelBackend")
+        response = self.client.put("/api/profiles/me/aggregate/", {
+            "profile": {**self.payload["profile"], "learning_goals": [skill.pk]},
+            "skills": [{"skill": skill.pk, "confidence_level": "intermediate"}],
+            "availability": [{"day_of_week": "wednesday", "time_block": "evening"}],
+        }, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.has_completed_onboarding)

@@ -38,7 +38,7 @@ class NotificationTests(APITestCase):
         self.assertEqual(response.data["count"], 25)
         self.assertEqual(len(response.data["results"]), 20)
         self.assertIsNotNone(response.data["next"])
-        self.client.post(reverse("notifications-read-all"))
+        self.client.post("/api/notifications/read-all/")
         self.assertEqual(self.client.get(reverse("notifications-list")).data["unread_count"], 0)
         BlockedUser.objects.create(blocker=self.helper_user, blocked_user=self.user)
         self.assertEqual(self.client.get(reverse("notifications-list")).data["count"], 0)

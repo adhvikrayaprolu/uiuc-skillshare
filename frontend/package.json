@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run src",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@tanstack/react-query": "5.90.10",
@@ -20,7 +21,9 @@
     "react-router-dom": "7.18.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "9.39.1",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/vite": "4.1.12",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

@@ -74,7 +74,8 @@ class StudentProfile(models.Model):
 
     def update_onboarding(self):
         complete = bool(self.display_name and self.major and self.year and self.headline and self.bio and self.profile_skills.exists() and (self.availability.exists() or self.availability_notes))
-        type(self.user).objects.filter(pk=self.user_id).update(has_completed_onboarding=complete)
+        from django.contrib.auth import get_user_model
+        get_user_model().objects.filter(pk=self.user_id).update(has_completed_onboarding=complete)
 
     def __str__(self):
         return self.display_name

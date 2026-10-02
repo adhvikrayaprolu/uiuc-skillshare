@@ -14,9 +14,9 @@ const sizeClasses = {
 };
 
 const avatarColors = [
-  'bg-[#FF5F05]', // Orange
+  'bg-[#B83E00]', // Orange
   'bg-[#13294B]', // Navy
-  'bg-[#F59E0B]', // Amber
+  'bg-[#92400E]', // Amber
   'bg-[#334155]', // Slate
   'bg-[#1E3A8A]', // Blue
   'bg-[#C2410C]', // Deep orange

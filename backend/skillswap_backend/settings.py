@@ -182,3 +182,6 @@ APP_PUBLIC_URL = os.getenv("APP_PUBLIC_URL", "http://localhost:8080").rstrip("/"
 EMAIL_TIMEOUT = 10
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+
+AI_PAID_CALLS_ENABLED = os.getenv('AI_PAID_CALLS_ENABLED', 'false').lower() == 'true'
+AI_DAILY_CALL_LIMIT = int(os.getenv('AI_DAILY_CALL_LIMIT', '0'))

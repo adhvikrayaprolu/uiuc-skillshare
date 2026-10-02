@@ -17,6 +17,8 @@ class Command(BaseCommand):
             close_old_connections()
             try:
                 enqueue_due_emails()
+                from discovery.embedding_jobs import enqueue_due_embeddings
+                enqueue_due_embeddings()
             except Exception as error:
                 self.stderr.write(f"Dispatcher retry: {type(error).__name__}")
             if not options["loop"] or stopped.wait(5):

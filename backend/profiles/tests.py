@@ -61,7 +61,7 @@ class ProfileTests(APITestCase):
 
     def test_non_owner_cannot_edit_another_profile(self):
         self.create_profile()
-        other = User.objects.create_user("other@illinois.edu", "pw")
+        other = User.objects.create_user("other@illinois.edu", "pw", is_student_verified=True)
         self.client.force_authenticate(other)
         response = self.client.patch(reverse("profile-me"), {"headline": "Nope"}, format="json")
         self.assertEqual(response.status_code, 404)
@@ -71,7 +71,7 @@ class ProfileTests(APITestCase):
         profile = StudentProfile.objects.get(user=self.user)
         ContactMethod.objects.create(profile=profile, type="email", value="private@illinois.edu", is_public=False)
         Credential.objects.create(profile=profile, credential_type="resume", title="Private resume", visibility="private")
-        viewer = User.objects.create_user("viewer@illinois.edu", "pw")
+        viewer = User.objects.create_user("viewer@illinois.edu", "pw", is_student_verified=True)
         self.client.force_authenticate(viewer)
         response = self.client.get(reverse("profiles-detail", args=[profile.id]))
         self.assertEqual(response.status_code, 200)
@@ -83,18 +83,17 @@ class ProfileTests(APITestCase):
         profile = StudentProfile.objects.get(user=self.user)
         ProfileSkill.objects.create(profile=profile, skill=self.skill, confidence_level="advanced")
         ContactMethod.objects.create(profile=profile, type="email", value="student@illinois.edu", is_public=True)
-        other_user = User.objects.create_user("other@illinois.edu", "pw")
+        other_user = User.objects.create_user("other@illinois.edu", "pw", is_student_verified=True)
         other_profile = StudentProfile.objects.create(user=other_user, display_name="Other", major="CS", year="senior", headline="GitHub help", bio="GitHub")
         ProfileSkill.objects.create(profile=other_profile, skill=self.skill, confidence_level="advanced")
-        viewer = User.objects.create_user("viewer@illinois.edu", "pw")
+        viewer = User.objects.create_user("viewer@illinois.edu", "pw", is_student_verified=True)
         self.client.force_authenticate(viewer)
         similar = self.client.get(reverse("profiles-similar", args=[profile.id]))
         self.assertEqual(similar.status_code, 200)
         self.assertEqual(similar.data["results"][0]["id"], other_profile.id)
         contact = profile.contact_methods.first()
         click = self.client.post(reverse("profile-contact-click", args=[profile.id]), {"contact_method_id": contact.id}, format="json")
-        self.assertEqual(click.status_code, 200)
-        self.assertTrue(click.data["success"])
+        self.assertEqual(click.status_code, 403)
 
 
 class ProfileAggregateTests(APITestCase):

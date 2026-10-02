@@ -92,10 +92,8 @@ def block_filter_for_user(user):
 
 
 def base_discoverable_queryset(queryset, user=None):
-    queryset = queryset.filter(visibility="public").distinct()
-    if user and user.is_authenticated:
-        queryset = queryset.exclude(block_filter_for_user(user))
-    return queryset
+    from profiles.policy import visible_profiles
+    return visible_profiles(queryset, user)
 
 
 def apply_discovery_filters(queryset, params, user=None):

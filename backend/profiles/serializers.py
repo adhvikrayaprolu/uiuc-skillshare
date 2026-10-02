@@ -243,6 +243,9 @@ class PublicStudentProfileDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_contact_methods(self, obj):
+        from .policy import can_share_contacts
+        if not can_share_contacts(self.context["request"].user, obj):
+            return []
         return ContactMethodSerializer(obj.contact_methods.filter(is_public=True), many=True, context=self.context).data
 
     def get_credentials(self, obj):
@@ -262,7 +265,9 @@ class PublicStudentProfileDetailSerializer(serializers.ModelSerializer):
     def get_reviews_preview(self, obj):
         from interactions.serializers import ReviewSerializer
 
-        return ReviewSerializer(obj.reviews.select_related("reviewer", "related_skill")[:3], many=True, context=self.context).data
+        from .policy import visible_profiles
+        allowed = visible_profiles(StudentProfile.objects.all(), self.context["request"].user).values("user_id")
+        return ReviewSerializer(obj.reviews.filter(reviewer_id__in=allowed).select_related("reviewer", "related_skill")[:3], many=True, context=self.context).data
 
     def get_endorsement_count(self, obj):
         return obj.endorsements.count()

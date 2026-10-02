@@ -4,8 +4,7 @@ from profiles.serializers import PublicStudentProfileListSerializer
 from .models import BlockedUser, Endorsement, HelpRequest, Report, Review, SavedProfile
 
 
-def users_blocked(user_a, user_b):
-    return BlockedUser.objects.filter(blocker=user_a, blocked_user=user_b).exists() or BlockedUser.objects.filter(blocker=user_b, blocked_user=user_a).exists()
+from profiles.policy import can_share_contacts, can_view_profile, users_blocked
 
 
 class SavedProfileSerializer(serializers.ModelSerializer):
@@ -19,6 +18,8 @@ class SavedProfileSerializer(serializers.ModelSerializer):
     def validate_saved_profile(self, profile):
         if profile.user_id == self.context["request"].user.id:
             raise serializers.ValidationError("You cannot save your own profile.")
+        if not can_view_profile(self.context["request"].user, profile):
+            raise serializers.ValidationError("This profile is unavailable.")
         return profile
 
     def create(self, validated_data):
@@ -39,11 +40,11 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "reviewer", "profile", "created_at", "updated_at"]
 
     def get_reviewer_name(self, obj):
-        return f"{obj.reviewer.first_name} {obj.reviewer.last_name}".strip() or obj.reviewer.email
+        return f"{obj.reviewer.first_name} {obj.reviewer.last_name}".strip() or "Member"
 
     def get_reviewer_profile_id(self, obj):
         profile = getattr(obj.reviewer, "profile", None)
-        return profile.id if profile else None
+        return profile.id if profile and can_view_profile(self.context["request"].user, profile) else None
 
     def validate_rating(self, value):
         if value < 1 or value > 5:
@@ -75,11 +76,11 @@ class EndorsementSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "endorser", "profile", "created_at"]
 
     def get_endorser_name(self, obj):
-        return f"{obj.endorser.first_name} {obj.endorser.last_name}".strip() or obj.endorser.email
+        return f"{obj.endorser.first_name} {obj.endorser.last_name}".strip() or "Member"
 
     def get_endorser_profile_id(self, obj):
         profile = getattr(obj.endorser, "profile", None)
-        return profile.id if profile else None
+        return profile.id if profile and can_view_profile(self.context["request"].user, profile) else None
 
     def validate(self, attrs):
         profile = self.context.get("profile")
@@ -102,12 +103,12 @@ class EndorsementSerializer(serializers.ModelSerializer):
 
 
 class HelpRequestSerializer(serializers.ModelSerializer):
-    seeker_email = serializers.EmailField(source="seeker.email", read_only=True)
-    helper_display_name = serializers.CharField(source="helper_profile.display_name", read_only=True)
+    seeker_email = serializers.SerializerMethodField()
+    helper_display_name = serializers.SerializerMethodField()
     seeker_display_name = serializers.SerializerMethodField()
     seeker_profile_id = serializers.SerializerMethodField()
     seeker_profile_detail = serializers.SerializerMethodField()
-    helper_profile_detail = PublicStudentProfileListSerializer(source="helper_profile", read_only=True)
+    helper_profile_detail = serializers.SerializerMethodField()
     related_skill_name = serializers.SerializerMethodField()
     helper_contact_methods = serializers.SerializerMethodField()
     seeker_contact_methods = serializers.SerializerMethodField()
@@ -145,17 +146,31 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "seeker", "accepted_at", "declined_at", "completed_at", "cancelled_at", "created_at", "updated_at"]
 
+    def get_helper_display_name(self, obj):
+        return obj.helper_profile.display_name if can_view_profile(self.context["request"].user, obj.helper_profile) else "Unavailable member"
+
+    def get_helper_profile_detail(self, obj):
+        if not can_view_profile(self.context["request"].user, obj.helper_profile):
+            return None
+        return PublicStudentProfileListSerializer(obj.helper_profile, context=self.context).data
+
+    def get_seeker_email(self, obj):
+        return None
+
     def get_seeker_display_name(self, obj):
+        profile = getattr(obj.seeker, "profile", None)
+        if not profile or not can_view_profile(self.context["request"].user, profile):
+            return "Unavailable member"
         full_name = f"{obj.seeker.first_name} {obj.seeker.last_name}".strip()
-        return full_name or obj.seeker.email
+        return full_name or "Member"
 
     def get_seeker_profile_id(self, obj):
         profile = getattr(obj.seeker, "profile", None)
-        return profile.id if profile else None
+        return profile.id if profile and can_view_profile(self.context["request"].user, profile) else None
 
     def get_seeker_profile_detail(self, obj):
         profile = getattr(obj.seeker, "profile", None)
-        if not profile:
+        if not profile or not can_view_profile(self.context["request"].user, profile):
             return None
         return PublicStudentProfileListSerializer(profile, context=self.context).data
 
@@ -166,7 +181,9 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or request.user.id not in {obj.seeker_id, obj.helper_profile.user_id}:
             return []
-        if obj.status != HelpRequest.Status.ACCEPTED:
+        if obj.status not in {HelpRequest.Status.ACCEPTED, HelpRequest.Status.COMPLETED}:
+            return []
+        if not can_share_contacts(request.user, obj.helper_profile):
             return []
         from profiles.serializers import ContactMethodSerializer
 
@@ -176,10 +193,10 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or request.user.id not in {obj.seeker_id, obj.helper_profile.user_id}:
             return []
-        if obj.status != HelpRequest.Status.ACCEPTED:
+        if obj.status not in {HelpRequest.Status.ACCEPTED, HelpRequest.Status.COMPLETED}:
             return []
         seeker_profile = getattr(obj.seeker, "profile", None)
-        if not seeker_profile:
+        if not seeker_profile or not can_share_contacts(request.user, seeker_profile):
             return []
         from profiles.serializers import ContactMethodSerializer
 
@@ -193,7 +210,7 @@ class HelpRequestSerializer(serializers.ModelSerializer):
     def validate_helper_profile(self, profile):
         if profile.user_id == self.context["request"].user.id:
             raise serializers.ValidationError("You cannot send a help request to yourself.")
-        if profile.visibility != "public" or not profile.open_to_connect:
+        if not can_view_profile(self.context["request"].user, profile) or not profile.open_to_connect:
             raise serializers.ValidationError("You can only send help requests to public, open-to-connect profiles.")
         if users_blocked(self.context["request"].user, profile.user):
             raise serializers.ValidationError("You cannot send a help request because one participant has blocked the other.")
@@ -201,7 +218,17 @@ class HelpRequestSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context["request"]
-        if self.instance:
+        if not self.instance:
+            if attrs.get("status", "pending") != "pending" or attrs.get("response_message"):
+                raise serializers.ValidationError("New requests must start pending without a helper response.")
+        else:
+            immutable = set(self.initial_data) - {"status", "response_message"}
+            if immutable:
+                raise serializers.ValidationError({field: "Cannot change a submitted request." for field in immutable})
+            if users_blocked(request.user, self.instance.helper_profile.user if request.user == self.instance.seeker else self.instance.seeker):
+                raise serializers.ValidationError("This connection is unavailable.")
+            if "response_message" in attrs and self.instance.helper_profile.user_id != request.user.id:
+                raise serializers.ValidationError("Only the helper can write a response.")
             new_status = attrs.get("status")
             if not new_status or new_status == self.instance.status:
                 return attrs
@@ -212,14 +239,14 @@ class HelpRequestSerializer(serializers.ModelSerializer):
                 "cancelled": set(),
                 "completed": set(),
             }
-            if new_status not in allowed[self.instance.status] and not request.user.is_staff:
+            if new_status not in allowed[self.instance.status]:
                 raise serializers.ValidationError(f"Cannot transition help request from {self.instance.status} to {new_status}.")
-            if new_status == "cancelled" and self.instance.seeker_id != request.user.id and not request.user.is_staff:
+            if new_status == "cancelled" and self.instance.seeker_id != request.user.id:
                 raise serializers.ValidationError("Only the seeker can cancel this request.")
             helper_statuses = {"accepted", "declined"}
-            if new_status in helper_statuses and self.instance.helper_profile.user_id != request.user.id and not request.user.is_staff:
+            if new_status in helper_statuses and self.instance.helper_profile.user_id != request.user.id:
                 raise serializers.ValidationError("Only the helper can accept or decline this request.")
-            if new_status == "completed" and request.user.id not in {self.instance.seeker_id, self.instance.helper_profile.user_id} and not request.user.is_staff:
+            if new_status == "completed" and request.user.id not in {self.instance.seeker_id, self.instance.helper_profile.user_id}:
                 raise serializers.ValidationError("Only participants can complete this request.")
         return attrs
 
@@ -227,6 +254,7 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         from common.analytics import track_event
 
         validated_data.setdefault("seeker", self.context["request"].user)
+        validated_data["status"] = HelpRequest.Status.PENDING
         help_request = HelpRequest.objects.create(**validated_data)
         track_event(self.context["request"].user, "help_request_created", {"help_request_id": help_request.id, "helper_profile_id": help_request.helper_profile_id}, self.context["request"])
         return help_request

@@ -26,6 +26,8 @@ class DiscoveryTests(APITestCase):
         self.research = SkillTag.objects.create(category=experience, name="Research Experience", slug="research-experience")
         self.project = SkillTag.objects.create(category=experience, name="Project Collaboration", slug="project-collaboration")
 
+        for tag, aliases in [(self.react, ['frontend']), (self.resume, ['resume', 'cv']), (self.project, ['collaborator']), (self.research, ['research', 'lab']), (self.consulting, ['consulting']), (self.interview, ['interview']), (self.figma, ['design', 'ux'])]:
+            tag.aliases = aliases; tag.save()
         helper_user = User.objects.create_user("b@illinois.edu", "pw", is_student_verified=True)
         self.design_profile = StudentProfile.objects.create(
             user=helper_user,
@@ -112,6 +114,7 @@ class DiscoveryTests(APITestCase):
             bio="Figma and product work",
             interests="design",
         )
+        self.user.profile.learning_goals.add(self.figma)
         response = self.client.get(reverse("discovery-recommended"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["results"][0]["id"], self.design_profile.id)
@@ -125,28 +128,27 @@ class DiscoveryTests(APITestCase):
     def test_semantic_mode_returns_ai_metadata(self):
         response = self.client.get(reverse("discovery-search"), {"q": "design portfolio help", "mode": "semantic"})
         self.assertEqual(response.status_code, 200)
-        self.assertIn("ai", response.data)
-        self.assertTrue(response.data["ai"]["enabled"])
-        self.assertEqual(response.data["ai"]["mode"], "local_weighted_semantic_matcher")
+        self.assertEqual(response.data["matching"]["mode"], "keyword_taxonomy")
+        self.assertEqual(response.data["matching"]["fallback_reason"], "paid_calls_disabled")
 
     def test_empty_semantic_query_falls_back_to_default(self):
         response = self.client.get(reverse("discovery-search"), {"q": "", "mode": "semantic"})
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(response.data["ai"]["enabled"])
+        self.assertEqual(response.data["matching"]["mode"], "keyword_taxonomy")
 
     def test_semantic_resume_help_returns_career_profile(self):
         response = self.client.get(reverse("discovery-search"), {"q": "resume help", "mode": "semantic"})
         self.assertEqual(response.status_code, 200)
         top = response.data["results"][0]
         self.assertEqual(top["id"], self.resume_profile.id)
-        self.assertTrue(any("Resume" in reason or "LinkedIn" in reason for reason in top["semantic_reasons"]))
+        self.assertTrue(any("Resume" in reason or "LinkedIn" in reason for reason in top["match_reasons"]))
 
     def test_semantic_react_collaborator_returns_react_profile(self):
         response = self.client.get(reverse("discovery-search"), {"q": "React project collaborator", "mode": "semantic"})
         self.assertEqual(response.status_code, 200)
         top = response.data["results"][0]
         self.assertEqual(top["id"], self.collab_profile.id)
-        self.assertTrue(top["semantic_reasons"])
+        self.assertTrue(top["match_reasons"])
 
     def test_semantic_consulting_interview_returns_consulting_profile(self):
         response = self.client.get(reverse("discovery-search"), {"q": "consulting interview prep", "mode": "semantic"})

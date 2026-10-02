@@ -1,421 +1,198 @@
-from collections import Counter
-from difflib import SequenceMatcher
-
-from django.db.models import Avg, Count, Q
+"""Privacy-first, bounded retrieval and deterministic evidence-based ranking."""
+import re
+from datetime import timedelta
+from django.db import connection
+from django.db.models import F, Prefetch, Q
 from django.utils import timezone
-
+from interactions.models import Endorsement, Review
+from profiles.models import ProfileSkill, StudentProfile
+from profiles.policy import visible_feedback, visible_profiles
+from taxonomy.models import SkillTag
 from .models import ProfileSearchIndex
 
+CANDIDATE_LIMIT = 200
+STOPWORDS = {'i', 'a', 'an', 'the', 'to', 'for', 'with', 'my', 'me', 'help', 'need', 'want', 'someone', 'can', 'you', 'and', 'on', 'in', 'of', 'how', 'who', 'should', 'get', 'please', 'looking'}
 
-SYNONYMS = {
-    "cv": ["resume", "resume review"],
-    "job": ["internship", "internship search", "interview"],
-    "career": ["resume", "interview", "networking", "linkedin"],
-    "ux": ["figma", "design", "graphic design", "portfolio"],
-    "design": ["figma", "graphic design", "portfolio"],
-    "startup": ["startup experience", "project collaboration", "pitch"],
-    "research": ["research experience", "data analysis"],
-    "coding": ["python", "java", "c++", "react", "sql", "github"],
-    "git": ["github"],
-    "data": ["data analysis", "sql", "python", "excel"],
-    "presentation": ["public speaking"],
-    "speaking": ["public speaking", "presentation"],
-    "housing": ["housing advice", "apartment search"],
-    "transfer": ["transfer student advice", "course planning"],
-    "international": ["international student advice", "campus advice"],
-}
-
-SEMANTIC_CONCEPTS = {
-    "resume_help": {
-        "terms": ["resume", "cv", "application", "linkedin", "networking", "career"],
-        "skills": ["Resume Review", "LinkedIn Feedback", "Networking Advice", "Internship Search"],
-        "categories": ["Career"],
-    },
-    "interview_prep": {
-        "terms": ["interview", "behavioral", "consulting", "case", "prep"],
-        "skills": ["Interview Prep", "Consulting Prep"],
-        "categories": ["Career"],
-    },
-    "react_collaboration": {
-        "terms": ["react", "frontend", "web", "collaborator", "project", "github"],
-        "skills": ["React", "GitHub", "Project Collaboration"],
-        "categories": ["Technical", "Experience"],
-    },
-    "data_research": {
-        "terms": ["python", "sql", "analytics", "data", "research", "lab"],
-        "skills": ["Python", "SQL", "Data Analysis", "Research Experience"],
-        "categories": ["Technical", "Experience"],
-    },
-    "design_portfolio": {
-        "terms": ["figma", "design", "portfolio", "ux", "graphic"],
-        "skills": ["Figma", "Graphic Design", "Portfolio Review"],
-        "categories": ["Creative", "Career"],
-    },
-    "campus_support": {
-        "terms": ["housing", "campus", "transfer", "international", "course"],
-        "skills": ["Housing Advice", "Campus Advice", "Transfer Student Advice", "International Student Advice"],
-        "categories": ["Campus Life", "Course"],
-    },
-}
-
-
-def _tokens(value):
-    return [token.strip().lower() for token in (value or "").replace(",", " ").split() if token.strip()]
-
-
-def expanded_terms(value):
-    terms = set(_tokens(value))
-    raw = (value or "").lower().strip()
-    if raw:
-        terms.add(raw)
-    for token in list(terms):
-        terms.update(SYNONYMS.get(token, []))
-    return [term for term in terms if term]
+class RankedList(list):
+    def __init__(self, rows=(), metadata=None):
+        super().__init__(rows)
+        self.metadata = metadata or {}
 
 
 def build_profile_search_text(profile):
-    skills = " ".join(ps.skill.name for ps in profile.profile_skills.select_related("skill"))
-    categories = " ".join(ps.skill.category.name for ps in profile.profile_skills.select_related("skill__category"))
-    descriptions = " ".join(ps.description for ps in profile.profile_skills.all())
-    credentials = " ".join(c.title for c in profile.credentials.filter(visibility="public"))
-    return " ".join(
-        [profile.display_name, profile.major, profile.headline, profile.bio, profile.interests, skills, categories, descriptions, credentials]
-    ).lower()
-
-
-def block_filter_for_user(user):
-    if not user or not user.is_authenticated:
-        return Q()
-    blocked_ids = list(user.blocked_users.values_list("blocked_user_id", flat=True))
-    blocked_by_ids = list(user.blocked_by.values_list("blocker_id", flat=True))
-    return Q(user_id__in=set(blocked_ids + blocked_by_ids))
+    # Only published skill evidence: no contacts, goals, demographics or link scraping.
+    skills = list(profile.profile_skills.select_related('skill'))
+    return ' '.join([profile.headline, profile.bio] + [f'{ps.skill.name} {ps.description}' for ps in skills]).strip()
 
 
 def base_discoverable_queryset(queryset, user=None):
-    from profiles.policy import visible_profiles
-    return visible_profiles(queryset, user)
+    return visible_profiles(queryset, user).filter(open_to_connect=True)
 
 
 def apply_discovery_filters(queryset, params, user=None):
-    queryset = base_discoverable_queryset(queryset, user=user)
-    open_to_connect = params.get("open_to_connect")
-    if open_to_connect is None:
-        queryset = queryset.filter(open_to_connect=True)
-    elif str(open_to_connect).lower() in {"true", "1", "yes"}:
-        queryset = queryset.filter(open_to_connect=True)
-    elif str(open_to_connect).lower() in {"false", "0", "no"}:
-        queryset = queryset.filter(open_to_connect=False)
-
-    if params.get("major"):
-        queryset = queryset.filter(major__icontains=params["major"])
-    if params.get("year"):
-        queryset = queryset.filter(year=params["year"])
-    if params.get("availability_day"):
-        queryset = queryset.filter(availability__day_of_week=params["availability_day"])
-    if params.get("availability_time"):
-        queryset = queryset.filter(availability__time_block=params["availability_time"])
-    if params.get("contact_method"):
-        queryset = queryset.filter(contact_methods__type=params["contact_method"], contact_methods__is_public=True)
-    if str(params.get("has_credentials", "")).lower() in {"true", "1", "yes"}:
-        queryset = queryset.filter(credentials__visibility="public")
-
-    categories = []
-    if params.get("category"):
-        categories.append(params["category"])
-    if params.get("categories"):
-        categories.extend([c.strip() for c in params["categories"].split(",") if c.strip()])
-    for category in categories:
-        queryset = queryset.filter(Q(profile_skills__skill__category__slug=category) | Q(profile_skills__skill__category__name__icontains=category))
-
-    skill_terms = []
-    if params.get("skill"):
-        skill_terms.append(params["skill"])
-    if params.get("skills"):
-        skill_terms.extend([s.strip() for s in params["skills"].split(",") if s.strip()])
-    for skill in skill_terms:
-        skill_expanded = expanded_terms(skill)
-        q_obj = Q()
-        for term in skill_expanded:
-            q_obj |= Q(profile_skills__skill__slug__iexact=term) | Q(profile_skills__skill__name__icontains=term)
-        queryset = queryset.filter(q_obj)
-
-    q = params.get("q")
-    if q:
-        q_obj = Q()
-        for term in expanded_terms(q):
-            q_obj |= (
-                Q(display_name__icontains=term)
-                | Q(major__icontains=term)
-                | Q(headline__icontains=term)
-                | Q(bio__icontains=term)
-                | Q(interests__icontains=term)
-                | Q(profile_skills__skill__name__icontains=term)
-                | Q(profile_skills__skill__category__name__icontains=term)
-                | Q(profile_skills__description__icontains=term)
-            )
-        queryset = queryset.filter(q_obj)
-
-    return queryset.distinct().prefetch_related("profile_skills__skill__category", "credentials", "availability", "contact_methods", "reviews", "endorsements")
+    queryset = base_discoverable_queryset(queryset, user)
+    if str(params.get('open_to_connect', '')).lower() in {'false', '0', 'no'}:
+        return queryset.none()
+    for field in ['major', 'year']:
+        if params.get(field):
+            queryset = queryset.filter(**{field: params[field]})
+    for field, target in [('availability_day', 'availability__day_of_week'), ('availability_time', 'availability__time_block')]:
+        if params.get(field):
+            queryset = queryset.filter(**{target: params[field]})
+    for category in filter(None, ','.join([params.get('category', ''), params.get('categories', '')]).split(',')):
+        queryset = queryset.filter(Q(profile_skills__skill__category__slug__iexact=category.strip()) | Q(profile_skills__skill__category__name__iexact=category.strip()), profile_skills__skill__is_approved=True)
+    for skill in filter(None, ','.join([params.get('skill', ''), params.get('skills', '')]).split(',')):
+        queryset = queryset.filter(Q(profile_skills__skill__slug__iexact=skill.strip()) | Q(profile_skills__skill__name__iexact=skill.strip()), profile_skills__skill__is_approved=True)
+    if params.get('contact_method'):
+        queryset = queryset.filter(preferred_contact_method=params['contact_method'])  # Never inspect hidden contacts.
+    if str(params.get('has_credentials', '')).lower() in {'true', '1', 'yes'}:
+        queryset = queryset.filter(credentials__visibility='public')
+    return queryset.distinct()
 
 
-def calculate_profile_match(profile, query="", filters=None):
-    filters = filters or {}
-    score = 0
-    reasons = []
-    terms = expanded_terms(query)
-    text = build_profile_search_text(profile)
-    skill_names = [ps.skill.name.lower() for ps in profile.profile_skills.all()]
-    category_names = [ps.skill.category.name.lower() for ps in profile.profile_skills.all()]
-    skill_descriptions = " ".join(ps.description.lower() for ps in profile.profile_skills.all())
-
-    for term in terms:
-        if any(term == skill for skill in skill_names):
-            score += 36
-            reasons.append(f"Matches skill: {term.title()}")
-        elif any(term in skill for skill in skill_names):
-            score += 24
-            reasons.append(f"Related skill match: {term.title()}")
-        if any(term in category for category in category_names):
-            score += 16
-            reasons.append(f"Matches category: {term.title()}")
-        if term in profile.headline.lower() or term in profile.bio.lower() or term in profile.interests.lower():
-            score += 14
-            reasons.append(f"Profile mentions {term}")
-        if term in skill_descriptions:
-            score += 14
-            reasons.append(f"Skill description mentions {term}")
-
-    requested_skills = []
-    if filters.get("skill"):
-        requested_skills.append(filters["skill"])
-    if filters.get("skills"):
-        requested_skills += [s.strip() for s in filters["skills"].split(",") if s.strip()]
-    for skill in requested_skills:
-        if any(term in name for term in expanded_terms(skill) for name in skill_names):
-            score += 18
-            reasons.append(f"Filtered skill match: {skill}")
-
-    categories = []
-    if filters.get("category"):
-        categories.append(filters["category"])
-    if filters.get("categories"):
-        categories += [c.strip() for c in filters["categories"].split(",") if c.strip()]
-    for category in categories:
-        if any(category.lower() in name for name in category_names):
-            score += 16
-            reasons.append(f"Filtered category match: {category}")
-
-    if filters.get("availability_day") or filters.get("availability_time"):
-        score += 8
-        reasons.append("Matches requested availability")
-    elif profile.availability.filter(time_block__in=["evening", "flexible"]).exists():
-        score += 4
-        reasons.append("Available in evenings or flexible times")
-
-    completeness_boost = min(profile.profile_completeness, 100) * 0.12
-    score += completeness_boost
-    if profile.profile_completeness >= 80:
-        reasons.append("High profile completeness")
-
-    if profile.credentials.filter(visibility="public").exists():
-        score += 5
-        reasons.append("Has public credential")
-    if profile.open_to_connect:
-        score += 5
-        reasons.append("Open to connect")
-
-    rating = profile.reviews.aggregate(avg=Avg("rating"), count=Count("id"))
-    if rating["avg"]:
-        score += min(rating["avg"] * 2, 10)
-        reasons.append(f"Rated {rating['avg']:.1f}/5 by peers")
-    if profile.endorsements.exists():
-        score += min(profile.endorsements.count() * 2, 8)
-        reasons.append("Has peer endorsements")
-
-    if profile.updated_at >= timezone.now() - timezone.timedelta(days=45):
-        score += 3
-        reasons.append("Recently updated")
-
-    unique_reasons = []
-    for reason in reasons:
-        if reason not in unique_reasons:
-            unique_reasons.append(reason)
-    return {"score": int(min(round(score), 100)), "reasons": unique_reasons[:6]}
+def matching_skills(query):
+    raw = query.casefold()
+    result = {}
+    for tag in SkillTag.objects.filter(is_approved=True).only('id', 'name', 'slug', 'aliases'):
+        terms = [tag.name, tag.slug.replace('-', ' ')] + tag.aliases
+        if any(re.search(r'(?<!\w)' + re.escape(term.casefold()) + r'(?!\w)', raw) for term in terms if isinstance(term, str) and term):
+            result[tag.pk] = tag.name
+    return result
 
 
-def calculate_profile_match_score(profile, query="", filters=None):
-    return calculate_profile_match(profile, query, filters)["score"]
+def retrieve_candidates(queryset, query, matched):
+    ids, full_text_scores = [], {}
+    limited = False
+    if not query.strip():
+        rows = list(queryset.order_by(F('availability_confirmed_at').desc(nulls_last=True), 'pk').values_list('pk', flat=True)[:CANDIDATE_LIMIT+1])
+        return rows[:CANDIDATE_LIMIT], {}, len(rows) > CANDIDATE_LIMIT
+    exact = list(queryset.filter(profile_skills__skill_id__in=matched).order_by('pk').values_list('pk', flat=True).distinct()[:CANDIDATE_LIMIT+1]) if matched else []
+    ids.extend(exact[:CANDIDATE_LIMIT]); limited |= len(exact) > CANDIDATE_LIMIT
+    tokens = [word for word in re.findall(r'[\w+#.]+', query.casefold()) if word not in STOPWORDS][:30]
+    if tokens and connection.vendor == 'postgresql':
+        from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
+        search = SearchQuery(tokens[0], config='english')
+        for token in tokens[1:]:
+            search |= SearchQuery(token, config='english')
+        indexes = ProfileSearchIndex.objects.filter(profile__in=queryset).annotate(vector=SearchVector('search_text', config='english'), relevance=SearchRank(SearchVector('search_text', config='english'), search)).filter(vector=search).order_by('-relevance', 'profile_id')
+        rows = list(indexes.values_list('profile_id', 'relevance')[:CANDIDATE_LIMIT+1])
+        for pk, relevance in rows[:CANDIDATE_LIMIT]:
+            ids.append(pk); full_text_scores[pk] = min(float(relevance)*10, 1)
+        limited |= len(rows) > CANDIDATE_LIMIT
+    # Keeps legacy/unindexed profiles discoverable during index rebuilding; SQL is bounded.
+    conditions = Q(pk__in=[])
+    for token in tokens:
+        conditions |= Q(headline__icontains=token) | Q(bio__icontains=token) | Q(profile_skills__description__icontains=token) | Q(profile_skills__skill__name__icontains=token)
+    rows = list(queryset.filter(conditions).order_by('pk').values_list('pk', flat=True).distinct()[:CANDIDATE_LIMIT+1])
+    ids.extend(rows[:CANDIDATE_LIMIT]); limited |= len(rows) > CANDIDATE_LIMIT
+    deduplicated = list(dict.fromkeys(ids))
+    limited |= len(deduplicated) > CANDIDATE_LIMIT
+    return deduplicated[:CANDIDATE_LIMIT], full_text_scores, limited
 
 
-def rank_profiles(queryset, query="", params=None):
-    profiles = list(queryset.annotate(match_skill_count=Count("profile_skills"), average_rating=Avg("reviews__rating"), review_count=Count("reviews", distinct=True)))
-    ranked = []
-    for profile in profiles:
-        match = calculate_profile_match(profile, query, params)
-        profile.match_score = match["score"]
-        profile.match_reasons = match["reasons"]
-        ranked.append((match["score"], profile))
-    ordering = (params or {}).get("ordering")
-    if ordering in {"best_match", "match_score", "-match_score", None, ""}:
-        ranked.sort(key=lambda item: (item[0], item[1].profile_completeness, item[1].updated_at), reverse=True)
-    elif ordering in {"recently_active", "updated_at", "-updated_at"}:
-        ranked.sort(key=lambda item: item[1].updated_at, reverse=True)
-    elif ordering in {"highest_rated", "average_rating", "-average_rating"}:
-        ranked.sort(key=lambda item: (item[1].reviews.aggregate(avg=Avg("rating"))["avg"] or 0, item[0]), reverse=True)
-    elif ordering in {"most_endorsed", "endorsement_count", "-endorsement_count"}:
-        ranked.sort(key=lambda item: (item[1].endorsements.count(), item[0]), reverse=True)
-    elif ordering in {"newest_profiles", "created_at", "-created_at"}:
-        ranked.sort(key=lambda item: item[1].created_at, reverse=True)
-    elif ordering == "most_available":
-        ranked.sort(key=lambda item: (item[1].open_to_connect, item[1].availability.count(), item[0]), reverse=True)
-    elif ordering == "display_name":
-        ranked.sort(key=lambda item: item[1].display_name.lower())
-    elif ordering == "-display_name":
-        ranked.sort(key=lambda item: item[1].display_name.lower(), reverse=True)
-    elif ordering in {"profile_completeness", "-profile_completeness"}:
-        ranked.sort(key=lambda item: item[1].profile_completeness, reverse=ordering.startswith("-"))
-    elif ordering in {"created_at", "-created_at"}:
-        ranked.sort(key=lambda item: item[1].created_at, reverse=ordering.startswith("-"))
-    return ranked
-
-
-def semantic_rank_profiles(queryset, query="", params=None):
-    """
-    Local AI-assisted semantic ranker:
-    - concept detection via weighted term matching
-    - profile scoring from skills/category/text/availability/credentials/open_to_connect
-    """
+def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=None):
     params = params or {}
-    base_ranked = rank_profiles(queryset, query, params)
-    query_tokens = set(_tokens(query))
-    if not query_tokens:
-        return base_ranked
+    matched = matching_skills(query)
+    ids, text_scores, limited = retrieve_candidates(queryset, query, matched)
+    # Semantic retrieval is independent; its IDs were selected after privacy/filter checks.
+    semantic_scores = semantic_scores or {}
+    ids = list(dict.fromkeys(ids + list(semantic_scores)))[:CANDIDATE_LIMIT]
+    reviews = visible_feedback(Review.objects.all(), user) if user else Review.objects.none()
+    endorsements = visible_feedback(Endorsement.objects.all(), user, 'endorser') if user else Endorsement.objects.none()
+    profiles = queryset.filter(pk__in=ids).select_related('user').prefetch_related(
+        Prefetch('profile_skills', queryset=ProfileSkill.objects.filter(skill__is_approved=True).select_related('skill__category'), to_attr='offered_skills'),
+        'availability', 'credentials', Prefetch('reviews', queryset=reviews, to_attr='verified_reviews'),
+        Prefetch('endorsements', queryset=endorsements, to_attr='verified_endorsements'))
+    ranked = []
+    now = timezone.now()
+    explicit = {item.strip().casefold() for item in ','.join([params.get('skill', ''), params.get('skills', '')]).split(',') if item.strip()}
+    for profile in profiles:
+        offered = profile.offered_skills
+        hits = [ps for ps in offered if ps.skill_id in matched]
+        skill_relevance = min(len(hits)/max(len(matched), 1), 1) if query else .5
+        text = build_profile_search_text_cached(profile).casefold()
+        tokens = [word for word in re.findall(r'[\w+#.]+', query.casefold()) if word not in STOPWORDS][:30]
+        lexical = text_scores.get(profile.pk, sum(word in text for word in tokens)/max(len(tokens), 1)) if query else .5
+        semantic = semantic_scores.get(profile.pk)
+        relevance = .6*skill_relevance + .25*(semantic or 0) + .15*lexical if semantic_scores else .8*skill_relevance + .2*lexical
+        availability = list(profile.availability.all())
+        availability_fit = 1 if params.get('availability_day') or params.get('availability_time') else .5
+        ratings = [row.rating for row in profile.verified_reviews]
+        reliability = (sum(ratings)/5 + 2.5)/(len(ratings)+5)  # Five neutral prior observations.
+        recently_confirmed = bool(profile.availability_confirmed_at and profile.availability_confirmed_at >= now-timedelta(days=30))
+        score = .75*relevance + .10*availability_fit + .10*reliability + .05*recently_confirmed
+        reasons = [f'Offers {ps.skill.name} help.' for ps in hits[:3]]
+        if not reasons and semantic is not None:
+            reasons.append('Published skill text is related to your search.')
+        if not reasons and lexical > 0:
+            reasons.append('Published profile text mentions your search terms.')
+        for window in availability[:1]:
+            reasons.append(f'Available {window.day_of_week.title()} {window.time_block}.')
+        if ratings:
+            reasons.append(f'Feedback from {len(ratings)} completed request(s).')
+        if not query:
+            reasons = ['Willing to help.'] + reasons
+        profile.match_score = round(score*100, 2)  # Internal ordering value, never confidence.
+        profile.match_reasons = reasons[:5]
+        profile.semantic_reasons = []
+        profile.average_rating = sum(ratings)/len(ratings) if ratings else None
+        profile.review_count = len(ratings)
+        profile.endorsement_count = len(profile.verified_endorsements)
+        profile.has_resume = any(c.credential_type == 'resume' and c.visibility == 'public' for c in profile.credentials.all())
+        profile.availability_summary = ', '.join(f'{w.day_of_week} {w.time_block}' for w in availability[:2])
+        exact_priority = bool(hits) or bool(explicit and any(ps.skill.name.casefold() in explicit or ps.skill.slug.casefold() in explicit for ps in offered))
+        profile._exact_priority = exact_priority
+        ranked.append((score, profile))
+    ordering = params.get('ordering', 'best_match')
+    if ordering == 'display_name':
+        ranked.sort(key=lambda row: row[1].display_name.casefold())
+    elif ordering == 'highest_rated':
+        ranked.sort(key=lambda row: (row[1].average_rating or 2.5, row[0], -row[1].pk), reverse=True)
+    elif ordering == 'most_endorsed':
+        ranked.sort(key=lambda row: (row[1].endorsement_count, row[0], -row[1].pk), reverse=True)
+    elif ordering == 'recently_active':
+        ranked.sort(key=lambda row: (row[1].availability_confirmed_at or row[1].created_at, -row[1].pk), reverse=True)
+    elif ordering == 'newest_profiles':
+        ranked.sort(key=lambda row: (row[1].created_at, -row[1].pk), reverse=True)
+    elif ordering == 'most_available':
+        ranked.sort(key=lambda row: (len(row[1].availability.all()), row[0], -row[1].pk), reverse=True)
+    else:
+        ranked.sort(key=lambda row: (row[1]._exact_priority, row[0], -row[1].pk), reverse=True)
+    return RankedList(ranked, {'mode': 'hybrid' if semantic_scores else 'keyword_taxonomy', 'candidate_limit': CANDIDATE_LIMIT, 'bounded': limited, 'fallback_reason': 'paid_calls_disabled'})
 
-    active_concepts = []
-    for concept_name, spec in SEMANTIC_CONCEPTS.items():
-        concept_terms = set(_tokens(" ".join(spec["terms"])))
-        overlap = query_tokens.intersection(concept_terms)
-        if overlap:
-            active_concepts.append((concept_name, spec, len(overlap)))
 
-    if not active_concepts:
-        return base_ranked
+def build_profile_search_text_cached(profile):
+    return ' '.join([profile.headline, profile.bio]+[f'{ps.skill.name} {ps.description}' for ps in profile.offered_skills])
 
-    rescored = []
-    for _, profile in base_ranked:
-        # Keep some baseline relevance, but let semantic concept evidence dominate.
-        base_score = getattr(profile, "match_score", 0)
-        score = base_score * 0.35
-        reasons = []
-        profile_skill_names = [ps.skill.name for ps in profile.profile_skills.select_related("skill", "skill__category")]
-        profile_skill_names_l = [s.lower() for s in profile_skill_names]
-        profile_category_names_l = [ps.skill.category.name.lower() for ps in profile.profile_skills.select_related("skill__category")]
-        profile_text = build_profile_search_text(profile)
-        concept_hits = 0
 
-        for _, spec, overlap_count in active_concepts:
-            score += overlap_count * 20
-            concept_skills = spec["skills"]
-            concept_skill_matches = [skill for skill in concept_skills if skill.lower() in profile_skill_names_l]
-            concept_category_matches = [c for c in spec["categories"] if c.lower() in profile_category_names_l]
-
-            if concept_skill_matches:
-                concept_hits += len(concept_skill_matches)
-                score += 30 + (len(concept_skill_matches) * 8)
-                reasons.append(f"Matches {', '.join(concept_skill_matches[:2])}")
-            if concept_category_matches:
-                concept_hits += len(concept_category_matches)
-                score += 12
-                reasons.append(f"Relevant {concept_category_matches[0]} background")
-
-            for term in spec["terms"]:
-                if term.lower() in profile_text:
-                    score += 3
-                    concept_hits += 1
-
-        if concept_hits == 0:
-            # For semantic mode, deprioritize profiles without concept evidence.
-            score -= 25
-
-        has_resume = profile.credentials.filter(credential_type="resume", visibility="public").exists()
-        if has_resume:
-            score += 6
-            reasons.append("Has public resume")
-        if profile.open_to_connect:
-            score += 6
-            reasons.append("Open to connect")
-        if profile.availability.filter(time_block="evening").exists():
-            score += 3
-            reasons.append("Available during evenings")
-
-        # keep concise, deduped reasons
-        unique_reasons = []
-        for reason in reasons:
-            if reason not in unique_reasons:
-                unique_reasons.append(reason)
-
-        profile.match_score = int(max(min(round(score), 100), 0))
-        profile.match_reasons = unique_reasons[:4]
-        profile.semantic_reasons = unique_reasons[:3]
-        profile.has_resume = has_resume
-        profile.availability_summary = "Evenings" if profile.availability.filter(time_block="evening").exists() else ""
-        rescored.append((profile.match_score, profile))
-
-    rescored.sort(key=lambda item: (item[0], item[1].open_to_connect, item[1].profile_completeness, item[1].updated_at), reverse=True)
-    return rescored
+def semantic_rank_profiles(queryset, query='', params=None, user=None):
+    # The gated provider adapter is introduced separately; this fallback is truthful.
+    return rank_profiles(queryset, query, params, user=user)
 
 
 def recommend_profiles_for_user(user, queryset):
-    profile = getattr(user, "profile", None)
-    if not profile:
-        return rank_profiles(queryset, "", {"ordering": "match_score"})
-    skill_terms = [ps.skill.name for ps in profile.profile_skills.select_related("skill")]
-    categories = [ps.skill.category.name for ps in profile.profile_skills.select_related("skill__category")]
-    query = " ".join(skill_terms + categories + _tokens(profile.interests))
-    ranked = rank_profiles(queryset.exclude(user=user), query, {"open_to_connect": "true"})
-    for _, recommended in ranked:
-        overlaps = set(s.lower() for s in skill_terms) & set(ps.skill.name.lower() for ps in recommended.profile_skills.all())
-        if overlaps:
-            recommended.match_reasons = [f"Shares interest in {next(iter(overlaps)).title()}"] + recommended.match_reasons
+    profile = getattr(user, 'profile', None)
+    goals = list(profile.learning_goals.filter(is_approved=True).values_list('name', flat=True)) if profile else []
+    query = ' '.join(goals + ([profile.learning_goal_notes] if goals and profile.learning_goal_notes else []))
+    ranked = rank_profiles(queryset.exclude(user=user), query, user=user)
+    ranked.metadata['recommendation_basis'] = 'learning_goals' if goals else 'discovery_suggestions'
     return ranked
 
 
-def similar_profiles_for(profile, queryset):
-    skill_names = [ps.skill.name for ps in profile.profile_skills.select_related("skill")]
-    categories = [ps.skill.category.name for ps in profile.profile_skills.select_related("skill__category")]
-    query = " ".join(skill_names + categories + _tokens(profile.interests))
-    return rank_profiles(queryset.exclude(pk=profile.pk), query, {"open_to_connect": "true"})
-
-
-def extract_keywords_from_profile(profile):
-    text = build_profile_search_text(profile)
-    words = [w.strip(".,;:!?()[]").lower() for w in text.split()]
-    stopwords = {"with", "and", "the", "for", "that", "this", "from", "help", "student", "students", "illinois"}
-    counts = Counter(w for w in words if len(w) > 3 and w not in stopwords)
-    return [word for word, _ in counts.most_common(20)]
-
-
-def fallback_semantic_similarity(query, search_text):
-    return SequenceMatcher(None, (query or "").lower(), (search_text or "").lower()).ratio()
+def similar_profiles_for(profile, queryset, user=None):
+    query = ' '.join(profile.profile_skills.values_list('skill__name', flat=True))
+    return rank_profiles(queryset.exclude(pk=profile.pk), query, user=user)
 
 
 def rebuild_profile_search_index(profile):
+    if profile.visibility != 'public' or not profile.user.is_active or not profile.user.is_student_verified or profile.user.is_demo:
+        ProfileSearchIndex.objects.filter(profile=profile).delete()
+        return None
     text = build_profile_search_text(profile)
-    skills = [ps.skill.name for ps in profile.profile_skills.select_related("skill")]
-    index, _ = ProfileSearchIndex.objects.update_or_create(
-        profile=profile,
-        defaults={
-            "search_text": text,
-            "extracted_keywords": extract_keywords_from_profile(profile),
-            "suggested_skill_names": skills,
-            "embedding": None,
-        },
-    )
+    index, _ = ProfileSearchIndex.objects.update_or_create(profile=profile, defaults={'search_text': text, 'extracted_keywords': [], 'suggested_skill_names': list(profile.profile_skills.values_list('skill__name', flat=True))})
     return index
 
 
 def rebuild_all_profile_search_indexes():
-    from profiles.models import StudentProfile
-
-    for profile in StudentProfile.objects.prefetch_related("profile_skills__skill__category", "credentials"):
+    for profile in StudentProfile.objects.select_related('user').all():
         rebuild_profile_search_index(profile)

@@ -11,5 +11,9 @@ class Command(BaseCommand):
         for name, skills in CATEGORIES.items():
             category, _ = SkillCategory.objects.get_or_create(name=name, defaults={"slug": slugify(name)})
             for skill in skills:
-                SkillTag.objects.get_or_create(category=category, slug=slugify(skill), defaults={"name": skill, "is_approved": True})
+                tag, _ = SkillTag.objects.get_or_create(category=category, slug=slugify(skill), defaults={"name": skill, "is_approved": True})
+                aliases = {"Resume Review": ["resume", "cv", "curriculum vitae", "application feedback"], "React": ["reactjs", "react.js", "frontend", "front end"], "GitHub": ["git", "version control", "repository"], "Research Experience": ["research", "lab", "laboratory"], "Project Collaboration": ["collaborator", "collaboration", "team project"], "Figma": ["ux", "prototype", "prototyping"], "Interview Prep": ["interview", "behavioral"], "Consulting Prep": ["consulting", "case interview"]}.get(skill, [])
+                if aliases and not tag.aliases:
+                    tag.aliases = aliases
+                    tag.save(update_fields=["aliases"])
         self.stdout.write("Approved skill taxonomy ready; no user accounts seeded.")

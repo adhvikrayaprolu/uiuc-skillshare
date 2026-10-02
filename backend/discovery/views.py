@@ -18,7 +18,7 @@ class DiscoverySearchView(APIView):
         query = request.query_params.get("q", "")
         mode = request.query_params.get("mode", "").lower().strip()
         is_semantic = mode == "semantic" and bool(query.strip())
-        ranked = semantic_rank_profiles(queryset, query, request.query_params) if is_semantic else rank_profiles(queryset, query, request.query_params)
+        ranked = semantic_rank_profiles(queryset, query, request.query_params, user=request.user) if is_semantic else rank_profiles(queryset, query, request.query_params, user=request.user)
         profiles = [profile for _, profile in ranked]
         track_event(
             request.user,
@@ -30,12 +30,10 @@ class DiscoverySearchView(APIView):
         page = paginator.paginate_queryset(profiles, request)
         serializer = PublicStudentProfileListSerializer(page, many=True, context={"request": request})
         response = paginator.get_paginated_response(serializer.data)
-        response.data["ai"] = {
-            "enabled": is_semantic,
-            "mode": "local_weighted_semantic_matcher" if is_semantic else "default_ranking",
-            "model": "rule-based semantic concept matcher" if is_semantic else "keyword matching ranker",
-            "query": query,
-        }
+        response.data["matching"] = ranked.metadata
+        response.data["matching"]["requested_mode"] = mode or "keyword"
+        if not is_semantic:
+            response.data["matching"]["fallback_reason"] = None
         return response
 
 
@@ -50,4 +48,6 @@ class RecommendedProfilesView(APIView):
         paginator = PageNumberPagination()
         page = paginator.paginate_queryset(profiles, request)
         serializer = PublicStudentProfileListSerializer(page, many=True, context={"request": request})
-        return paginator.get_paginated_response(serializer.data)
+        response = paginator.get_paginated_response(serializer.data)
+        response.data["matching"] = ranked.metadata
+        return response

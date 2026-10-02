@@ -228,7 +228,8 @@ export interface DiscoveryAiMeta {
   query: string;
 }
 
-export type DiscoverySearchResponse = PaginatedResponse<ProfileListItem> & { ai?: DiscoveryAiMeta };
+export interface MatchingMeta { mode: string; fallback_reason?: string | null; candidate_limit: number; bounded: boolean; recommendation_basis?: string; }
+export type DiscoverySearchResponse = PaginatedResponse<ProfileListItem> & { matching?: MatchingMeta };
 
 export interface AnalyticsSummaryResponse {
   user_summary: {

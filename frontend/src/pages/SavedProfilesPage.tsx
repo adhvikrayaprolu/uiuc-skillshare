@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { useListPage } from '../hooks/useListPage';
+import { ListPagination } from '../components/ui/ListPagination';
 import { Link } from 'react-router-dom';
 import { Search, Trash2, Bookmark } from 'lucide-react';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
@@ -11,7 +14,9 @@ export function SavedProfilesPage() {
   const deleteSavedProfile = useDeleteSavedProfileMutation();
   const toast = useToast();
   const isMock = shouldUseMocks();
-  const savedProfiles = savedProfilesQuery.data?.profiles ?? [];
+  const [search, setSearch] = useState('');
+  const savedProfiles = (savedProfilesQuery.data?.profiles ?? []).filter(profile => `${profile.name} ${profile.headline} ${profile.skills.map(skill => skill.name).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
+  const pagination = useListPage(savedProfiles, search);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -31,14 +36,14 @@ export function SavedProfilesPage() {
           <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#64748B]" />
           <input
             type="text"
-            placeholder="Search saved profiles..."
+            aria-label="Search saved profiles" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search saved profiles..."
             className="w-full rounded-xl border border-[#E2E8F0] bg-white py-3 pl-12 pr-4 focus:border-[#13294B] focus:outline-none"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        {savedProfiles.map((profile) => (
+        {pagination.items.map((profile) => (
           <div
             key={profile.id}
             className="rounded-2xl border border-[#E2E8F0] bg-white p-6 transition-all hover:shadow-lg"
@@ -98,7 +103,8 @@ export function SavedProfilesPage() {
         ))}
       </div>
 
-      {savedProfiles.length === 0 && !savedProfilesQuery.isLoading && (
+      <ListPagination {...pagination}/>
+      {savedProfiles.length === 0 && !savedProfilesQuery.isLoading && !savedProfilesQuery.isError && (
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-12 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#F8FAFC]">
             <Bookmark className="h-8 w-8 text-[#64748B]" />

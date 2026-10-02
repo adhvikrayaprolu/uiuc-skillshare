@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Filter, ChevronDown, Sparkles, X, Info } from 'lucide-react';
-import { allSkills } from '../data/mockData';
+import { useTaxonomy } from '../hooks/useTaxonomy';
 import { ProfileCard } from '../components/profiles/ProfileCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useDiscoverySearch } from '../hooks/useDiscoverySearch';
@@ -8,17 +8,12 @@ import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
 
-const quickCategories = [
-  'Career',
-  'Technical',
-  'Design',
-  'Research',
-  'Startups',
-  'Campus Life',
-  'Project Collaboration',
-];
-
 export function DiscoveryPage() {
+  const taxonomy = useTaxonomy();
+  const quickCategories = taxonomy.data?.categories || [];
+  const allSkills = taxonomy.data?.skills || [];
+  const [page, setPage] = useState(1);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState('All Years');
@@ -31,9 +26,11 @@ export function DiscoveryPage() {
   const savedActions = useSavedProfileActions();
   const toast = useToast();
 
+  useEffect(() => { const timer = window.setTimeout(() => {setDebouncedQuery(searchQuery); setPage(1);}, 300); return () => window.clearTimeout(timer); }, [searchQuery]);
   const discoveryQuery = useDiscoverySearch({
-    q: searchQuery || undefined,
-    mode: aiAssisted && searchQuery.trim() ? 'semantic' : undefined,
+    page,
+    q: debouncedQuery || undefined,
+    mode: aiAssisted && debouncedQuery.trim() ? 'semantic' : undefined,
     skills: selectedSkills.length ? selectedSkills.join(',') : undefined,
     category: selectedCategory === 'All' ? undefined : selectedCategory,
     year: selectedYear === 'All Years' ? undefined : selectedYear.toLowerCase(),
@@ -61,21 +58,13 @@ export function DiscoveryPage() {
 
   const filteredProfiles = discoveryQuery.data?.profiles ?? [];
   const resultCount = discoveryQuery.data?.count ?? filteredProfiles.length;
-  const aiEnabled = Boolean(aiAssisted && searchQuery.trim());
-
-  const getRelevanceLabel = (index: number) => {
-    if (!aiEnabled) return undefined;
-    if (index === 0) return 'Top AI Match';
-    if (index <= 2) return 'Strong Relevance';
-    return 'Relevant';
-  };
-
   const getReasonText = (reasons?: string[]) => {
     if (!searchQuery.trim() || !reasons?.length) return undefined;
     return reasons.slice(0, 2).join(' + ');
   };
 
   const clearAllFilters = () => {
+    setPage(1);
     setSearchQuery('');
     setSelectedSkills([]);
     setSelectedYear('All Years');
@@ -111,14 +100,14 @@ export function DiscoveryPage() {
         </div>
         <div className="mt-3 rounded-xl border border-[#E2E8F0] bg-white p-3">
           <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#0F172A]">
-            <input type="checkbox" checked={aiAssisted} onChange={(e) => setAiAssisted(e.target.checked)} />
+            <input type="checkbox" checked={aiAssisted} onChange={(e) => {setPage(1); setAiAssisted(e.target.checked);}} />
             <Sparkles className="h-3.5 w-3.5 text-[#FF5F05]" />
-            AI-assisted discovery
+            Use semantic matching when available
           </label>
           <p className="mt-2 text-xs text-[#64748B]">
             {aiAssisted
-              ? 'Search understands intent, not only exact keywords. Example: "resume help" can match Resume Review, LinkedIn Feedback, and Internship Search.'
-              : 'Keyword/filter mode: matches exact terms and selected filters only.'}
+              ? 'The server reports the active matching mode. Keyword and approved taxonomy aliases work without paid AI.'
+              : 'Matches approved skills, aliases and published skill text.'}
           </p>
         </div>
       </div>
@@ -128,7 +117,7 @@ export function DiscoveryPage() {
         {quickCategories.map(category => (
           <button
             key={category}
-            onClick={() => setSelectedCategory(selectedCategory === category ? 'All' : category)}
+            onClick={() => {setPage(1); setSelectedCategory(selectedCategory === category ? 'All' : category);}}
             className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               selectedCategory === category
                 ? 'bg-[#13294B] text-white'
@@ -169,7 +158,7 @@ export function DiscoveryPage() {
                 <label className="mb-2 block text-sm font-semibold text-[#0F172A]">Year</label>
                 <select
                   value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
+                  onChange={(e) => {setPage(1); setSelectedYear(e.target.value);}}
                   className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm focus:border-[#13294B] focus:outline-none"
                 >
                   <option>All Years</option>
@@ -190,6 +179,7 @@ export function DiscoveryPage() {
                         type="checkbox"
                         checked={selectedSkills.includes(skill)}
                         onChange={(e) => {
+                          setPage(1);
                           if (e.target.checked) {
                             setSelectedSkills([...selectedSkills, skill]);
                           } else {
@@ -210,7 +200,7 @@ export function DiscoveryPage() {
                   <input
                     type="checkbox"
                     checked={openOnly}
-                    onChange={(e) => setOpenOnly(e.target.checked)}
+                    onChange={(e) => {setPage(1); setOpenOnly(e.target.checked);}}
                     className="w-4 h-4 rounded border-[#E2E8F0] text-[#13294B] focus:ring-[#13294B]"
                   />
                   <span className="text-sm font-semibold text-[#0F172A]">Open to Connect Only</span>
@@ -269,9 +259,9 @@ export function DiscoveryPage() {
             <p className="text-sm text-[#64748B]">
               <span className="font-semibold text-[#0F172A]">{resultCount}</span> {resultCount === 1 ? 'student' : 'students'} found
               {discoveryQuery.isFetching && <span className="ml-2 text-[#FF5F05]">Updating...</span>}
-              {discoveryQuery.data?.ai?.enabled && (
+              {discoveryQuery.data?.matching?.mode === 'hybrid' && (
                 <span className="ml-2 rounded-full bg-[#FFF3EA] px-2 py-0.5 text-xs text-[#C2410C]">
-                  AI mode
+                  Semantic + keyword
                 </span>
               )}
             </p>
@@ -279,7 +269,7 @@ export function DiscoveryPage() {
               Sort by:
               <select
                 value={ordering}
-                onChange={(event) => setOrdering(event.target.value)}
+                onChange={(event) => {setPage(1); setOrdering(event.target.value);}}
                 className="bg-transparent font-medium focus:outline-none"
               >
                 <option value="best_match">Best Match</option>
@@ -297,18 +287,17 @@ export function DiscoveryPage() {
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#334155]">
               <Info className="h-3.5 w-3.5 text-[#64748B]" />
               {aiAssisted
-                ? 'Using AI-assisted discovery to rank profiles by intent, skills, and profile context.'
+                ? 'Using Use semantic matching when available to rank profiles by intent, skills, and profile context.'
                 : 'Using keyword and filter search.'}
             </div>
           )}
 
           {/* Profile Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {filteredProfiles.map((profile, index) => (
+            {filteredProfiles.map((profile) => (
               <ProfileCard
                 key={profile.id}
                 profile={profile}
-                relevanceLabel={getRelevanceLabel(index)}
                 reasonText={getReasonText(profile.matchReasons)}
                 isSaved={discoveryQuery.data?.isMock ? savedProfiles.includes(profile.id) : savedActions.savedProfileIds.has(profile.id)}
                 onToggleSave={() => toggleSave(profile.id)}
@@ -316,8 +305,14 @@ export function DiscoveryPage() {
             ))}
           </div>
 
+          {discoveryQuery.data?.matching?.bounded && <p className="mt-4 text-sm">Showing top matches within a {discoveryQuery.data.matching.candidate_limit}-candidate limit. Narrow your filters for broader coverage.</p>}
+          <nav aria-label="Discovery pages" className="mt-4 flex items-center gap-4">
+            <button disabled={page === 1 || discoveryQuery.isFetching} onClick={() => setPage(p => p - 1)}>Previous page</button><span>Page {page}</span>
+            <button disabled={!discoveryQuery.data?.next || discoveryQuery.isFetching} onClick={() => setPage(p => p + 1)}>Next page</button>
+          </nav>
+          {discoveryQuery.isLoading && <p role="status">Loading matching peers…</p>}
           {/* Empty State */}
-          {filteredProfiles.length === 0 && (
+          {filteredProfiles.length === 0 && !discoveryQuery.isLoading && !discoveryQuery.isError && (
             <EmptyState
               icon={Search}
               title="No matching students found"

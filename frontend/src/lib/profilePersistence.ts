@@ -2,6 +2,11 @@ import {api} from './api';
 import type { ContactMethodType, CredentialType, ProfileDetail, SkillTag, StudentYear } from '../types/api';
 
 export interface ProfileFormState {
+  learningGoalIds: number[];
+  learningGoalNotes: string;
+  shareContacts: boolean;
+  embeddingConsent: boolean;
+  skillDetails: Record<number, {confidence_level: "beginner" | "intermediate" | "advanced" | "expert"; description: string; is_featured?: boolean}>;
   displayName: string;
   major: string;
   year: StudentYear;
@@ -21,6 +26,7 @@ export interface ProfileFormState {
 
 export function defaultProfileForm(email = ''): ProfileFormState {
   return {
+    learningGoalIds: [], learningGoalNotes: '', shareContacts: false, embeddingConsent: false, skillDetails: {},
     displayName: '',
     major: 'Computer Science',
     year: 'junior',
@@ -29,7 +35,7 @@ export function defaultProfileForm(email = ''): ProfileFormState {
     interests: '',
     location: 'Urbana-Champaign, IL',
     openToConnect: true,
-    visibility: 'public',
+    visibility: 'private',
     preferredContactMethod: 'email',
     availabilityNotes: '',
     selectedSkillIds: [],
@@ -41,6 +47,8 @@ export function defaultProfileForm(email = ''): ProfileFormState {
 
 export function formFromProfile(profile: ProfileDetail): ProfileFormState {
   return {
+    learningGoalIds: profile.learning_goals || [], learningGoalNotes: profile.learning_goal_notes || "", shareContacts: profile.share_contacts || false, embeddingConsent: profile.embedding_consent || false,
+    skillDetails: Object.fromEntries(profile.profile_skills.map(skill => [skill.skill, {confidence_level: skill.confidence_level, description: skill.description || "", is_featured: skill.is_featured}])),
     displayName: profile.display_name,
     major: profile.major,
     year: profile.year as StudentYear,
@@ -70,8 +78,10 @@ export function validateProfileForm(form: ProfileFormState) {
   if (!form.major.trim()) errors.push('Major is required.');
   if (!form.year) errors.push('Year is required.');
   if (!form.headline.trim()) errors.push('Headline is required.');
+  if (!form.bio.trim()) errors.push('Describe how you can help in your bio.');
+  if (!form.availability.length && !form.availabilityNotes.trim()) errors.push('Add availability.');
   if (!form.selectedSkillIds.length) errors.push('Add at least one skill.');
-  if (!form.contacts.some((contact) => contact.value.trim())) errors.push('Add at least one contact method.');
+  if (form.shareContacts && !form.contacts.some((contact) => contact.value.trim() && contact.is_public)) errors.push('Add at least one contact method.');
   form.contacts.forEach((contact) => {
     if (contact.value && contact.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.value)) {
       errors.push('Enter a valid email contact.');
@@ -86,7 +96,9 @@ export function validateProfileForm(form: ProfileFormState) {
 }
 
 export async function saveProfileForm(form: ProfileFormState, rawSkills: SkillTag[] = []) {
+  if (rawSkills.length && form.selectedSkillIds.some(id => !rawSkills.some(skill => skill.id === id))) throw new Error("Choose approved skills from the current list.");
   const profilePayload = {
+    learning_goals: form.learningGoalIds, learning_goal_notes: form.learningGoalNotes.trim(), share_contacts: form.shareContacts, embedding_consent: form.embeddingConsent,
     display_name: form.displayName.trim(),
     major: form.major.trim(),
     year: form.year,
@@ -103,9 +115,9 @@ export async function saveProfileForm(form: ProfileFormState, rawSkills: SkillTa
   const {data} = await api.put<ProfileDetail>('/profiles/me/aggregate/', {
     profile: profilePayload,
     skills: form.selectedSkillIds.map((skillId,index)=>({
-      skill:skillId, confidence_level:index===0?'advanced':'intermediate',
-      description:rawSkills.find(item=>item.id===skillId) ? `Happy to help with ${rawSkills.find(item=>item.id===skillId)?.name}.` : '',
-      is_featured:index<3,
+      skill:skillId, confidence_level:form.skillDetails[skillId]?.confidence_level || 'intermediate',
+      description:form.skillDetails[skillId]?.description || '',
+      is_featured:form.skillDetails[skillId]?.is_featured ?? index<3,
     })),
     availability:form.availability.filter(item=>item.day_of_week && item.time_block),
     contacts:form.contacts.filter(item=>item.value.trim()).map(item=>({...item,value:item.value.trim()})),

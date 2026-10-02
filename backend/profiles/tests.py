@@ -20,6 +20,7 @@ class ProfileTests(APITestCase):
             "headline": "Can help with GitHub",
             "bio": "I like helping students learn collaboration workflows.",
             "preferred_contact_method": "email",
+            "visibility": "public",
         }
 
     def create_profile(self):
@@ -29,7 +30,7 @@ class ProfileTests(APITestCase):
         response = self.create_profile()
         self.assertEqual(response.status_code, 201)
         self.user.refresh_from_db()
-        self.assertTrue(self.user.has_completed_onboarding)
+        self.assertFalse(self.user.has_completed_onboarding)
 
     def test_user_cannot_create_two_profiles(self):
         self.create_profile()
@@ -139,7 +140,7 @@ class ProfileAggregateTests(APITestCase):
         self.assertEqual(self.client.put(reverse("profile-aggregate"), self.payload, format="json").status_code, 200)
         self.assertEqual(StudentProfile.objects.filter(user=self.user).count(), 1)
         self.user.refresh_from_db()
-        self.assertTrue(self.user.has_completed_onboarding)
+        self.assertFalse(self.user.has_completed_onboarding)
         self.client.force_authenticate(None)
         self.assertEqual(self.client.put(reverse("profile-aggregate"), self.payload, format="json").status_code, 401)
 

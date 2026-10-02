@@ -136,6 +136,17 @@ def onboarding_status(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def analytics_summary(request):
+    return Response(analytics_payload(request))
+
+
+@extend_schema(responses=dict)
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_analytics_summary(request):
+    return Response(analytics_payload(request))
+
+
+def analytics_payload(request):
     profile = getattr(request.user, "profile", None)
     incoming_active = (
         profile.received_help_requests.filter(status__in=[HelpRequest.Status.PENDING, HelpRequest.Status.ACCEPTED]).count()
@@ -147,11 +158,13 @@ def analytics_summary(request):
         Q(seeker=request.user) | Q(helper_profile__user=request.user)
     ).count()
 
+    personal = {"saved_profiles_count": request.user.saved_profiles.filter(saved_profile__in=visible_profiles(StudentProfile.objects.all(), request.user)).count(), "active_help_requests_count": incoming_active + outgoing_active, "connections_count": my_connections, "profile_skills_count": profile.profile_skills.count() if profile else 0, "public_credentials_count": profile.credentials.filter(visibility="public").count() if profile else 0, "profile_completeness": profile.profile_completeness if profile else 0}
+    if not request.user.is_staff:
+        return {"user_summary": personal}
     top_skills = SkillTag.objects.annotate(profile_count=Count("profile_skills")).order_by("-profile_count", "name")[:8]
     request_status_counts = {status: count for status, count in HelpRequest.objects.values_list("status").annotate(count=Count("id"))}
     connections_count = HelpRequest.objects.filter(status__in=[HelpRequest.Status.ACCEPTED, HelpRequest.Status.COMPLETED]).count()
-    return Response(
-        {
+    return {
             "user_summary": {
                 "saved_profiles_count": request.user.saved_profiles.count(),
                 "active_help_requests_count": incoming_active + outgoing_active,
@@ -177,4 +190,3 @@ def analytics_summary(request):
                 },
             },
         }
-    )

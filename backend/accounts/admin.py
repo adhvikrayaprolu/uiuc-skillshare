@@ -19,4 +19,26 @@ class UserAdmin(DjangoUserAdmin):
         ("Important dates", {"fields": ("last_login", "date_joined", "updated_at")}),
     )
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),)
+    actions = ["suspend_accounts", "restore_accounts"]
+
+    @admin.action(description="Suspend selected accounts and revoke sessions")
+    def suspend_accounts(self, request, queryset):
+        from .lifecycle import revoke_sessions
+        from interactions.models import ModerationAudit
+        from discovery.models import ProfileSearchIndex
+        for user in queryset.exclude(is_superuser=True):
+            user.is_active = False
+            user.save(update_fields=["is_active"])
+            revoke_sessions(user.pk)
+            ProfileSearchIndex.objects.filter(profile__user=user).delete()
+            ModerationAudit.objects.create(actor=request.user, subject=user, action="suspended")
+
+    @admin.action(description="Restore selected accounts")
+    def restore_accounts(self, request, queryset):
+        from interactions.models import ModerationAudit
+        for user in queryset:
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+            ModerationAudit.objects.create(actor=request.user, subject=user, action="restored")
+
     readonly_fields = ("date_joined", "updated_at")

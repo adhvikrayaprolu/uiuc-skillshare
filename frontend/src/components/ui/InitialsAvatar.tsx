@@ -1,5 +1,7 @@
+import {useState} from "react";
 interface InitialsAvatarProps {
   name: string;
+  src?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
@@ -20,7 +22,8 @@ const avatarColors = [
   'bg-[#C2410C]', // Deep orange
 ];
 
-export function InitialsAvatar({ name, size = 'md', className = '' }: InitialsAvatarProps) {
+export function InitialsAvatar({ name, src, size = 'md', className = '' }: InitialsAvatarProps) {
+  const [failed, setFailed] = useState(false);
   const getInitials = (fullName: string): string => {
     const names = fullName.trim().split(' ');
     if (names.length >= 2) {
@@ -41,7 +44,7 @@ export function InitialsAvatar({ name, size = 'md', className = '' }: InitialsAv
     <div
       className={`${sizeClasses[size]} ${bgColor} rounded-full flex items-center justify-center text-white font-semibold ${className}`}
     >
-      {initials}
+      {src && !failed ? <img src={src} alt={`${name} avatar`} onError={() => setFailed(true)} className="h-full w-full rounded-full object-cover"/> : initials}
     </div>
   );
 }

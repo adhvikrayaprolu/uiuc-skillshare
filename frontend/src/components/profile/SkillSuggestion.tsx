@@ -1,0 +1,7 @@
+import {useState} from 'react';
+import {suggestSkill} from '../../lib/taxonomyApi';
+import type {SkillCategory} from '../../types/api';
+export function SkillSuggestion({categories}: {categories: SkillCategory[]}) {
+  const [name, setName] = useState(''); const [category, setCategory] = useState(''); const [pending, setPending] = useState(false); const [message, setMessage] = useState('');
+  return <fieldset className="space-y-2 rounded-xl border p-3"><legend className="text-sm font-semibold">Suggest a missing skill</legend><label className="block text-sm">Skill name<input maxLength={120} className="ml-2 rounded border p-2" value={name} onChange={event => setName(event.target.value)}/></label><label className="block text-sm">Category<select className="ml-2 rounded border p-2" value={category} onChange={event => setCategory(event.target.value)}><option value="">Choose a category</option>{categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button type="button" disabled={pending || !name.trim() || !category} className="rounded border p-2 text-sm disabled:opacity-50" onClick={async () => {setPending(true); try {await suggestSkill(Number(category), name.trim()); setName(''); setMessage('Submitted for staff approval. Pending skills do not appear in discovery.');} catch {setMessage('Could not submit. This skill may already be listed or pending.');} finally {setPending(false);}}}>Submit suggestion</button><p role="status" className="text-sm">{message}</p></fieldset>;
+}

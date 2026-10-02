@@ -142,7 +142,7 @@ class SimilarProfilesView(generics.ListAPIView):
             return StudentProfile.objects.none()
         profile = get_object_or_404(visible_profiles(StudentProfile.objects.all(), self.request.user), pk=self.kwargs["pk"])
         queryset = base_discoverable_queryset(StudentProfile.objects.filter(open_to_connect=True), user=self.request.user)
-        ranked = similar_profiles_for(profile, queryset)[:10]
+        ranked = similar_profiles_for(profile, queryset, user=self.request.user)[:10]
         return [profile for _, profile in ranked]
 
 

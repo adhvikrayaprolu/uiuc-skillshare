@@ -270,17 +270,18 @@ class Command(BaseCommand):
 
         profiles_by_email = {}
         for spec in PROFILE_SPECS:
-            email = spec["email"]
+            email = "demo-" + spec["email"].split("@")[0] + "@example.invalid"
             user, _ = User.objects.update_or_create(
                 email=email,
                 defaults={
                     "first_name": spec["first"],
                     "last_name": spec["last"],
-                    "is_student_verified": True,
+                    "is_student_verified": False,
+                    "is_demo": True,
                     "has_completed_onboarding": True,
                 },
             )
-            display_name = f"{spec['first']} {spec['last']}"
+            display_name = f"Synthetic demo: {spec['first']} {spec['last']}"
             profile, _ = StudentProfile.objects.update_or_create(
                 user=user,
                 defaults={
@@ -339,9 +340,9 @@ class Command(BaseCommand):
 
             profile.update_profile_completeness()
             rebuild_profile_search_index(profile)
-            profiles_by_email[email] = profile
+            profiles_by_email[spec["email"]] = profile
 
-        demo_emails = list(profiles_by_email.keys())
+        demo_emails = [profile.user.email for profile in profiles_by_email.values()]
         HelpRequest.objects.filter(Q(seeker__email__in=demo_emails) | Q(helper_profile__user__email__in=demo_emails)).delete()
 
         adhvik = profiles_by_email["adhvik.rayaprolu@illinois.edu"]

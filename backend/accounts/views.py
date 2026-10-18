@@ -1,114 +1,69 @@
 from django.conf import settings
-from django.db import IntegrityError
-from rest_framework import generics, status
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import logout
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
+from allauth.account.internal.flows.login_by_code import LoginCodeVerificationProcess
+from allauth.account.models import EmailAddress
+from allauth.headless.account.views import RequestLoginCodeView, ResendLoginCodeView
+from allauth.decorators import rate_limit
+from django.utils.decorators import method_decorator
+from allauth.headless.base.response import AuthenticationResponse
+from allauth.headless.socialaccount.views import ProviderTokenView
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
 
-from profiles.models import StudentProfile
-
+from .adapters import illinois_email
 from .models import User
-from .serializers import CurrentUserSerializer, DevLoginSerializer, GoogleAuthSerializer
+from .serializers import CurrentUserSerializer
 
 
-class GoogleAuthView(APIView):
-    permission_classes = [AllowAny]
-    throttle_scope = "auth_google"
-    serializer_class = GoogleAuthSerializer
+@ensure_csrf_cookie
+def csrf(request):
+    return JsonResponse({"csrfToken": get_token(request), "googleEnabled": bool(settings.GOOGLE_CLIENT_ID)})
 
-    def post(self, request):
-        serializer = GoogleAuthSerializer(data=request.data)
-        if not serializer.is_valid():
-            errors = serializer.errors
-            if "email" in errors:
-                raise PermissionDenied(errors["email"][0])
-            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-        payload = serializer.validated_data["payload"]
-        email = payload["email"].lower()
-        defaults = {
-            "first_name": payload.get("given_name", ""),
-            "last_name": payload.get("family_name", ""),
-            "google_sub": payload.get("sub"),
-            "is_student_verified": True,
-        }
+
+class EmailCodeRequestView(RequestLoginCodeView):
+    def post(self, request, *args, **kwargs):
         try:
-            user, _ = User.objects.update_or_create(email=email, defaults=defaults)
-        except IntegrityError:
-            user = User.objects.get(email=email)
-            user.google_sub = defaults["google_sub"]
-            user.is_student_verified = True
-            user.save(update_fields=["google_sub", "is_student_verified", "updated_at"])
+            email = illinois_email(self.input.cleaned_data.get("email"))
+        except ValidationError:
+            return JsonResponse({"status": 400, "errors": [{"message": "Use an @illinois.edu email address."}]}, status=400)
+        # Provision only an unverified record; the allauth code owns expiry, attempts and replay prevention.
+        with transaction.atomic():
+            user, _ = User.objects.get_or_create(email=email)
+            EmailAddress.objects.get_or_create(user=user, email=email, defaults={"primary": True, "verified": False})
+        if not user.is_active or user.is_demo:
+            user = None  # Preserve allauth's non-enumerating response and never issue a valid code.
+        LoginCodeVerificationProcess.initiate(request=self.request, user=user, email=email)
+        return AuthenticationResponse(self.request)
 
-        refresh = RefreshToken.for_user(user)
-        return Response({"access": str(refresh.access_token), "refresh": str(refresh), "user": CurrentUserSerializer(user).data})
+
+@method_decorator(rate_limit(action="login"), name="handle")
+class GoogleAuthView(ProviderTokenView):
+    def dispatch(self, request, *args, **kwargs):
+        if not settings.GOOGLE_CLIENT_ID:
+            return JsonResponse({"status": 503, "errors": [{"message": "Google sign-in is unavailable. Use an email code."}]}, status=503)
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        if self.input.cleaned_data["provider"].id != "google" or self.input.cleaned_data["process"] != "login":
+            return JsonResponse({"status": 400, "errors": [{"message": "Automatic account linking is disabled."}]}, status=400)
+        return super().post(request, *args, **kwargs)
 
 
-class DevLoginView(APIView):
-    """
-    DEBUG-only token login for local class demos (no Google OAuth).
-    POST {"email": "user@illinois.edu"}
-    """
+@method_decorator(rate_limit(action="request_login_code"), name="handle")
+class EmailCodeResendView(ResendLoginCodeView):
+    pass
 
-    permission_classes = [AllowAny]
-    serializer_class = DevLoginSerializer
 
-    def post(self, request):
-        if not settings.DEBUG:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = DevLoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data["email"]
-        local = email.split("@", 1)[0]
-        parts = local.split(".")
-        first_name = parts[0].title() if parts else ""
-        last_name = " ".join(p.title() for p in parts[1:]) if len(parts) > 1 else ""
-
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults={
-                "first_name": first_name,
-                "last_name": last_name,
-                "is_student_verified": True,
-                "has_completed_onboarding": True,
-            },
-        )
-        if not created:
-            updates = []
-            if not user.first_name and first_name:
-                user.first_name = first_name
-                updates.append("first_name")
-            if not user.last_name and last_name:
-                user.last_name = last_name
-                updates.append("last_name")
-            if not user.is_student_verified:
-                user.is_student_verified = True
-                updates.append("is_student_verified")
-            if not user.has_completed_onboarding:
-                user.has_completed_onboarding = True
-                updates.append("has_completed_onboarding")
-            if updates:
-                user.save(update_fields=updates + ["updated_at"])
-
-        if not StudentProfile.objects.filter(user_id=user.id).exists():
-            display = f"{user.first_name} {user.last_name}".strip() or email
-            stub = StudentProfile.objects.create(
-                user=user,
-                display_name=display,
-                major="Undeclared",
-                year="other",
-                headline="Illinois student",
-                bio="",
-                interests="",
-                open_to_connect=True,
-                visibility="public",
-                preferred_contact_method="email",
-            )
-            stub.update_profile_completeness()
-
-        refresh = RefreshToken.for_user(user)
-        return Response({"access": str(refresh.access_token), "refresh": str(refresh), "user": CurrentUserSerializer(user).data})
+def session_logout(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Use POST."}, status=405)
+    logout(request)
+    return JsonResponse({"success": True})
 
 
 class MeView(generics.RetrieveUpdateAPIView):

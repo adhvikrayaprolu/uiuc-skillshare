@@ -26,7 +26,7 @@ cp .env.example .env
 docker compose up --build --wait
 ```
 
-Open **http://localhost:8080**. The local email inbox is **http://localhost:8025**. Startup applies migrations and initializes skill categories; it never creates demo members. First startup downloads images. Google requires your own client configuration; the identity milestone is tracked in [#10](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/10).
+Open **http://localhost:8080**. The local email inbox is **http://localhost:8025**. Startup applies migrations and initializes skill categories; it never creates demo members. First startup downloads images. Sign in using an Illinois email code from the local inbox. Google requires your own client configuration.
 
 ## Configuration and checks
 

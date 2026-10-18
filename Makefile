@@ -5,7 +5,7 @@ check:
 	docker compose up --build --wait
 	docker compose exec -T app python manage.py check
 	docker compose exec -T app python manage.py makemigrations --check --dry-run
-	docker compose exec -T app python manage.py test --noinput
+	docker compose exec -T app python manage.py test --settings=skillswap_backend.test_settings --noinput
 	docker compose --profile checks run --build --rm frontend-check
 stop:
 	docker compose down

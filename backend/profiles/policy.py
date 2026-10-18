@@ -12,7 +12,7 @@ def users_blocked(first, second):
 def visible_profiles(queryset, viewer):
     if not viewer or not viewer.is_authenticated or not viewer.is_active or not viewer.is_student_verified:
         return queryset.none()
-    return queryset.filter(visibility="public", user__is_active=True, user__is_student_verified=True).exclude(
+    return queryset.filter(visibility="public", user__is_active=True, user__is_student_verified=True, user__is_demo=False).exclude(
         Q(user_id__in=viewer.blocked_users.values("blocked_user_id")) |
         Q(user_id__in=viewer.blocked_by.values("blocker_id"))
     ).distinct()

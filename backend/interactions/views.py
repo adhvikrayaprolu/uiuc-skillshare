@@ -44,7 +44,8 @@ class ProfileReviewListCreateView(generics.ListCreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["profile"] = self.get_profile()
+        if not getattr(self, "swagger_fake_view", False):
+            context["profile"] = self.get_profile()
         return context
 
 
@@ -81,7 +82,8 @@ class ProfileEndorsementListCreateView(generics.ListCreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["profile"] = self.get_profile()
+        if not getattr(self, "swagger_fake_view", False):
+            context["profile"] = self.get_profile()
         return context
 
 

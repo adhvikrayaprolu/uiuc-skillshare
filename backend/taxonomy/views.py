@@ -2,6 +2,8 @@ from django.db.models import Count, Q
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 
+from profiles.models import StudentProfile
+from profiles.policy import visible_profiles
 from .models import SkillCategory, SkillTag
 from .serializers import SkillCategorySerializer, SkillTagCreateSerializer, SkillTagSerializer
 
@@ -34,7 +36,7 @@ class PopularSkillListView(generics.ListAPIView):
     serializer_class = SkillTagSerializer
 
     def get_queryset(self):
-        return SkillTag.objects.select_related("category").filter(is_approved=True).annotate(profile_count=Count("profile_skills")).order_by("-profile_count", "name")[:20]
+        return SkillTag.objects.select_related("category").filter(is_approved=True).annotate(profile_count=Count("profile_skills", filter=Q(profile_skills__profile__in=visible_profiles(StudentProfile.objects.all(), self.request.user)), distinct=True)).order_by("-profile_count", "name")[:20]
 
 
 class SkillSuggestView(generics.CreateAPIView):

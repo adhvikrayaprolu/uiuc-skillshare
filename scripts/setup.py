@@ -10,4 +10,4 @@ subprocess.run(['npm','--prefix','frontend','ci'],check=True)
 for folder in ('backend','frontend'):
     destination=Path(folder)/'.env'
     if not destination.exists(): shutil.copyfile(Path(folder)/'.env.example',destination)
-print('Setup complete. Run make dev.')
+print('Native setup complete. Run make native-dev for editing; make check uses the canonical Docker baseline.')

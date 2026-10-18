@@ -34,13 +34,13 @@ class FrontendReadinessTests(APITestCase):
 
 
 class ProductionConfigurationTests(SimpleTestCase):
-    def run_settings(self, secret):
+    def run_settings(self, secret, **overrides):
         import os
         import subprocess
         import sys
         from django.conf import settings
         return subprocess.run([sys.executable, 'manage.py', 'check'], cwd=settings.BASE_DIR,
-                              env={**os.environ, 'DEBUG': 'False', 'ENVIRONMENT': 'production', 'SECRET_KEY': secret},
+                              env={**os.environ, 'DEBUG': 'False', 'ENVIRONMENT': 'production', 'SECRET_KEY': secret, 'DATABASE_URL':'postgresql://runtime:configuration-only@localhost:5432/skillshare', 'DB_SSLMODE':'verify-full', 'APP_PUBLIC_URL':'https://skillshare.example.invalid', 'ALLOWED_HOSTS':'skillshare.example.invalid', 'REDIS_URL':'redis://localhost:6379/0', 'EMAIL_HOST':'smtp.example.invalid', **overrides},
                               capture_output=True, text=True)
 
     def test_production_requires_private_key(self):
@@ -51,6 +51,10 @@ class ProductionConfigurationTests(SimpleTestCase):
 
     def test_private_production_key_passes_system_check(self):
         self.assertEqual(self.run_settings('test-only-configuration-key-1234567890').returncode, 0)
+
+    def test_production_rejects_insecure_or_incomplete_configuration(self):
+        for overrides in [{'DEBUG':'True'}, {'DB_SSLMODE':'disable'}, {'APP_PUBLIC_URL':'http://localhost'}, {'ALLOWED_HOSTS':'*'}, {'REDIS_URL':''}, {'EMAIL_HOST':''}, {'DB_SCHEMA':'public;unsafe'}, {'DB_MIGRATION_ROLE':'bad role'}]:
+            self.assertNotEqual(self.run_settings('test-only-configuration-key-1234567890', **overrides).returncode, 0)
 
 
 class ReadinessTests(APITestCase):

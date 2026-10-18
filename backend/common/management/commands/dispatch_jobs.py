@@ -19,6 +19,8 @@ class Command(BaseCommand):
                 enqueue_due_emails()
                 from discovery.embedding_jobs import enqueue_due_embeddings
                 enqueue_due_embeddings()
+                from common.avatar_cleanup import enqueue_due_avatar_deletions
+                enqueue_due_avatar_deletions()
             except Exception as error:
                 self.stderr.write(f"Dispatcher retry: {type(error).__name__}")
             if not options["loop"] or stopped.wait(5):

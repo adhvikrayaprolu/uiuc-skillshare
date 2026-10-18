@@ -15,6 +15,7 @@ from .serializers import (
     ContactMethodSerializer,
     CredentialSerializer,
     ProfileSkillSerializer,
+    ProfileAggregateSerializer,
     PublicStudentProfileDetailSerializer,
     PublicStudentProfileListSerializer,
     StudentProfileCreateUpdateSerializer,
@@ -30,6 +31,7 @@ class CurrentProfileView(APIView):
         profile = get_object_or_404(StudentProfile, user=request.user)
         return Response(StudentProfileSerializer(profile, context={"request": request}).data)
 
+    @extend_schema(request=StudentProfileCreateUpdateSerializer, responses={201: StudentProfileSerializer})
     def post(self, request):
         serializer = StudentProfileCreateUpdateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
@@ -38,6 +40,7 @@ class CurrentProfileView(APIView):
         rebuild_profile_search_index(profile)
         return Response(StudentProfileSerializer(profile, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(request=StudentProfileCreateUpdateSerializer, responses=StudentProfileSerializer)
     def patch(self, request):
         profile = get_object_or_404(StudentProfile, user=request.user)
         serializer = StudentProfileCreateUpdateSerializer(profile, data=request.data, partial=True, context={"request": request})
@@ -53,6 +56,8 @@ class PublicProfileListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return StudentProfile.objects.none()
         ordering = self.request.query_params.get("ordering")
         queryset = apply_discovery_filters(StudentProfile.objects.all(), self.request.query_params, user=self.request.user)
         if ordering in {"display_name", "-display_name", "profile_completeness", "-profile_completeness", "updated_at", "-updated_at"}:
@@ -161,9 +166,11 @@ class ContactClickView(APIView):
 
 
 class CurrentProfileAggregateView(APIView):
+    serializer_class = ProfileAggregateSerializer
     """Replace the current user's edited profile as one validated transaction."""
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=ProfileAggregateSerializer, responses=StudentProfileSerializer)
     def put(self, request):
         from django.db import transaction
         from accounts.models import User

@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 *.log
 *.local
 
@@ -25,8 +26,5 @@ backend/htmlcov/
 .vscode/
 
 backend/staticfiles/
-frontend/test-results/
-frontend/playwright-report/
-
 frontend/test-results/
 frontend/playwright-report/

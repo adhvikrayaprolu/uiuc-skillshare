@@ -4,10 +4,14 @@ dev:
 check:
 	docker compose up --build --wait
 	docker compose exec -T app python manage.py check
+	docker compose exec -T app python manage.py spectacular --validate --fail-on-warn --file /tmp/api-schema.yaml
 	docker compose exec -T app python manage.py makemigrations --check --dry-run
-	docker compose exec -T app python manage.py test --settings=skillswap_backend.test_settings --noinput
+	docker compose --profile checks run --no-deps --rm backend-check
 	docker compose --profile checks run --build --rm frontend-check
+	docker compose exec -T app python manage.py verify_runtime_role
+	docker compose exec -T app python production_check.py
 	$(MAKE) browser-check
+	python3 scripts/database/rehearse.py
 stop:
 	docker compose down
 logs:

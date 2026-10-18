@@ -1,5 +1,8 @@
 from pathlib import Path
 import os
+import re
+from urllib.parse import urlparse
+from django.core.exceptions import ImproperlyConfigured
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -14,9 +17,8 @@ LOCAL_DEVELOPMENT = ENVIRONMENT == "local"
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 if not SECRET_KEY and LOCAL_DEVELOPMENT:
     SECRET_KEY = "dev-only-local-secret-key-change-before-production-12345"
-if not SECRET_KEY or (not LOCAL_DEVELOPMENT and (len(SECRET_KEY) < 32 or SECRET_KEY.startswith("dev-only"))):
-    from django.core.exceptions import ImproperlyConfigured
-    raise ImproperlyConfigured("Configure a private SECRET_KEY of at least 32 characters; DEBUG=True is required for local development defaults.")
+if not SECRET_KEY or (not LOCAL_DEVELOPMENT and (len(SECRET_KEY) < 32 or SECRET_KEY.startswith(("dev-only", "REPLACE", "replace", "change-me")))):
+    raise ImproperlyConfigured("Configure a private SECRET_KEY of at least 32 characters; ENVIRONMENT=local is required for local development defaults.")
 SESSION_COOKIE_SECURE = not LOCAL_DEVELOPMENT
 CSRF_COOKIE_SECURE = not LOCAL_DEVELOPMENT
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
@@ -79,8 +81,24 @@ TEMPLATES = [
 WSGI_APPLICATION = "skillswap_backend.wsgi.application"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+DB_MIGRATION_ROLE = os.getenv("DB_MIGRATION_ROLE", "")
+if DB_MIGRATION_ROLE and not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", DB_MIGRATION_ROLE):
+    raise ImproperlyConfigured("DB_MIGRATION_ROLE must be a simple role name.")
+DB_SCHEMA = os.getenv("DB_SCHEMA", "public")
+DB_SSLMODE = os.getenv("DB_SSLMODE", "disable" if LOCAL_DEVELOPMENT else "verify-full")
+if not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", DB_SCHEMA):
+    raise ImproperlyConfigured("DB_SCHEMA must be a simple lowercase schema name.")
+if DB_SSLMODE not in {"disable", "require", "verify-ca", "verify-full"}:
+    raise ImproperlyConfigured("Unsupported DB_SSLMODE.")
+if not LOCAL_DEVELOPMENT and (not DATABASE_URL.startswith(("postgresql://", "postgres://")) or DB_SSLMODE != "verify-full"):
+    raise ImproperlyConfigured("Production requires PostgreSQL and certificate-verified TLS (DB_SSLMODE=verify-full).")
 if DATABASE_URL:
-    DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "60")), conn_health_checks=True)}
+    DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "30")), conn_health_checks=True)}
+    DATABASES["default"].setdefault("OPTIONS", {}).update(sslmode=DB_SSLMODE, connect_timeout=5, options=f"-c search_path={DB_SCHEMA},public,extensions -c statement_timeout=15000")
+    if DB_MIGRATION_ROLE:
+        DATABASES["default"]["OPTIONS"]["options"] += f" -c role={DB_MIGRATION_ROLE}"
+    if os.getenv("DB_SSLROOTCERT"):
+        DATABASES["default"]["OPTIONS"]["sslrootcert"] = os.environ["DB_SSLROOTCERT"]
 else:
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
 
@@ -141,6 +159,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Backend API for a UIUC student peer networking and skill-sharing platform.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {"ContactTypeEnum": "profiles.schema.CONTACT_CHOICES", "ProfileVisibilityEnum": "profiles.schema.PROFILE_VISIBILITY_CHOICES", "CredentialVisibilityEnum": "profiles.schema.CREDENTIAL_VISIBILITY_CHOICES"},
 }
 
 REDIS_URL = os.getenv("REDIS_URL", "")
@@ -185,3 +204,31 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 
 AI_PAID_CALLS_ENABLED = os.getenv('AI_PAID_CALLS_ENABLED', 'false').lower() == 'true'
 AI_DAILY_CALL_LIMIT = int(os.getenv('AI_DAILY_CALL_LIMIT', '0'))
+
+# Production uses a same-origin HTTPS frontend and an explicitly configured SMTP service.
+SECURE_SSL_REDIRECT = not LOCAL_DEVELOPMENT
+SECURE_HSTS_SECONDS = 31536000 if not LOCAL_DEVELOPMENT else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv("HSTS_INCLUDE_SUBDOMAINS", "false").lower() == "true"
+SECURE_HSTS_PRELOAD = os.getenv("HSTS_PRELOAD", "false").lower() == "true"
+if os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+if not LOCAL_DEVELOPMENT:
+    public_url = urlparse(APP_PUBLIC_URL)
+    if DEBUG or public_url.scheme != "https" or not public_url.hostname or public_url.path or public_url.username:
+        raise ImproperlyConfigured("Production requires DEBUG=False and an HTTPS APP_PUBLIC_URL origin.")
+    if "*" in ALLOWED_HOSTS or public_url.hostname not in ALLOWED_HOSTS:
+        raise ImproperlyConfigured("Include the exact APP_PUBLIC_URL host in ALLOWED_HOSTS; wildcards are not allowed.")
+    if not REDIS_URL or not os.getenv("EMAIL_HOST"):
+        raise ImproperlyConfigured("Production requires shared Redis and an SMTP delivery configuration.")
+    CORS_ALLOWED_ORIGINS = []
+    CSRF_TRUSTED_ORIGINS = [APP_PUBLIC_URL]
+
+AVATAR_STORAGE = os.getenv("AVATAR_STORAGE", "local")
+if AVATAR_STORAGE not in {"local", "supabase"}:
+    raise ImproperlyConfigured("AVATAR_STORAGE must be local or supabase.")
+STORAGES = {"default": {"BACKEND": "django.core.files.storage.FileSystemStorage"}, "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}}
+if AVATAR_STORAGE == "supabase":
+    STORAGES["default"] = {"BACKEND": "profiles.storage.SupabasePrivateAvatarStorage"}
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_STORAGE_KEY = os.getenv("SUPABASE_STORAGE_KEY", "")
+SUPABASE_AVATAR_BUCKET = os.getenv("SUPABASE_AVATAR_BUCKET", "avatars")

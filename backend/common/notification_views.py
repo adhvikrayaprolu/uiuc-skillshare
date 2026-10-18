@@ -14,9 +14,9 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ["id", "kind", "title", "href", "read", "created_at"]
         read_only_fields = fields
-    def get_read(self, obj):
+    def get_read(self, obj) -> bool:
         return obj.read_at is not None
-    def get_href(self, obj):
+    def get_href(self, obj) -> str:
         return "/requests"
 
 
@@ -24,6 +24,8 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Notification.objects.none()
         return visible_notifications(self.request.user)
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)

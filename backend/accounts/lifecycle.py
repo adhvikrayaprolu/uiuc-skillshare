@@ -1,3 +1,5 @@
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 from django.contrib.auth import logout
 from django.contrib.sessions.models import Session
 from django.db import transaction
@@ -21,6 +23,7 @@ def revoke_sessions(user_id):
 
 
 class AccountExportView(APIView):
+    @extend_schema(responses=dict)
     def get(self, request):
         profile = getattr(request.user, "profile", None)
         requests = HelpRequest.objects.filter(Q(seeker=request.user) | Q(helper_profile__user=request.user))
@@ -38,6 +41,7 @@ class AccountExportView(APIView):
 
 
 class AccountDeleteView(APIView):
+    @extend_schema(request=inline_serializer("AccountDeletion", fields={"confirmation": serializers.EmailField()}), responses=dict)
     def post(self, request):
         if request.data.get("confirmation") != request.user.email:
             raise ValidationError({"confirmation": "Type your account email to confirm deletion."})
@@ -49,8 +53,8 @@ class AccountDeleteView(APIView):
             if profile:
                 events |= Q(metadata__profile_id=profile.pk) | Q(metadata__helper_profile_id=profile.pk)
                 if profile.profile_picture:
-                    name, storage = profile.profile_picture.name, profile.profile_picture.storage
-                    transaction.on_commit(lambda: storage.delete(name))
+                    from common.avatar_cleanup import schedule_avatar_deletion
+                    schedule_avatar_deletion(profile.profile_picture.name)
             AnalyticsEvent.objects.filter(events).delete()
             revoke_sessions(user.pk)
             ModerationAudit.objects.create(actor=user, subject=user, action="account_deleted")

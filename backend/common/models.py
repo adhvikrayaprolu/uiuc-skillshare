@@ -53,3 +53,12 @@ class EmailDelivery(models.Model):
     last_error = models.CharField(max_length=80, blank=True)
     class Meta:
         indexes = [models.Index(fields=["delivered_at", "next_attempt_at"])]
+
+
+class AvatarDeletion(models.Model):
+    """Independent outbox: deletion survives the account that owned an avatar."""
+    name = models.CharField(max_length=255, unique=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    queued_until = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=80, blank=True)

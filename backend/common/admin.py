@@ -32,3 +32,18 @@ class NotificationAdmin(admin.ModelAdmin):
     readonly_fields = ("recipient", "peer", "help_request", "event_key", "kind", "title", "read_at", "created_at")
     def has_add_permission(self, request):
         return False
+
+
+from .models import AvatarDeletion
+
+@admin.register(AvatarDeletion)
+class AvatarDeletionAdmin(admin.ModelAdmin):
+    list_display = ("id", "attempts", "next_attempt_at", "last_error")
+    readonly_fields = ("name", "attempts", "next_attempt_at", "queued_until", "last_error")
+    actions = ["retry_failed"]
+    def has_add_permission(self, request):
+        return False
+    @admin.action(description="Retry exhausted avatar deletions")
+    def retry_failed(self, request, queryset):
+        from django.utils import timezone
+        queryset.filter(attempts__gte=6).update(attempts=0, next_attempt_at=timezone.now(), queued_until=None)

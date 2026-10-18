@@ -23,3 +23,7 @@ backend/htmlcov/
 # Editors
 .idea/
 .vscode/
+
+backend/staticfiles/
+frontend/test-results/
+frontend/playwright-report/

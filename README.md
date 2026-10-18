@@ -1,42 +1,47 @@
-# Illini SkillSwap
-A UIUC-focused peer network for finding classmates who can share practical skills, advice and project help.
+# UIUC SkillShare
 
-## Overview
-Students build skill profiles, discover relevant peers, save profiles and exchange help requests. The goal is to make informal campus knowledge easier to find, beyond existing friend groups and chats.
+Find Illinois peers offering a skill, request help, and connect when they accept.
 
-## Project Context
-A UIUC-focused portfolio project. The current local experience is a seeded Django/React application; production Illinois-account verification is not claimed as deployed or verified.
+## What it does
 
-## Key Features
-- Search/filter discovery and rich student profiles.
-- Saved profiles and request/connection interaction states.
-- Atomic onboarding/profile collection saves: failed edits preserve existing data.
-- API-derived notification summaries with honest empty/error states and explicitly labeled demo samples.
+Profiles combine offered skills, availability and evidence links. Members can discover peers, save profiles and exchange help requests. Shared contact details become available after acceptance. An Illinois-email account provides access; it does not imply university approval or verified enrollment.
 
-## Architecture / Tech Stack
-React/TypeScript + Vite/Tailwind → Django REST Framework → SQLite locally. Django apps separate accounts, profiles, discovery, interactions and taxonomy. JWT authenticates APIs; Google sign-in is an optional configuration-dependent path.
+## Architecture
 
-## Quick Start
-Python3.13, Node22.23+ and npm:
-```sh
-make setup
-make dev
+```text
+React browser → Django API + static frontend → PostgreSQL / pgvector
+                              └── Redis + worker → email
 ```
-Open http://127.0.0.1:5173. Setup installs dependencies and copies missing environment templates without overwriting local configuration. Startup migrates/seeds the backend at8000 and launches the frontend. Use local developer login with a disposable Illinois-format email; this is local/demo behavior, not proof of university identity. Ctrl-C stops both servers.
 
-## Validation / Tests
+React/TypeScript, Django REST Framework and PostgreSQL remain the core stack. Cloud hosting and paid AI are not enabled.
+
+## Quick start
+
+Install Docker with Compose, then:
+
 ```sh
-make check
+git clone https://github.com/adhvikrayaprolu/uiuc-skillshare.git
+cd uiuc-skillshare
+cp .env.example .env
+docker compose up --build --wait
 ```
-Django checks, migration consistency and backend regressions; frontend tests, lint, TypeScript and production build. Tests cover authentication/permissions, requests, demo isolation and aggregate profile validation/rollback.
 
-## Environment Variables
-See `backend/.env.example` and `frontend/.env.example`. Local DEBUG enables developer login; deployment must disable it and supply a private strong `SECRET_KEY`, reviewed hosts/CORS and HTTPS settings. Google credentials are optional for the verified local flow. Never commit `.env` or use a development key in production.
+Open **http://localhost:8080**. The local email inbox is **http://localhost:8025**. Startup applies migrations and initializes skill categories; it never creates demo members. First startup downloads images. Google requires your own client configuration; the identity milestone is tracked in [#10](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/10).
 
-## Project Structure
-`frontend/src/`: pages, shared components, hooks and API clients; `backend/`: Django domain apps; `scripts/`: setup/dev/check entry points; `docs/`: product notes and engineering workflow.
+## Configuration and checks
 
-## Current Status / Limitations
-Credential-backed Google authentication and production deployment remain unverified. Notifications summarize current API activity; durable read/unread history is not a completed feature. Targeted accessibility review remains useful; no framework rewrite or speculative optimization is required.
+`.env.example` contains local defaults and optional integration settings. Never commit a real `.env`. Paid semantic calls remain disabled. `make check` runs the PostgreSQL backend suite, frontend tests, lint, type checks and production build in containers.
 
-Read [AGENTS.md](AGENTS.md), the active PRs and the GitHub readiness tracker before choosing work. [Product notes](docs/product-overview.md) provide deeper context and may describe future goals.
+`docker compose down` stops services and preserves data. To reset **only disposable local data**, use `docker compose down --volumes`.
+
+## Project structure
+
+- `frontend/src/`: pages, components, API clients and tests.
+- `backend/`: accounts, profiles, taxonomy, discovery and interactions.
+- `docs/`: product and engineering guidance.
+
+## Current limits
+
+The complete onboarding, feedback, notification, matching and deployment-readiness milestone is being implemented in issue-linked draft PRs. Hosted Supabase, live Google, real email delivery and paid semantic quality remain unverified. No university affiliation is claimed.
+
+See the [readiness tracker](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/5) and [developer guide](docs/development.md) for details.

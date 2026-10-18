@@ -40,7 +40,7 @@ class ProductionConfigurationTests(SimpleTestCase):
         import sys
         from django.conf import settings
         return subprocess.run([sys.executable, 'manage.py', 'check'], cwd=settings.BASE_DIR,
-                              env={**os.environ, 'DEBUG': 'False', 'SECRET_KEY': secret},
+                              env={**os.environ, 'DEBUG': 'False', 'ENVIRONMENT': 'production', 'SECRET_KEY': secret},
                               capture_output=True, text=True)
 
     def test_production_requires_private_key(self):
@@ -51,3 +51,21 @@ class ProductionConfigurationTests(SimpleTestCase):
 
     def test_private_production_key_passes_system_check(self):
         self.assertEqual(self.run_settings('test-only-configuration-key-1234567890').returncode, 0)
+
+
+class ReadinessTests(APITestCase):
+    def test_readiness_and_liveness_distinguish_database_failure(self):
+        from unittest.mock import patch
+        self.assertEqual(self.client.get(reverse("readiness")).status_code, 200)
+        with patch("django.db.connection.cursor", side_effect=RuntimeError("database unavailable")):
+            self.assertEqual(self.client.get(reverse("readiness")).status_code, 503)
+            self.assertEqual(self.client.get(reverse("liveness")).status_code, 200)
+
+    def test_taxonomy_seed_never_creates_members(self):
+        from django.core.management import call_command
+        from taxonomy.models import SkillTag
+        call_command("seed_taxonomy", verbosity=0)
+        count = SkillTag.objects.count()
+        call_command("seed_taxonomy", verbosity=0)
+        self.assertEqual(SkillTag.objects.count(), count)
+        self.assertEqual(User.objects.count(), 0)

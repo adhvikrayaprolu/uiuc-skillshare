@@ -1,4 +1,6 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
+from django.conf import settings
+import os
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
@@ -250,6 +252,8 @@ class Command(BaseCommand):
     help = "Seed Illini SkillSwap demo categories, skills, profiles, and interactions (idempotent)."
 
     def handle(self, *args, **options):
+        if not settings.LOCAL_DEVELOPMENT or os.getenv("ENABLE_DEMO", "false").lower() != "true":
+            raise CommandError("Demo seeding requires ENVIRONMENT=local and explicit ENABLE_DEMO=true in a disposable database.")
         skill_map = {}
         for category_name, tag_names in CATEGORIES.items():
             category, _ = SkillCategory.objects.get_or_create(

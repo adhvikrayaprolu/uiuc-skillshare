@@ -9,14 +9,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+ENVIRONMENT = os.getenv("ENVIRONMENT", "local" if DEBUG else "production")
+LOCAL_DEVELOPMENT = ENVIRONMENT == "local"
 SECRET_KEY = os.getenv("SECRET_KEY", "")
-if not SECRET_KEY and DEBUG:
+if not SECRET_KEY and LOCAL_DEVELOPMENT:
     SECRET_KEY = "dev-only-local-secret-key-change-before-production-12345"
-if not SECRET_KEY or (not DEBUG and (len(SECRET_KEY) < 32 or SECRET_KEY.startswith("dev-only"))):
+if not SECRET_KEY or (not LOCAL_DEVELOPMENT and (len(SECRET_KEY) < 32 or SECRET_KEY.startswith("dev-only"))):
     from django.core.exceptions import ImproperlyConfigured
     raise ImproperlyConfigured("Configure a private SECRET_KEY of at least 32 characters; DEBUG=True is required for local development defaults.")
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not LOCAL_DEVELOPMENT
+CSRF_COOKIE_SECURE = not LOCAL_DEVELOPMENT
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 INSTALLED_APPS = [
@@ -37,11 +39,13 @@ INSTALLED_APPS = [
     "interactions",
     "discovery",
     "common",
+    "django_rq",
 ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -71,7 +75,7 @@ WSGI_APPLICATION = "skillswap_backend.wsgi.application"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 if DATABASE_URL:
-    DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
+    DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "60")), conn_health_checks=True)}
 else:
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
 
@@ -89,9 +93,11 @@ TIME_ZONE = "America/Chicago"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+WHITENOISE_ROOT = BASE_DIR / "frontend_dist"
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = [
@@ -131,3 +137,13 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
+
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {"default": {"BACKEND": "django_redis.cache.RedisCache", "LOCATION": REDIS_URL, "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient", "SOCKET_CONNECT_TIMEOUT": 3, "SOCKET_TIMEOUT": 3}, "KEY_PREFIX": "skillshare"}}
+RQ_QUEUES = {"default": {"URL": REDIS_URL or "redis://127.0.0.1:6379/0", "DEFAULT_TIMEOUT": 60}}
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if os.getenv("EMAIL_HOST") else "django.core.mail.backends.console.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "1025"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False").lower() == "true"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "SkillShare <noreply@localhost>")

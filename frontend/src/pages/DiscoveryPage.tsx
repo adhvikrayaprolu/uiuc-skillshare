@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Search, Filter, ChevronDown, Sparkles, X, Info } from 'lucide-react';
+import { Search, Filter, ChevronDown, X } from 'lucide-react';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { ProfileCard } from '../components/profiles/ProfileCard';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -8,6 +8,7 @@ import { useDiscoverySearch } from '../hooks/useDiscoverySearch';
 import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
+import { PageControls } from '../components/ui/ListPagination';
 
 export function DiscoveryPage() {
   const [searchParams] = useSearchParams();
@@ -24,7 +25,6 @@ export function DiscoveryPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [openOnly, setOpenOnly] = useState(false);
   const [ordering, setOrdering] = useState('best_match');
-  const [aiAssisted, setAiAssisted] = useState(true);
   const savedActions = useSavedProfileActions();
   const toast = useToast();
 
@@ -32,7 +32,7 @@ export function DiscoveryPage() {
   const discoveryQuery = useDiscoverySearch({
     page,
     q: debouncedQuery || undefined,
-    mode: aiAssisted && debouncedQuery.trim() ? 'semantic' : undefined,
+    mode: debouncedQuery.trim() ? 'semantic' : undefined,
     skills: selectedSkills.length ? selectedSkills.join(',') : undefined,
     category: selectedCategory === 'All' ? undefined : selectedCategory,
     year: selectedYear === 'All Years' ? undefined : selectedYear.toLowerCase(),
@@ -78,13 +78,14 @@ export function DiscoveryPage() {
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-4xl font-bold text-[#0F172A] mb-2">Discover Students</h1>
-        <p className="text-[#64748B]">Find peers by skill, experience, interest, availability, or background</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-[#0F172A] mb-2">Discover</h1>
+        <p className="text-[#475569]">Find students who teach what you want to learn</p>
       </div>
 
       {discoveryQuery.isError && !shouldUseMocks() && (
-        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          Could not load discovery results. Check that the API is running and you are signed in.
+        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <span>We couldn't load matches right now.</span>
+          <button type="button" onClick={() => void discoveryQuery.refetch()} className="rounded-lg border border-red-300 bg-white px-3 py-1 font-medium hover:bg-red-100">Try again</button>
         </div>
       )}
 
@@ -99,18 +100,6 @@ export function DiscoveryPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-4 bg-white border-2 border-[#E2E8F0] rounded-2xl text-[15px] focus:outline-none focus:border-[#13294B] transition-colors"
           />
-        </div>
-        <div className="mt-3 rounded-xl border border-[#E2E8F0] bg-white p-3">
-          <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#0F172A]">
-            <input type="checkbox" checked={aiAssisted} onChange={(e) => {setPage(1); setAiAssisted(e.target.checked);}} />
-            <Sparkles className="h-3.5 w-3.5 text-[#B83E00]" />
-            Use semantic matching when available
-          </label>
-          <p className="mt-2 text-xs text-[#64748B]">
-            {aiAssisted
-              ? 'The server reports the active matching mode. Keyword and approved taxonomy aliases work without paid AI.'
-              : 'Matches approved skills, aliases and published skill text.'}
-          </p>
         </div>
       </div>
 
@@ -142,7 +131,7 @@ export function DiscoveryPage() {
         {/* Filter Sidebar */}
         <aside className={`${showFilters ? "block" : "hidden md:block"} w-full md:w-64 lg:w-72 flex-shrink-0`}>
             <div className="sticky top-6 rounded-2xl border border-[#E2E8F0] bg-white p-5">
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-semibold text-[#0F172A] flex items-center gap-2">
                   <Filter className="w-5 h-5" />
                   Filters
@@ -168,6 +157,9 @@ export function DiscoveryPage() {
                   <option>Sophomore</option>
                   <option>Junior</option>
                   <option>Senior</option>
+                  <option>Graduate</option>
+                  <option>Alumni</option>
+                  <option>Other</option>
                 </select>
               </div>
 
@@ -256,13 +248,13 @@ export function DiscoveryPage() {
           )}
 
           {/* Results Count & Sort */}
-          <div className="mb-5 flex items-center justify-between">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-[#64748B]">
               <span className="font-semibold text-[#0F172A]">{resultCount}</span> {resultCount === 1 ? 'student' : 'students'} found
               {discoveryQuery.isFetching && <span className="ml-2 text-[#B83E00]">Updating...</span>}
               {discoveryQuery.data?.matching?.mode === 'hybrid' && (
-                <span className="ml-2 rounded-full bg-[#FFF3EA] px-2 py-0.5 text-xs text-[#C2410C]">
-                  Semantic + keyword
+                <span className="ml-2 rounded-full bg-[#FFF3EA] px-2 py-0.5 text-xs text-[#9A3400]">
+                  Includes related matches
                 </span>
               )}
             </p>
@@ -284,15 +276,6 @@ export function DiscoveryPage() {
             </label>
           </div>
 
-          {searchQuery.trim() && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#334155]">
-              <Info className="h-3.5 w-3.5 text-[#64748B]" />
-              {aiAssisted
-                ? `Matching mode: ${discoveryQuery.data?.matching?.mode || 'keyword_taxonomy'}.`
-                : 'Using keyword and filter search.'}
-            </div>
-          )}
-
           {/* Profile Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {filteredProfiles.map((profile) => (
@@ -306,18 +289,24 @@ export function DiscoveryPage() {
             ))}
           </div>
 
-          {discoveryQuery.data?.matching?.bounded && <p className="mt-4 text-sm">Showing top matches within a {discoveryQuery.data.matching.candidate_limit}-candidate limit. Narrow your filters for broader coverage.</p>}
-          <nav aria-label="Discovery pages" className="mt-4 flex items-center gap-4">
-            <button disabled={page === 1 || discoveryQuery.isFetching} onClick={() => setPage(p => p - 1)}>Previous page</button><span>Page {page}</span>
-            <button disabled={!discoveryQuery.data?.next || discoveryQuery.isFetching} onClick={() => setPage(p => p + 1)}>Next page</button>
-          </nav>
-          {discoveryQuery.isLoading && <p role="status">Loading matching peers…</p>}
+          {discoveryQuery.data?.matching?.bounded && <p className="mt-4 text-sm text-[#475569]">Showing the top {discoveryQuery.data.matching.candidate_limit} matches. Add a filter to narrow things down.</p>}
+          {(page > 1 || discoveryQuery.data?.next) && (
+            <PageControls
+              label="Discovery pages"
+              pageText={`Page ${page}`}
+              canPrevious={page > 1 && !discoveryQuery.isFetching}
+              canNext={Boolean(discoveryQuery.data?.next) && !discoveryQuery.isFetching}
+              onPrevious={() => setPage(p => p - 1)}
+              onNext={() => setPage(p => p + 1)}
+            />
+          )}
+          {discoveryQuery.isLoading && <p role="status" className="mt-4 text-sm text-[#475569]">Finding matches…</p>}
           {/* Empty State */}
           {filteredProfiles.length === 0 && !discoveryQuery.isLoading && !discoveryQuery.isError && (
             <EmptyState
               icon={Search}
-              title="No matching students found"
-              description="Try changing your filters or searching for a broader skill"
+              title="No matches yet"
+              description="Try a broader skill or clear your filters"
               action={{
                 label: "Clear all filters",
                 onClick: clearAllFilters

@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/ui/ToastProvider';
 import { requestEmailCode, resendEmailCode } from '../lib/authApi';
 import { shouldUseMocks } from '../lib/api';
+import { APP_HOME, SETUP_HOME, safeDestination } from '../lib/routes';
 
 declare global {
   interface Window {
@@ -28,8 +29,7 @@ export function LoginPage() {
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [googleReady, setGoogleReady] = useState(false);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  const destination = (location.state as { from?: string } | null)?.from;
-  const from = destination?.startsWith('/') && !destination.startsWith('//') ? destination : '/dashboard';
+  const from = safeDestination((location.state as { from?: string } | null)?.from) || APP_HOME;
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [challenge, setChallenge] = useState(false);
@@ -63,7 +63,7 @@ export function LoginPage() {
         try {
           const user = await auth.loginWithGoogleIdToken(response.credential);
           toast.success('Signed in with your Illinois Google account.');
-          navigate(user.hasCompletedOnboarding ? from : '/onboarding', { replace: true });
+          navigate(user.hasCompletedOnboarding ? from : SETUP_HOME, { replace: true });
         } catch {
           toast.error('Google could not verify this account. Continue with an Illinois email code.');
         }
@@ -81,14 +81,14 @@ export function LoginPage() {
   const handleMockDemoLogin = () => {
     auth.loginDemo();
     toast.success('Mock demo session started (local data only).');
-    navigate('/dashboard');
+    navigate(APP_HOME);
   };
 
   const submitCode = async (event: React.FormEvent) => {
     event.preventDefault(); setPending(true); setError('');
     try {
       if (!challenge) {await requestEmailCode(email.trim().toLowerCase()); setChallenge(true);}
-      else {const user = await auth.confirmEmailCode(code); navigate(user.hasCompletedOnboarding ? from : '/onboarding', {replace: true});}
+      else {const user = await auth.confirmEmailCode(code); navigate(user.hasCompletedOnboarding ? from : SETUP_HOME, {replace: true});}
     } catch {setError(challenge ? 'Code is incorrect or expired. After three failed attempts, request a new code.' : 'Could not send a code. Use an Illinois email address and wait before trying again.');}
     finally {setPending(false);}
   };
@@ -102,7 +102,7 @@ export function LoginPage() {
           </div>
 
           <div className="mb-6 text-center">
-            <h2 className="text-2xl font-bold text-[#0F172A]">Sign in to UIUC SkillShare</h2>
+            <h2 className="text-2xl font-bold text-[#0F172A]">Sign in to Illini SkillShare</h2>
             <p className="mt-2 text-[#64748B]">Find peers who can help, and share what you know.</p>
           </div>
           {googleClientId ? <div className="mb-6"><div ref={googleButtonRef} className="flex justify-center" /></div> : <p className="mb-4 text-center text-sm text-[#64748B]">Google sign-in is unavailable here. Use an Illinois email code.</p>}

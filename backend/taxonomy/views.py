@@ -1,6 +1,6 @@
 from django.db.models import Count, Q
 from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from profiles.models import StudentProfile
 from profiles.policy import visible_profiles
@@ -8,14 +8,15 @@ from .models import SkillCategory, SkillTag
 from .serializers import SkillCategorySerializer, SkillTagCreateSerializer, SkillTagSerializer
 
 
+# The approved catalogue is public so the signed-out landing page can show it; it holds no member data.
 class SkillCategoryListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     queryset = SkillCategory.objects.all()
     serializer_class = SkillCategorySerializer
 
 
 class SkillTagListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     serializer_class = SkillTagSerializer
 
     def get_queryset(self):

@@ -1,5 +1,5 @@
 # Project
-UIUC SkillShare helps Illinois-email members discover peers, request help and exchange feedback after completed interactions.
+Illini SkillShare (repository: uiuc-skillshare) helps Illinois-email members swap skills, request help and exchange feedback after completed interactions. Read CONTEXT.md for the current product direction, screen map and phased roadmap before product or UX work.
 
 # Architecture
 React/TypeScript in frontend; Django REST accounts, profiles, taxonomy, discovery and interactions in backend. PostgreSQL/pgvector is canonical; Redis supports throttling and RQ jobs. Django sessions and CSRF protect browser requests. Django is the authorization boundary; Supabase is a future database/private-storage provider.

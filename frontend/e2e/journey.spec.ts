@@ -69,10 +69,20 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
   const h=await helper.newPage(), s=await seeker.newPage();
   h.on('dialog', dialog => dialog.accept()); s.on('dialog', dialog => dialog.accept('Local test report'));
   try {
-    await s.goto('/'); await audit(s,'landing'); await s.goto('/login'); await audit(s,'login');
+    await s.goto('/'); await audit(s,'landing');
+    await s.screenshot({path:path.resolve('../docs/screenshots/landing-desktop.png'),fullPage:true});
+    await s.getByRole('link',{name:'See how it works'}).click(); await expect(s).toHaveURL(/#how-it-works$/);
+    await h.goto('/'); await audit(h,'mobile landing');
+    await h.screenshot({path:path.resolve('../docs/screenshots/landing-mobile.png')});
+    await s.goto('/login'); await audit(s,'login');
     await login(h,helperEmail); const helperId=await onboard(h,'Local test helper','React','Resume Review');
     await login(s,seekerEmail); await onboard(s,'Local test seeker','GitHub','React');
     await audit(s,'dashboard');
+    await s.goto('/'); await expect(s).toHaveURL(/\/dashboard$/);
+    await s.goto('/login'); await expect(s).toHaveURL(/\/dashboard$/);
+    await expect(s.getByRole('navigation',{name:'Main'}).getByRole('link')).toHaveText(['Home','Discover','Requests','Profile']);
+    await expect(h.getByRole('navigation',{name:'Main'}).getByRole('link')).toHaveText(['Home','Discover','Requests','Profile']);
+    await h.screenshot({path:path.resolve('../docs/screenshots/home-mobile.png')});
     await s.goto('/discover');
     const next=s.getByRole('button',{name:'Next page',exact:true});
     if (process.env.E2E_PAGINATION_FIXTURES === 'true') {

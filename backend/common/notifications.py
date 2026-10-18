@@ -60,7 +60,7 @@ def deliver_email(delivery_id):
     row.attempts += 1
     try:
         if user.is_active and user.is_student_verified and getattr(getattr(user, "profile", None), "notification_email_enabled", False) and notification.peer.is_active and not users_blocked(user, notification.peer):
-            send_mail(notification.title, f"You have an update in SkillShare. Open {settings.APP_PUBLIC_URL}/requests to view it.", settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+            send_mail(notification.title, f"You have an update in Illini SkillShare. Open {settings.APP_PUBLIC_URL}/requests to view it.", settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
         row.delivered_at = timezone.now()  # Includes consent withdrawal; never deliver later.
         row.last_error = ""
     except Exception as error:

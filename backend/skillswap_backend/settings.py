@@ -155,8 +155,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Illini SkillSwap API",
-    "DESCRIPTION": "Backend API for a UIUC student peer networking and skill-sharing platform.",
+    "TITLE": "Illini SkillShare API",
+    "DESCRIPTION": "Backend API for Illini SkillShare, a peer skill exchange for Illinois-email members.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {"ContactTypeEnum": "profiles.schema.CONTACT_CHOICES", "ProfileVisibilityEnum": "profiles.schema.PROFILE_VISIBILITY_CHOICES", "CredentialVisibilityEnum": "profiles.schema.CREDENTIAL_VISIBILITY_CHOICES"},
@@ -170,7 +170,7 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if os.getenv("EMAI
 EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "1025"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False").lower() == "true"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "SkillShare <noreply@localhost>")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Illini SkillShare <noreply@localhost>")
 
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend", "allauth.account.auth_backends.AuthenticationBackend"]
 ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"

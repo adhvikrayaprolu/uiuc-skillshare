@@ -1,4 +1,4 @@
-# SkillShare backend
+# Illini SkillShare backend
 
 Django REST application for verified Illinois-email members. Follow the [root Docker quick start](../README.md); run `make check` at the root for the PostgreSQL baseline.
 

@@ -11,7 +11,7 @@ Django authorizes verified eligible members. Use same-origin requests with cooki
 | POST `/api/auth/email/confirm/` | `{code}`; success 200 creates a server-controlled session. Five-minute expiry, three failed attempts; replay/stale process fails. |
 | POST `/api/auth/email/resend/` | Throttled resend within the active verification process. |
 | POST `/api/auth/google/` | `{provider:"google", process:"login", token:{client_id, id_token}}`; configured audience and authoritative Illinois ownership required. Non-authoritative ownership falls back to an email code. |
-| GET / PATCH `/api/auth/me/` | Current member and editable account preferences; session restoration uses GET. |
+| GET / PATCH `/api/auth/me/` | Current member and editable account preferences; session restoration uses GET. Read-only `is_staff` lets the client hide staff-only navigation; the server still enforces staff permissions. |
 | POST `/api/auth/logout/` | Deletes server session; client clears account-specific query/cache state. |
 | GET `/api/auth/export/` | Own account data download, no-store. |
 | POST `/api/auth/delete/` | `{confirmation:"<own account email>"}`; confirmed deletion/session revocation and durable avatar cleanup. |
@@ -22,7 +22,7 @@ Allauth validation errors use `{status, errors:[{message,...}]}`; domain APIs us
 
 GET `/api/bootstrap/` supplies current user/profile, approved categories/skills and dashboard tasks; GET `/api/onboarding/status/` supplies missing steps. PUT `/api/profiles/me/aggregate/` atomically saves `{profile, skills?, availability?, contacts?, credentials?}`. Omitted relation lists are preserved; supplied lists replace that relation. Field errors roll back the entire save. Profile fields include learning goals, contact/embedding/email consent and visibility; evidence uses HTTP/HTTPS links. POST `/api/profiles/me/avatar/` uses multipart `avatar` (up to 2 MB, 4096px input); GET `/api/profiles/<id>/avatar/` enforces peer privacy.
 
-GET `/api/profiles/` and `/api/profiles/<id>/` show visible peers only. Selected contact methods appear only after accepted/completed interaction and sharing consent; block/privacy/removal revokes access. Authentication emails and private goals never appear in public serializers. GET `/api/skills/`, `/api/skill-categories/` and `/api/skills/popular/` supply taxonomy; POST `/api/skills/suggest/` creates a pending suggestion for staff approval.
+GET `/api/profiles/` and `/api/profiles/<id>/` show visible peers only. Selected contact methods appear only after accepted/completed interaction and sharing consent; block/privacy/removal revokes access. Authentication emails and private goals never appear in public serializers. GET `/api/skills/` and `/api/skill-categories/` supply the approved taxonomy and are readable without signing in (pending suggestions are staff-only); GET `/api/skills/popular/` requires a member session; POST `/api/skills/suggest/` creates a pending suggestion for staff approval.
 
 ## Discovery and pagination
 

@@ -9,6 +9,7 @@ export interface DemoUser {
   lastName: string;
   hasCompletedOnboarding: boolean;
   isStudentVerified: boolean;
+  isStaff?: boolean;
 }
 
 export function clearTokens() {

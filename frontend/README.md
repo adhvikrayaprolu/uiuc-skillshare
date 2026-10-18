@@ -1,6 +1,6 @@
 # Frontend
 
-React + Vite web app for Illini SkillSwap.
+React + Vite web app for Illini SkillShare.
 
 ## Structure
 

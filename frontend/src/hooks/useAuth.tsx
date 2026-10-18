@@ -19,7 +19,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
 }
 const AuthContext = createContext<AuthContextValue | null>(null);
-const mapUser = (user: User): DemoUser => ({id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name, hasCompletedOnboarding: user.has_completed_onboarding, isStudentVerified: user.is_student_verified});
+const mapUser = (user: User): DemoUser => ({id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name, hasCompletedOnboarding: user.has_completed_onboarding, isStudentVerified: user.is_student_verified, isStaff: Boolean(user.is_staff)});
 export function AuthProvider({children}: {children: ReactNode}) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<DemoUser | null>(() => getDemoUser());

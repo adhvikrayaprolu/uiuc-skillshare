@@ -1,5 +1,6 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
+import { RedirectIfAuthenticated } from '../components/layout/RedirectIfAuthenticated';
 import { AppLayout } from '../layouts/AppLayout';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { DashboardPage } from '../pages/DashboardPage';
@@ -22,12 +23,17 @@ export const router = createBrowserRouter([
     Component: PublicLayout,
     children: [
       {
-        index: true,
-        Component: LandingPage,
-      },
-      {
-        path: "login",
-        Component: LoginPage,
+        Component: RedirectIfAuthenticated,
+        children: [
+          {
+            index: true,
+            Component: LandingPage,
+          },
+          {
+            path: "login",
+            Component: LoginPage,
+          },
+        ],
       },
     ],
   },

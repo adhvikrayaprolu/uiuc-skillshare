@@ -331,7 +331,10 @@ export function EditProfilePage() {
 
             {activeTab === 2 && (
               <div className="space-y-4">
-                <p className="text-sm text-[#475569]">Your learning goals stay private. They decide who we suggest to you.</p>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#E2E8F0] p-4 hover:bg-[#F8FAFC]">
+                  <input type="checkbox" checked={form.learningGoalsPublic} onChange={(event) => update('learningGoalsPublic', event.target.checked)} className="mt-0.5 h-5 w-5 rounded" />
+                  <span><span className="block font-medium text-[#0F172A]">Show my learning goals on my profile</span><span className="block text-sm text-[#475569]">Lets people who teach them propose a swap. Notes always stay private.</span></span>
+                </label>
                 <SkillPicker
                   label="Skills you want to learn"
                   skills={taxonomy.data?.rawSkills || []}

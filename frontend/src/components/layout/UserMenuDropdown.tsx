@@ -27,7 +27,7 @@ export function UserMenuDropdown({
   const links: { to: string; label: string; icon: LucideIcon }[] = [
     { to: profileHref, label: isPublished || !myProfileId ? 'View my profile' : 'View my profile (hidden)', icon: User },
     { to: EDIT_PROFILE, label: 'Edit profile', icon: Edit },
-    { to: '/saved', label: 'Saved profiles', icon: Bookmark },
+    { to: '/discover?tab=saved', label: 'Saved profiles', icon: Bookmark },
     { to: '/settings', label: 'Settings', icon: Settings },
     ...(isStaff ? [{ to: '/analytics', label: 'Analytics', icon: BarChart3 }] : []),
   ];

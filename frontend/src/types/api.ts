@@ -3,6 +3,7 @@ export type ContactMethodType = 'email' | 'phone' | 'instagram' | 'linkedin' | '
 export type CredentialType = 'resume' | 'transcript' | 'linkedin' | 'github' | 'portfolio' | 'website' | 'certification' | 'project' | 'other';
 export type HelpRequestStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'cancelled';
 export type Urgency = 'low' | 'medium' | 'high';
+export type RequestKind = 'help' | 'swap';
 
 export interface User {
   id: number;
@@ -123,12 +124,23 @@ export interface ProfileListItem {
   semantic_reasons?: string[];
   has_resume?: boolean;
   availability_summary?: string;
+  swap?: SwapSummary | null;
+}
+
+export interface NamedSkill { id: number; name: string }
+
+export interface SwapSummary {
+  they_teach_you: NamedSkill[];
+  you_can_teach: NamedSkill[];
+  is_mutual: boolean;
 }
 
 export interface ProfileDetail extends ProfileListItem {
   user_id?: number;
   learning_goals?: number[];
   learning_goal_notes?: string;
+  learning_goals_public?: boolean;
+  wants_to_learn?: NamedSkill[];
   share_contacts?: boolean;
   embedding_consent?: boolean;
   notification_email_enabled?: boolean;
@@ -166,6 +178,9 @@ export interface HelpRequest {
   message: string;
   related_skill?: number | null;
   related_skill_name?: string | null;
+  kind?: RequestKind;
+  offered_skill?: number | null;
+  offered_skill_name?: string | null;
   urgency: Urgency;
   preferred_contact_method?: ContactMethodType;
   status: HelpRequestStatus;
@@ -247,7 +262,7 @@ export interface DiscoveryAiMeta {
   query: string;
 }
 
-export interface MatchingMeta { mode: string; fallback_reason?: string | null; candidate_limit: number; bounded: boolean; recommendation_basis?: string; }
+export interface MatchingMeta { mode: string; fallback_reason?: string | null; candidate_limit: number; bounded: boolean; recommendation_basis?: string; basis?: 'swap'; reason?: 'no_profile' | 'no_learning_goals' | 'no_teaching_skills' | 'no_mutual_matches' | null; }
 export type DiscoverySearchResponse = PaginatedResponse<ProfileListItem> & { matching?: MatchingMeta };
 
 export interface AnalyticsSummaryResponse {
@@ -277,6 +292,8 @@ export interface HelpRequestPayload {
   topic: string;
   message: string;
   related_skill?: number;
+  kind?: RequestKind;
+  offered_skill?: number;
   urgency: Urgency;
   preferred_contact_method?: ContactMethodType;
 }

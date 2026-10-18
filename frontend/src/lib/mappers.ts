@@ -109,6 +109,7 @@ export function mapBackendProfileListItemToProfileCard(item: ProfileListItem): P
     contacts: [],
     interests: [],
     reviews: [],
+    swap: item.swap ?? null,
   };
 }
 
@@ -129,6 +130,7 @@ export function mapBackendProfileDetailToProfile(detail: ProfileDetail): Profile
     contacts: mapContacts(detail.contact_methods),
     interests: splitInterests(detail.interests),
     reviews: mapReviews(detail.reviews_preview),
+    swap: detail.swap ?? null,
   };
 }
 
@@ -171,6 +173,8 @@ export function mapBackendHelpRequestToRequestCard(item: ApiHelpRequest): HelpRe
     helper,
     topic: item.topic,
     relatedSkill: item.related_skill_name || (item.related_skill ? `Skill #${item.related_skill}` : 'General'),
+    kind: item.kind ?? 'help',
+    offeredSkill: item.offered_skill_name ?? null,
     message: item.message,
     urgency: normalizeUrgency(item.urgency),
     status: normalizeStatus(item.status),

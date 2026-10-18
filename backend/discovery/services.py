@@ -187,6 +187,41 @@ def recommend_profiles_for_user(user, queryset):
     return ranked
 
 
+def swap_matches_for_user(user, queryset):
+    """Members who teach one of my goals and publicly want to learn one of my skills."""
+    from profiles.swaps import swap_summary, viewer_sets
+    sets = viewer_sets(user)
+    mine, goals, skills = sets
+    if not mine or not goals or not skills:
+        reason = 'no_profile' if not mine else 'no_learning_goals' if not goals else 'no_teaching_skills'
+        return RankedList([], {'basis': 'swap', 'reason': reason})
+    candidates = (
+        queryset.exclude(user=user)
+        .filter(learning_goals_public=True)
+        .filter(profile_skills__skill_id__in=goals, profile_skills__skill__is_approved=True)
+        .filter(learning_goals__in=skills, learning_goals__is_approved=True)
+        .distinct()
+        .select_related('user')
+        .prefetch_related('availability')
+    )
+    my_slots = set(mine.availability.values_list('day_of_week', 'time_block'))
+    ranked = []
+    for profile in candidates.order_by('pk')[:CANDIDATE_LIMIT]:
+        summary = swap_summary(user, profile, sets)
+        if not summary or not summary['is_mutual']:
+            continue
+        shared = sum((slot.day_of_week, slot.time_block) in my_slots for slot in profile.availability.all())
+        profile.swap_match = summary
+        profile.match_reasons = (
+            [f"Can teach you {', '.join(s['name'] for s in summary['they_teach_you'][:2])}."]
+            + [f"Wants to learn {', '.join(s['name'] for s in summary['you_can_teach'][:2])}, which you teach."]
+            + ([f'{shared} overlapping time slot(s).'] if shared else [])
+        )
+        ranked.append(((len(summary['they_teach_you']) + len(summary['you_can_teach']), shared, -profile.pk), profile))
+    ranked.sort(key=lambda row: row[0], reverse=True)
+    return RankedList(ranked, {'basis': 'swap', 'reason': None if ranked else 'no_mutual_matches'})
+
+
 def similar_profiles_for(profile, queryset, user=None):
     query = ' '.join(profile.profile_skills.values_list('skill__name', flat=True))
     return rank_profiles(queryset.exclude(pk=profile.pk), query, user=user)

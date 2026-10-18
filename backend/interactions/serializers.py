@@ -118,6 +118,7 @@ class HelpRequestSerializer(serializers.ModelSerializer):
     seeker_profile_detail = serializers.SerializerMethodField()
     helper_profile_detail = serializers.SerializerMethodField()
     related_skill_name = serializers.SerializerMethodField()
+    offered_skill_name = serializers.SerializerMethodField()
     helper_contact_methods = serializers.SerializerMethodField()
     seeker_contact_methods = serializers.SerializerMethodField()
     next_step = serializers.SerializerMethodField()
@@ -138,6 +139,9 @@ class HelpRequestSerializer(serializers.ModelSerializer):
             "message",
             "related_skill",
             "related_skill_name",
+            "kind",
+            "offered_skill",
+            "offered_skill_name",
             "urgency",
             "preferred_contact_method",
             "version",
@@ -186,6 +190,9 @@ class HelpRequestSerializer(serializers.ModelSerializer):
 
     def get_related_skill_name(self, obj) -> str | None:
         return obj.related_skill.name if obj.related_skill_id else None
+
+    def get_offered_skill_name(self, obj) -> str | None:
+        return obj.offered_skill.name if obj.offered_skill_id else None
 
     def get_helper_contact_methods(self, obj) -> list[dict]:
         request = self.context.get("request")

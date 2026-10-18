@@ -1,6 +1,10 @@
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Search, Filter, ChevronDown, X } from 'lucide-react';
+import { ArrowLeftRight, Search, Filter, ChevronDown, X } from 'lucide-react';
+import { MatchCard } from '../components/profiles/MatchCard';
+import { useSwapMatches } from '../hooks/useSwapMatches';
+import { useCurrentProfile } from '../hooks/useProfileEditor';
+import { SavedProfilesPanel } from './SavedProfilesPage';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { ProfileCard } from '../components/profiles/ProfileCard';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -10,7 +14,116 @@ import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
 import { PageControls } from '../components/ui/ListPagination';
 
+type DiscoverTab = 'helpers' | 'swaps' | 'saved';
+const tabs: { key: DiscoverTab; label: string }[] = [
+  { key: 'helpers', label: 'All helpers' },
+  { key: 'swaps', label: 'Swap matches' },
+  { key: 'saved', label: 'Saved' },
+];
+
 export function DiscoveryPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get('tab') as DiscoverTab | null;
+  const active: DiscoverTab = requested && tabs.some((tab) => tab.key === requested) ? requested : 'helpers';
+  const select = (tab: DiscoverTab) => setSearchParams(tab === 'helpers' ? {} : { tab }, { replace: true });
+  const focusTab = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const offset = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (!offset) return;
+    const next = tabs[(index + offset + tabs.length) % tabs.length];
+    select(next.key);
+    document.getElementById(`discover-tab-${next.key}`)?.focus();
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto">
+      <div className="mb-5">
+        <h1 className="text-3xl sm:text-4xl font-bold text-[#0F172A] mb-2">Discover</h1>
+        <p className="text-[#475569]">Find people who teach what you want to learn, or trade skills with someone.</p>
+      </div>
+      <div role="tablist" aria-label="Discover views" className="mb-6 flex gap-1 overflow-x-auto border-b border-[#E2E8F0]">
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.key}
+            id={`discover-tab-${tab.key}`}
+            role="tab"
+            type="button"
+            aria-selected={active === tab.key}
+            aria-controls={`discover-panel-${tab.key}`}
+            tabIndex={active === tab.key ? 0 : -1}
+            onClick={() => select(tab.key)}
+            onKeyDown={(event) => focusTab(event, index)}
+            className={`-mb-px flex-shrink-0 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${active === tab.key ? 'border-[#B83E00] text-[#13294B]' : 'border-transparent text-[#475569] hover:text-[#0F172A]'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id={`discover-panel-${active}`} aria-labelledby={`discover-tab-${active}`}>
+        {active === 'helpers' && <AllHelpersPanel />}
+        {active === 'swaps' && <SwapMatchesPanel onBrowse={() => select('helpers')} />}
+        {active === 'saved' && <SavedProfilesPanel onBrowse={() => select('helpers')} />}
+      </div>
+    </div>
+  );
+}
+
+const swapEmptyCopy: Record<string, { title: string; body: string; link?: { to: string; label: string } }> = {
+  no_learning_goals: { title: 'Add what you want to learn', body: 'Swap matches pair what you want to learn with what you can teach.', link: { to: '/me/edit?tab=learning', label: 'Add learning goals' } },
+  no_teaching_skills: { title: 'Add a skill you can teach', body: 'A swap needs something to offer in return.', link: { to: '/me/edit?tab=teaching', label: 'Add a skill' } },
+  no_mutual_matches: { title: 'No two-way matches yet', body: "Nobody who teaches your goals has said they want to learn one of your skills. You can still ask helpers directly, or show your own learning goals so others can find you." },
+};
+
+function SwapMatchesPanel({ onBrowse }: { onBrowse: () => void }) {
+  const [page, setPage] = useState(1);
+  const swaps = useSwapMatches(page);
+  const profile = useCurrentProfile();
+  const goalsHidden = profile.data && !profile.data.learning_goals_public;
+
+  if (swaps.isLoading) return <p role="status" className="text-sm text-[#475569]">Finding swap matches…</p>;
+  if (swaps.isError) {
+    return (
+      <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <span>We couldn't load swap matches right now.</span>
+        <button type="button" onClick={() => void swaps.refetch()} className="rounded-lg border border-red-300 bg-white px-3 py-1 font-medium hover:bg-red-100">Try again</button>
+      </div>
+    );
+  }
+  const rows = swaps.data?.profiles ?? [];
+  const empty = swapEmptyCopy[swaps.data?.matching?.reason ?? 'no_mutual_matches'] ?? swapEmptyCopy.no_mutual_matches;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#475569]">Two-way matches: they teach something you want to learn, and want to learn something you teach.</p>
+      {goalsHidden && (
+        <p className="rounded-xl border border-[#E2E8F0] bg-white p-4 text-sm text-[#475569]">
+          Your learning goals are hidden, so others can't find you as a swap match. <Link to="/me/edit?tab=learning" className="font-semibold text-[#13294B] underline">Show them on your profile</Link>.
+        </p>
+      )}
+      {rows.length ? (
+        <>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {rows.map((row) => <MatchCard key={row.id} profile={row} />)}
+          </div>
+          {(page > 1 || swaps.data?.next) && (
+            <PageControls label="Swap match pages" pageText={`Page ${page}`} canPrevious={page > 1 && !swaps.isFetching} canNext={Boolean(swaps.data?.next) && !swaps.isFetching} onPrevious={() => setPage((p) => p - 1)} onNext={() => setPage((p) => p + 1)} />
+          )}
+        </>
+      ) : (
+        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-10 text-center">
+          <ArrowLeftRight className="mx-auto mb-3 h-8 w-8 text-[#64748B]" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-[#0F172A]">{empty.title}</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm text-[#475569]">{empty.body}</p>
+          <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+            {empty.link && <Link to={empty.link.to} className="rounded-xl bg-[#13294B] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1a3a6b]">{empty.link.label}</Link>}
+            <button type="button" onClick={onBrowse} className="rounded-xl border-2 border-[#13294B] px-5 py-2.5 text-sm font-semibold text-[#13294B] hover:bg-[#E8EEF7]">Browse all helpers</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AllHelpersPanel() {
   const [searchParams] = useSearchParams();
   const taxonomy = useTaxonomy();
   const quickCategories = taxonomy.data?.categories || [];
@@ -75,13 +188,7 @@ export function DiscoveryPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl sm:text-4xl font-bold text-[#0F172A] mb-2">Discover</h1>
-        <p className="text-[#475569]">Find students who teach what you want to learn</p>
-      </div>
-
+    <div>
       {discoveryQuery.isError && !shouldUseMocks() && (
         <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <span>We couldn't load matches right now.</span>

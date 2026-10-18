@@ -9,7 +9,7 @@ import { useDeleteSavedProfileMutation, useSavedProfiles } from '../hooks/useSav
 import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
 
-export function SavedProfilesPage() {
+export function SavedProfilesPanel({ onBrowse }: { onBrowse: () => void }) {
   const savedProfilesQuery = useSavedProfiles();
   const deleteSavedProfile = useDeleteSavedProfileMutation();
   const toast = useToast();
@@ -19,11 +19,8 @@ export function SavedProfilesPage() {
   const pagination = useListPage(savedProfiles, search);
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mb-6">
-        <h1 className="mb-2 text-3xl font-bold text-[#0F172A]">Saved Profiles</h1>
-        <p className="text-[#64748B]">Students you&apos;ve bookmarked for future reference</p>
-      </div>
+    <div>
+      <p className="mb-4 text-[#475569]">People you bookmarked to come back to.</p>
 
       {savedProfilesQuery.isError && !isMock && (
         <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -71,7 +68,7 @@ export function SavedProfilesPage() {
                 to={`/profiles/${profile.id}`}
                 className="flex-1 rounded-xl bg-[#13294B] px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-[#1a3a6b]"
               >
-                View Profile
+                View profile
               </Link>
               <button
                 type="button"
@@ -113,12 +110,13 @@ export function SavedProfilesPage() {
           <p className="mb-6 text-[#64748B]">
             {isMock ? 'Save profiles from Discover to build your demo list.' : 'Save profiles from Discover to see them here.'}
           </p>
-          <Link
-            to="/discover"
+          <button
+            type="button"
+            onClick={onBrowse}
             className="inline-block rounded-xl bg-[#13294B] px-6 py-3 text-sm font-medium text-white hover:bg-[#1a3a6b]"
           >
-            Discover Students
-          </Link>
+            Browse helpers
+          </button>
         </div>
       )}
     </div>

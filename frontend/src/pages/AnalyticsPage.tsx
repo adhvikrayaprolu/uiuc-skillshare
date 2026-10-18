@@ -21,7 +21,8 @@ export function AnalyticsPage() {
   }
 
   const data = analyticsQuery.data;
-  const maxTopSkill = Math.max(1, ...data.network_summary.top_skills.map((s) => s.count));
+  const network = data.network_summary || {total_profiles: 0, total_skills: 0, total_help_requests: 0, connections_count: 0, top_skills: [], request_status_counts: {} as Record<string, number>};
+  const maxTopSkill = Math.max(1, ...network.top_skills.map((s) => s.count));
   const myCards = [
     { label: 'My Saved Profiles', value: data.user_summary.saved_profiles_count },
     { label: 'My Active Requests', value: data.user_summary.active_help_requests_count },
@@ -31,15 +32,15 @@ export function AnalyticsPage() {
     { label: 'My Profile Completeness', value: `${data.user_summary.profile_completeness}%` },
   ];
   const networkCards = [
-    { label: 'Total Profiles', value: data.network_summary.total_profiles },
-    { label: 'Total Skills', value: data.network_summary.total_skills },
-    { label: 'Total Help Requests', value: data.network_summary.total_help_requests },
-    { label: 'Total Connections', value: data.network_summary.connections_count },
+    { label: 'Total Profiles', value: network.total_profiles },
+    { label: 'Total Skills', value: network.total_skills },
+    { label: 'Total Help Requests', value: network.total_help_requests },
+    { label: 'Total Connections', value: network.connections_count },
   ];
   const statusOrder = ['pending', 'accepted', 'completed', 'declined', 'cancelled'];
   const statusCounts = statusOrder.map((status) => ({
     status,
-    count: data.network_summary.request_status_counts[status] || 0,
+    count: network.request_status_counts[status] || 0,
   }));
   const maxStatusCount = Math.max(1, ...statusCounts.map((row) => row.count));
 
@@ -48,7 +49,7 @@ export function AnalyticsPage() {
       <div>
         <h1 className="text-3xl font-bold text-[#0F172A]">Analytics</h1>
         <p className="text-[#64748B]">
-          These analytics summarize your SkillSwap activity and the broader peer network.
+          Your activity summary. Network administration is available only to staff.
         </p>
       </div>
 
@@ -67,6 +68,7 @@ export function AnalyticsPage() {
         </div>
       </section>
 
+      {data.network_summary && <>
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-[#0F172A]">Peer Network Insights</h2>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -84,7 +86,7 @@ export function AnalyticsPage() {
           <h2 className="text-lg font-semibold text-[#0F172A]">Top Skills</h2>
           <p className="mb-4 text-xs text-[#64748B]">Most common skills across visible student profiles.</p>
           <div className="space-y-3">
-            {data.network_summary.top_skills.map((row) => (
+            {network.top_skills.map((row) => (
               <div key={row.skill}>
                 <div className="mb-1 flex items-center justify-between text-sm">
                   <span className="text-[#0F172A]">{row.skill}</span>
@@ -123,11 +125,11 @@ export function AnalyticsPage() {
         </section>
       </div>
 
+      </>}
       <section className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5">
         <h3 className="text-sm font-semibold text-[#0F172A]">What this means</h3>
         <p className="mt-1 text-sm text-[#334155]">
-          Resume Review, SQL, and Networking Advice are currently common discovery areas. Accepted and completed
-          requests represent successful peer connections.
+          Accepted and completed requests represent peer connections. Skill experience is self-declared; feedback verifies an interaction, not expertise.
         </p>
       </section>
     </div>

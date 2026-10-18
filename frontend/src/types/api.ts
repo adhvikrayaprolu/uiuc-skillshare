@@ -101,6 +101,7 @@ export interface Endorsement {
 
 export interface ProfileListItem {
   id: number;
+  profile_picture?: string | null;
   display_name: string;
   major: string;
   year: StudentYear | string;
@@ -124,6 +125,11 @@ export interface ProfileListItem {
 }
 
 export interface ProfileDetail extends ProfileListItem {
+  user_id?: number;
+  learning_goals?: number[];
+  learning_goal_notes?: string;
+  share_contacts?: boolean;
+  embedding_consent?: boolean;
   interests?: string;
   availability_notes?: string;
   profile_skills: ProfileSkill[];
@@ -231,7 +237,7 @@ export interface AnalyticsSummaryResponse {
     public_credentials_count: number;
     profile_completeness: number;
   };
-  network_summary: {
+  network_summary?: {
     total_users: number;
     total_profiles: number;
     total_skills: number;

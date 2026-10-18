@@ -18,6 +18,7 @@ class SkillTagListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = SkillTag.objects.select_related("category").all()
+        if not self.request.user.is_staff: qs = qs.filter(is_approved=True)
         params = self.request.query_params
         if params.get("q"):
             qs = qs.filter(Q(name__icontains=params["q"]) | Q(description__icontains=params["q"]))

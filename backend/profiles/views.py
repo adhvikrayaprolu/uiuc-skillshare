@@ -91,17 +91,20 @@ class OwnedNestedViewSet(viewsets.ModelViewSet):
         profile = self.get_profile()
         serializer.save(profile=profile)
         profile.update_profile_completeness()
+        profile.update_onboarding()
         rebuild_profile_search_index(profile)
 
     def perform_update(self, serializer):
         instance = serializer.save()
         instance.profile.update_profile_completeness()
+        instance.profile.update_onboarding()
         rebuild_profile_search_index(instance.profile)
 
     def perform_destroy(self, instance):
         profile = instance.profile
         instance.delete()
         profile.update_profile_completeness()
+        profile.update_onboarding()
         rebuild_profile_search_index(profile)
 
 
@@ -184,6 +187,11 @@ class CurrentProfileAggregateView(APIView):
                 for row in payload[key]:
                     model.objects.create(profile=profile, **row)
             profile.update_profile_completeness()
+            profile.update_onboarding()
+            if "availability" in payload:
+                from django.utils import timezone
+                profile.availability_confirmed_at = timezone.now()
+                profile.save(update_fields=["availability_confirmed_at"])
             rebuild_profile_search_index(profile)
             track_event(request.user, "profile_updated", {"profile_id": profile.id}, request)
         return Response(StudentProfileSerializer(profile, context={"request": request}).data)

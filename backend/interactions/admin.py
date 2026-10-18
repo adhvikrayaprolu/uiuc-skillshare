@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import BlockedUser, Endorsement, HelpRequest, Report, Review, SavedProfile
+from .models import ModerationAudit, BlockedUser, Endorsement, HelpRequest, Report, Review, SavedProfile
 
 
 @admin.register(SavedProfile)
@@ -41,3 +41,12 @@ class ReportAdmin(admin.ModelAdmin):
 class BlockedUserAdmin(admin.ModelAdmin):
     list_display = ("blocker", "blocked_user", "created_at")
     search_fields = ("blocker__email", "blocked_user__email")
+
+
+@admin.register(ModerationAudit)
+class ModerationAuditAdmin(admin.ModelAdmin):
+    list_display = ("actor", "subject", "action", "created_at")
+    readonly_fields = ("actor", "subject", "action", "created_at")
+    def has_add_permission(self, request): return False
+    def has_change_permission(self, request, obj=None): return False
+    def has_delete_permission(self, request, obj=None): return False

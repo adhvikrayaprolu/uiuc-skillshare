@@ -147,6 +147,7 @@ class Report(models.Model):
 class BlockedUser(models.Model):
     blocker = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="blocked_users", on_delete=models.CASCADE)
     blocked_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="blocked_by", on_delete=models.CASCADE)
+    blocked_label = models.CharField(max_length=160, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -155,3 +156,10 @@ class BlockedUser(models.Model):
 
     def __str__(self):
         return f"{self.blocker} blocked {self.blocked_user}"
+
+
+class ModerationAudit(models.Model):
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="moderation_actions")
+    subject = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="moderation_history")
+    action = models.CharField(max_length=40)
+    created_at = models.DateTimeField(auto_now_add=True)

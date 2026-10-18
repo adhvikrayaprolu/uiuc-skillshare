@@ -123,6 +123,8 @@ class AccessPolicyRegressionTests(APITestCase):
 
     def test_contacts_require_connection_and_revoke_on_block(self):
         from profiles.models import ContactMethod
+        self.helper_profile.share_contacts = True
+        self.helper_profile.save()
         ContactMethod.objects.create(profile=self.helper_profile, type="email", value="shared@example.org")
         url = reverse("profiles-detail", args=[self.helper_profile.id])
         self.assertEqual(self.client.get(url).data["contact_methods"], [])

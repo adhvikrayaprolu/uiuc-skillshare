@@ -2,10 +2,27 @@ from django.db.models import Avg, Count
 from rest_framework import serializers
 
 from taxonomy.serializers import SkillTagSerializer
+from taxonomy.models import SkillTag
+from django.core.validators import validate_email, URLValidator
+from django.core.exceptions import ValidationError as DjangoValidationError
+import re
 from .models import Availability, ContactMethod, Credential, ProfileSkill, StudentProfile
 
 
 class ContactMethodSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        kind = attrs.get("type", getattr(self.instance, "type", ""))
+        value = attrs.get("value", getattr(self.instance, "value", "")).strip()
+        try:
+            if kind == "email": validate_email(value)
+            elif kind == "phone" and not re.fullmatch(r"\+?[0-9() .-]{7,25}", value): raise DjangoValidationError("Use a valid phone number.")
+            elif kind == "instagram" and not re.fullmatch(r"@?[A-Za-z0-9_.]{1,30}", value): raise DjangoValidationError("Use an Instagram handle.")
+            elif kind not in {"email", "phone", "instagram"}: URLValidator(schemes=["http", "https"])(value)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({"value": error.messages})
+        attrs["value"] = value
+        return attrs
+
     class Meta:
         model = ContactMethod
         fields = ["id", "type", "label", "value", "is_public", "created_at", "updated_at"]
@@ -25,17 +42,18 @@ class CredentialSerializer(serializers.ModelSerializer):
         fields = ["id", "credential_type", "title", "url", "file", "visibility", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def validate_file(self, value):
-        if not value:
-            return value
-        allowed = {".pdf", ".png", ".jpg", ".jpeg", ".doc", ".docx"}
-        name = value.name.lower()
-        if not any(name.endswith(ext) for ext in allowed):
-            raise serializers.ValidationError("Credential files must be pdf, png, jpg, jpeg, doc, or docx.")
-        return value
+    def validate(self, attrs):
+        if attrs.get("file"):
+            raise serializers.ValidationError({"file": "Document uploads are deferred. Add an evidence link instead."})
+        url = attrs.get("url", getattr(self.instance, "url", ""))
+        if url:
+            try: URLValidator(schemes=["http", "https"])(url)
+            except DjangoValidationError: raise serializers.ValidationError({"url": "Use an HTTP or HTTPS link."})
+        return attrs
 
 
 class ProfileSkillSerializer(serializers.ModelSerializer):
+    skill = serializers.PrimaryKeyRelatedField(queryset=SkillTag.objects.filter(is_approved=True))
     skill_detail = SkillTagSerializer(source="skill", read_only=True)
 
     class Meta:
@@ -45,6 +63,12 @@ class ProfileSkillSerializer(serializers.ModelSerializer):
 
 
 class StudentProfileSerializer(serializers.ModelSerializer):
+    learning_goals = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    profile_picture = serializers.SerializerMethodField()
+
+    def get_profile_picture(self, obj):
+        return f"/api/profiles/{obj.pk}/avatar/" if obj.profile_picture else None
+
     contact_methods = ContactMethodSerializer(many=True, read_only=True)
     availability = AvailabilitySerializer(many=True, read_only=True)
     credentials = CredentialSerializer(many=True, read_only=True)
@@ -60,6 +84,11 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             "headline",
             "bio",
             "interests",
+            "learning_goals",
+            "learning_goal_notes",
+            "share_contacts",
+            "embedding_consent",
+            "availability_confirmed_at",
             "location",
             "profile_picture",
             "open_to_connect",
@@ -78,6 +107,8 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
 
 class StudentProfileCreateUpdateSerializer(serializers.ModelSerializer):
+    learning_goals = serializers.PrimaryKeyRelatedField(many=True, queryset=SkillTag.objects.filter(is_approved=True), required=False)
+    profile_picture = serializers.ImageField(read_only=True)
     class Meta:
         model = StudentProfile
         fields = [
@@ -88,6 +119,11 @@ class StudentProfileCreateUpdateSerializer(serializers.ModelSerializer):
             "headline",
             "bio",
             "interests",
+            "learning_goals",
+            "learning_goal_notes",
+            "share_contacts",
+            "embedding_consent",
+            "availability_confirmed_at",
             "location",
             "profile_picture",
             "open_to_connect",
@@ -96,7 +132,7 @@ class StudentProfileCreateUpdateSerializer(serializers.ModelSerializer):
             "visibility",
             "profile_completeness",
         ]
-        read_only_fields = ["id", "profile_completeness"]
+        read_only_fields = ["id", "profile_completeness", "availability_confirmed_at"]
 
     def validate(self, attrs):
         request = self.context["request"]
@@ -105,21 +141,30 @@ class StudentProfileCreateUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        validated_data.setdefault("visibility", "private")
+        goals = validated_data.pop("learning_goals", [])
         profile = StudentProfile.objects.create(user=self.context["request"].user, **validated_data)
+        profile.learning_goals.set(goals)
         profile.update_profile_completeness()
-        user = self.context["request"].user
-        if not user.has_completed_onboarding:
-            user.has_completed_onboarding = True
-            user.save(update_fields=["has_completed_onboarding", "updated_at"])
+        profile.update_onboarding()
         return profile
 
     def update(self, instance, validated_data):
+        from django.utils import timezone
+        if "open_to_connect" in validated_data or "availability_notes" in validated_data:
+            validated_data["availability_confirmed_at"] = timezone.now()
         profile = super().update(instance, validated_data)
         profile.update_profile_completeness()
+        profile.update_onboarding()
         return profile
 
 
 class PublicStudentProfileListSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+
+    def get_profile_picture(self, obj):
+        return f"/api/profiles/{obj.pk}/avatar/" if obj.profile_picture else None
+
     top_skills = serializers.SerializerMethodField()
     top_categories = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
@@ -203,6 +248,12 @@ class PublicStudentProfileListSerializer(serializers.ModelSerializer):
 
 
 class PublicStudentProfileDetailSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(read_only=True)
+    profile_picture = serializers.SerializerMethodField()
+
+    def get_profile_picture(self, obj):
+        return f"/api/profiles/{obj.pk}/avatar/" if obj.profile_picture else None
+
     profile_skills = ProfileSkillSerializer(many=True, read_only=True)
     contact_methods = serializers.SerializerMethodField()
     availability = AvailabilitySerializer(many=True, read_only=True)
@@ -218,6 +269,7 @@ class PublicStudentProfileDetailSerializer(serializers.ModelSerializer):
         model = StudentProfile
         fields = [
             "id",
+            "user_id",
             "display_name",
             "major",
             "year",

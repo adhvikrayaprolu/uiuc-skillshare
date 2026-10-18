@@ -8,16 +8,21 @@ import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
 import type { ContactMethodType, CredentialType, StudentYear } from '../types/api';
 
+import {AvailabilityFields} from '../components/profile/AvailabilityFields';
+import {SkillSuggestion} from '../components/profile/SkillSuggestion';
+import {LearningGoals, SharingPreferences} from '../components/profile/ProfilePreferences';
+import {apiErrorMessage} from '../lib/errors';
+import {useQueryClient} from '@tanstack/react-query';
+
 const steps = ['Basic Info', 'Skills & Experiences', 'Availability', 'Contact Methods', 'Optional Credentials', 'Preview & Publish'];
 const years: StudentYear[] = ['freshman', 'sophomore', 'junior', 'senior', 'graduate', 'alumni', 'other'];
-const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'flexible'];
-const times = ['morning', 'afternoon', 'evening', 'night', 'flexible'];
 const contactTypes: ContactMethodType[] = ['email', 'linkedin', 'github', 'instagram', 'portfolio', 'website', 'phone', 'other'];
 
 const titleCase = (value: string) => value.replace(/(^|_)\w/g, (match) => match.replace('_', ' ').toUpperCase());
 
 export function OnboardingPage() {
   const auth = useAuth();
+  const queryClient = useQueryClient();
   const taxonomy = useTaxonomy();
   const toast = useToast();
   const navigate = useNavigate();
@@ -46,10 +51,13 @@ export function OnboardingPage() {
     setIsPublishing(true);
     try {
       await saveProfileForm(form, taxonomy.data?.rawSkills || []);
-      toast.success('Onboarding complete. Your profile is live.');
+      await queryClient.invalidateQueries();
+      await auth.refreshSession();
+      toast.success('Your profile was saved.');
       navigate('/dashboard');
-    } catch {
-      toast.error('Could not publish your profile. Check the fields and try again.');
+    } catch (error) {
+      setErrors([apiErrorMessage(error)]);
+      toast.error('Could not save your profile. Review the field errors.');
     } finally {
       setIsPublishing(false);
     }
@@ -83,7 +91,7 @@ export function OnboardingPage() {
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-8 shadow-lg">
           <h2 className="mb-6 text-2xl font-bold text-[#0F172A]">{steps[currentStep]}</h2>
           {errors.length > 0 && (
-            <div className="mb-5 rounded-xl border border-[#DC2626]/20 bg-[#FEF2F2] p-4 text-sm text-[#7F1D1D]">
+            <div role="alert" className="mb-5 rounded-xl border border-[#DC2626]/20 bg-[#FEF2F2] p-4 text-sm text-[#7F1D1D]">
               {errors[0]}
             </div>
           )}
@@ -106,7 +114,7 @@ export function OnboardingPage() {
               <div className="space-y-4">
                 <p className="text-sm text-[#64748B]">Select the skills and experiences you can help others with.</p>
                 <div className="flex max-h-72 flex-wrap gap-2 overflow-y-auto">
-                  {(taxonomy.data?.rawSkills || []).slice(0, 80).map((skill) => {
+                  {(taxonomy.data?.rawSkills || []).map((skill) => {
                     const selected = form.selectedSkillIds.includes(skill.id);
                     return (
                       <button
@@ -121,15 +129,15 @@ export function OnboardingPage() {
                   })}
                 </div>
                 <p className="rounded-xl bg-[#F8FAFC] p-4 text-sm text-[#64748B]">Selected Skills: {form.selectedSkillIds.length}</p>
+                {form.selectedSkillIds.map(id => <div key={id} className="rounded-xl border p-3"><label className="block text-sm">{taxonomy.data?.rawSkills.find(skill => skill.id === id)?.name}: self-declared experience<select className="mt-1 w-full rounded border p-2" value={form.skillDetails[id]?.confidence_level || 'intermediate'} onChange={event => update('skillDetails', {...form.skillDetails, [id]: {confidence_level: event.target.value as 'beginner' | 'intermediate' | 'advanced' | 'expert', description: form.skillDetails[id]?.description || ''}})}>{['beginner', 'intermediate', 'advanced', 'expert'].map(level => <option key={level}>{level}</option>)}</select></label><label className="block text-sm">What have you done with this skill?<input className="mt-1 w-full rounded border p-2" value={form.skillDetails[id]?.description || ''} onChange={event => update('skillDetails', {...form.skillDetails, [id]: {confidence_level: form.skillDetails[id]?.confidence_level || 'intermediate', description: event.target.value}})}/></label></div>)}
+                <SkillSuggestion categories={taxonomy.data?.rawCategories || []}/>
+                <LearningGoals form={form} skills={taxonomy.data?.rawSkills || []} onChange={setForm}/>
               </div>
             )}
 
             {currentStep === 2 && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <Select label="Day" value={form.availability[0]?.day_of_week || 'monday'} options={days} onChange={(value) => update('availability', [{ ...(form.availability[0] || {}), day_of_week: value, time_block: form.availability[0]?.time_block || 'evening' }])} />
-                  <Select label="Time block" value={form.availability[0]?.time_block || 'evening'} options={times} onChange={(value) => update('availability', [{ ...(form.availability[0] || {}), day_of_week: form.availability[0]?.day_of_week || 'monday', time_block: value }])} />
-                </div>
+                <AvailabilityFields form={form} onChange={setForm}/>
                 <Textarea label="Availability notes" value={form.availabilityNotes} onChange={(value) => update('availabilityNotes', value)} placeholder="Best after 6pm, flexible around exams..." />
               </div>
             )}
@@ -153,7 +161,7 @@ export function OnboardingPage() {
                         const contacts = [...form.contacts];
                         contacts[index] = { ...contact, is_public: event.target.checked };
                         update('contacts', contacts);
-                      }} /> Public</label>
+                      }} /> Share after acceptance</label>
                     </div>
                   </div>
                 ))}
@@ -192,6 +200,7 @@ export function OnboardingPage() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#E8EEF7]"><CheckCircle2 className="h-8 w-8 text-[#13294B]" /></div>
                 <h3 className="mb-2 text-2xl font-bold text-[#0F172A]">You're all set</h3>
                 <p className="mb-6 text-[#64748B]">Publish your profile so other students can discover and connect with you.</p>
+                <SharingPreferences form={form} onChange={setForm}/>
                 <label className="mb-6 flex cursor-pointer items-center justify-center gap-2">
                   <input type="checkbox" className="h-5 w-5 rounded" checked={form.openToConnect} onChange={(event) => update('openToConnect', event.target.checked)} />
                   <span className="text-sm text-[#0F172A]">I'm open to connect with other students</span>
@@ -203,7 +212,7 @@ export function OnboardingPage() {
           <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-6">
             <button onClick={() => setCurrentStep(Math.max(0, currentStep - 1))} disabled={currentStep === 0 || isPublishing} className="flex items-center gap-2 rounded-xl border-2 border-[#E2E8F0] px-6 py-3 font-medium text-[#64748B] transition-colors hover:border-[#13294B] hover:text-[#0F172A] disabled:cursor-not-allowed disabled:opacity-50"><ChevronLeft className="h-5 w-5" />Back</button>
             <div className="text-sm text-[#64748B]">{currentStep + 1} of {steps.length}</div>
-            <button onClick={nextStep} disabled={isPublishing} className="flex items-center gap-2 rounded-xl bg-[#13294B] px-6 py-3 font-medium text-white transition-colors hover:bg-[#1a3a6b] disabled:opacity-60">{currentStep === steps.length - 1 ? (isPublishing ? 'Publishing...' : 'Publish Profile') : 'Continue'}<ChevronRight className="h-5 w-5" /></button>
+            <button onClick={nextStep} disabled={isPublishing} className="flex items-center gap-2 rounded-xl bg-[#13294B] px-6 py-3 font-medium text-white transition-colors hover:bg-[#1a3a6b] disabled:opacity-60">{currentStep === steps.length - 1 ? (isPublishing ? 'Publishing...' : 'Save Profile') : 'Continue'}<ChevronRight className="h-5 w-5" /></button>
           </div>
         </div>
       </div>

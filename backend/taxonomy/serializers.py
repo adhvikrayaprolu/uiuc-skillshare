@@ -27,6 +27,11 @@ class SkillTagCreateSerializer(serializers.ModelSerializer):
         model = SkillTag
         fields = ["id", "category", "name", "description"]
 
+    def validate(self, attrs):
+        if SkillTag.objects.filter(category=attrs["category"], slug=slugify(attrs["name"])).exists():
+            raise serializers.ValidationError({"name": "This skill has already been listed or suggested."})
+        return attrs
+
     def create(self, validated_data):
         validated_data["slug"] = slugify(validated_data["name"])
         validated_data["is_approved"] = False

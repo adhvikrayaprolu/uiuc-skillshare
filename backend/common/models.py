@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class AnalyticsEvent(models.Model):
@@ -26,3 +27,29 @@ class AnalyticsEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
+    peer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="peer_notifications")
+    help_request = models.ForeignKey("interactions.HelpRequest", on_delete=models.CASCADE, related_name="notifications")
+    event_key = models.CharField(max_length=180)
+    kind = models.CharField(max_length=24)
+    title = models.CharField(max_length=120)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [models.UniqueConstraint(fields=["recipient", "event_key"], name="unique_notification_event")]
+        indexes = [models.Index(fields=["recipient", "read_at"])]
+
+
+class EmailDelivery(models.Model):
+    notification = models.OneToOneField(Notification, on_delete=models.CASCADE, related_name="delivery")
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    queued_until = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=80, blank=True)
+    class Meta:
+        indexes = [models.Index(fields=["delivered_at", "next_attempt_at"])]

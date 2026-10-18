@@ -54,6 +54,8 @@ def create_request(serializer, data):
     data.update(seeker=user, status="pending", version=1, content_hash=digest, topic_key=normalized)
     obj = HelpRequest.objects.create(**data)
     track_event(user, "help_request_created", {"help_request_id": obj.pk, "helper_profile_id": helper.pk}, serializer.context["request"])
+    from common.notifications import notify_request
+    notify_request(obj, "created", user.pk)
     return obj
 
 
@@ -76,6 +78,8 @@ def transition_request(serializer, instance, data):
     obj.version += 1
     obj.mark_status_timestamp()
     obj.save()
+    from common.notifications import notify_request
+    notify_request(obj, obj.status, serializer.context["request"].user.pk)
     return obj
 
 

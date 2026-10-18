@@ -17,13 +17,11 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
 import { Logo } from '../components/ui/Logo';
 import { NotificationDropdown } from '../components/layout/NotificationDropdown';
-import type { NotificationItem } from '../components/layout/NotificationDropdown';
 import { UserMenuDropdown } from '../components/layout/UserMenuDropdown';
 import { AvailabilityStatusDropdown } from '../components/layout/AvailabilityStatusDropdown';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentProfile, useProfileEditor } from '../hooks/useProfileEditor';
-import { useHelpRequests } from '../hooks/useHelpRequests';
-import { useSavedProfiles } from '../hooks/useSavedProfiles';
+import { useNotifications } from '../hooks/useNotifications';
 import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
 
@@ -47,8 +45,7 @@ export function AppLayout() {
   const toast = useToast();
   const currentProfile = useCurrentProfile();
   const { updateProfile } = useProfileEditor();
-  const helpRequestsQuery = useHelpRequests();
-  const savedProfilesQuery = useSavedProfiles();
+  const notifications = useNotifications();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -91,65 +88,6 @@ export function AppLayout() {
   }, [currentProfile.data, useMocks]);
 
   const availabilityStatus = useMocks ? demoAvailabilityStatus : apiAvailabilityStatus;
-  const notificationItems = useMemo<NotificationItem[]>(() => {
-    if (useMocks) return [];
-    const items: NotificationItem[] = [];
-    const profileId = currentProfile.data?.id;
-    const myUserId = auth.user?.id;
-    const helpRequests = helpRequestsQuery.data?.raw || [];
-    const incomingPending = helpRequests.find(
-      (req) => req.status === 'pending' && profileId && req.helper_profile === profileId,
-    );
-    if (incomingPending) {
-      items.push({
-        id: `incoming-${incomingPending.id}`,
-        type: 'request',
-        title: 'New help request',
-        description: `${incomingPending.seeker_display_name || 'A student'} wants help with ${incomingPending.topic.toLowerCase()}.`,
-        href: '/requests',
-        read: false,
-      });
-    }
-    const accepted = helpRequests.find(
-      (req) =>
-        req.status === 'accepted' &&
-        myUserId &&
-        (req.seeker === myUserId || req.helper_profile === profileId),
-    );
-    if (accepted) {
-      items.push({
-        id: `accepted-${accepted.id}`,
-        type: 'accepted',
-        title: 'New connection',
-        description: 'An accepted request is now listed in Connections.',
-        href: '/connections',
-        read: false,
-      });
-    }
-    const completeness = currentProfile.data?.profile_completeness || 0;
-    if (currentProfile.data && completeness < 85) {
-      items.push({
-        id: 'profile-reminder',
-        type: 'profile',
-        title: 'Complete your profile',
-        description: 'Add skills, availability, or credentials so students can find you.',
-        href: '/profile/edit',
-        read: false,
-      });
-    }
-    if ((savedProfilesQuery.data?.profiles.length || 0) > 0) {
-      items.push({
-        id: 'saved-reminder',
-        type: 'saved',
-        title: 'Saved profiles',
-        description: 'Review your saved peers when you are ready to connect.',
-        href: '/saved',
-        read: true,
-      });
-    }
-    return items.slice(0, 5);
-  }, [auth.user?.id, currentProfile.data, helpRequestsQuery.data?.raw, savedProfilesQuery.data?.profiles.length, useMocks]);
-
   const handleLogout = async () => {
     try {
       await auth.logout();
@@ -275,11 +213,17 @@ export function AppLayout() {
                   className="relative rounded-lg p-2 transition-colors hover:bg-[#F8FAFC]"
                 >
                   <Bell className="h-5 w-5 text-[#64748B]" />
-                  {notificationItems.some((item) => !item.read) && (
+                  {(notifications.query.data?.unread_count || 0) > 0 && (
                     <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#FF5F05]" />
                   )}
                 </button>
-                {showNotifications && <NotificationDropdown onNavigate={()=>setShowNotifications(false)} showSamples={useMocks} items={useMocks ? undefined : notificationItems} loading={!useMocks && helpRequestsQuery.isLoading} error={!useMocks && helpRequestsQuery.isError} />}
+                {showNotifications && <NotificationDropdown onNavigate={()=>setShowNotifications(false)} showSamples={useMocks} items={useMocks ? undefined : notifications.items} loading={!useMocks && notifications.query.isLoading} error={!useMocks && notifications.query.isError}
+                  unreadCount={notifications.query.data?.unread_count}
+                  onRead={id => notifications.markRead.mutate(id, {onError: () => toast.error('Could not mark notification read.')})}
+                  onReadAll={() => notifications.markAllRead.mutate(undefined, {onError: () => toast.error('Could not mark notifications read.')})}
+                  isUpdating={notifications.markAllRead.isPending}
+                  hasNext={Boolean(notifications.query.data?.next)} hasPrevious={Boolean(notifications.query.data?.previous)}
+                  onNext={() => notifications.setPage(page => page + 1)} onPrevious={() => notifications.setPage(page => Math.max(1, page - 1))} />}
               </div>
 
               <div className="relative" ref={userMenuRef}>

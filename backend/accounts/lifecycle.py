@@ -27,6 +27,7 @@ class AccountExportView(APIView):
         data = {"account": CurrentUserSerializer(request.user).data, "profile": StudentProfileSerializer(profile, context={"request": request}).data if profile else None,
                 "help_requests": HelpRequestSerializer(requests, many=True, context={"request": request}).data,
                 "saved": list(request.user.saved_profiles.values("saved_profile_id", "note", "created_at")),
+                "notifications": list(request.user.notifications.values("title", "kind", "read_at", "created_at")),
                 "blocks": list(request.user.blocked_users.values("blocked_label", "created_at")),
                 "reviews_written": list(request.user.written_reviews.values("profile_id", "rating", "comment", "created_at")),
                 "endorsements_given": list(request.user.given_endorsements.values("profile_id", "skill_id", "note", "created_at"))}

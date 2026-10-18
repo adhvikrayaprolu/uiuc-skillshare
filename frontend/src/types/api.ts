@@ -130,6 +130,7 @@ export interface ProfileDetail extends ProfileListItem {
   learning_goal_notes?: string;
   share_contacts?: boolean;
   embedding_consent?: boolean;
+  notification_email_enabled?: boolean;
   interests?: string;
   availability_notes?: string;
   profile_skills: ProfileSkill[];

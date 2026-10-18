@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { BarChart3, Bookmark, Edit, LogOut, Settings, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
-import { SETUP_HOME } from '../../lib/routes';
+import { EDIT_PROFILE, MY_PROFILE, SETUP_HOME } from '../../lib/routes';
 
 interface UserMenuDropdownProps {
   userName?: string;
@@ -23,10 +23,10 @@ export function UserMenuDropdown({
   onNavigate,
   onLogout,
 }: UserMenuDropdownProps) {
-  const profileHref = myProfileId ? (isPublished ? `/profiles/${myProfileId}` : '/profile/edit') : SETUP_HOME;
+  const profileHref = myProfileId ? MY_PROFILE : SETUP_HOME;
   const links: { to: string; label: string; icon: LucideIcon }[] = [
-    { to: profileHref, label: 'View my profile', icon: User },
-    { to: '/profile/edit', label: 'Edit profile', icon: Edit },
+    { to: profileHref, label: isPublished || !myProfileId ? 'View my profile' : 'View my profile (hidden)', icon: User },
+    { to: EDIT_PROFILE, label: 'Edit profile', icon: Edit },
     { to: '/saved', label: 'Saved profiles', icon: Bookmark },
     { to: '/settings', label: 'Settings', icon: Settings },
     ...(isStaff ? [{ to: '/analytics', label: 'Analytics', icon: BarChart3 }] : []),

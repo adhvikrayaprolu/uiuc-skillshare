@@ -9,7 +9,7 @@ export interface ProfileFormState {
   skillDetails: Record<number, {confidence_level: "beginner" | "intermediate" | "advanced" | "expert"; description: string; is_featured?: boolean}>;
   displayName: string;
   major: string;
-  year: StudentYear;
+  year: StudentYear | '';
   headline: string;
   bio: string;
   interests: string;
@@ -26,16 +26,16 @@ export interface ProfileFormState {
 
 export function defaultProfileForm(email = ''): ProfileFormState {
   return {
-    learningGoalIds: [], learningGoalNotes: '', shareContacts: false, embeddingConsent: false, skillDetails: {},
+    learningGoalIds: [], learningGoalNotes: '', shareContacts: true, embeddingConsent: false, skillDetails: {},
     displayName: '',
     major: '',
-    year: 'other',
+    year: '',
     headline: '',
     bio: '',
     interests: '',
     location: '',
     openToConnect: true,
-    visibility: 'private',
+    visibility: 'public',
     preferredContactMethod: 'email',
     availabilityNotes: '',
     selectedSkillIds: [],
@@ -72,18 +72,42 @@ export function formFromProfile(profile: ProfileDetail): ProfileFormState {
   };
 }
 
+export type SetupStep = 'about' | 'teach' | 'learn' | 'availability';
+export type FieldErrors = Partial<Record<'displayName' | 'major' | 'year' | 'headline' | 'skills' | 'goals' | 'availability' | 'contact', string>>;
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateSetupStep(form: ProfileFormState, step: SetupStep): FieldErrors {
+  const errors: FieldErrors = {};
+  if (step === 'about') {
+    if (!form.displayName.trim()) errors.displayName = 'Add the name other students will see.';
+    if (!form.major.trim()) errors.major = 'Add your major or program.';
+    if (!form.year) errors.year = 'Choose your year.';
+    if (!form.headline.trim()) errors.headline = 'Add a one-line headline.';
+  }
+  if (step === 'teach' && !form.selectedSkillIds.length) errors.skills = 'Pick at least one skill you can teach.';
+  if (step === 'learn' && !form.learningGoalIds.length) errors.goals = 'Pick at least one skill you want to learn.';
+  if (step === 'availability') {
+    if (!form.availability.length && !form.availabilityNotes.trim()) errors.availability = 'Select at least one time, mark yourself flexible, or add a note.';
+    const shared = form.contacts.filter((contact) => contact.value.trim() && contact.is_public);
+    if (form.shareContacts && !shared.length) errors.contact = 'Add a contact method to share after you accept a request.';
+    else if (shared.some((contact) => contact.type === 'email' && !emailPattern.test(contact.value.trim()))) errors.contact = 'Enter a valid email address.';
+  }
+  return errors;
+}
+
 export function validateProfileForm(form: ProfileFormState) {
   const errors: string[] = [];
   if (!form.displayName.trim()) errors.push('Display name is required.');
   if (!form.major.trim()) errors.push('Major is required.');
   if (!form.year) errors.push('Year is required.');
   if (!form.headline.trim()) errors.push('Headline is required.');
-  if (!form.bio.trim()) errors.push('Describe how you can help in your bio.');
+  if (!form.selectedSkillIds.length) errors.push('Add at least one skill you can teach.');
+  if (!form.learningGoalIds.length) errors.push('Add at least one skill you want to learn.');
   if (!form.availability.length && !form.availabilityNotes.trim()) errors.push('Add availability.');
-  if (!form.selectedSkillIds.length) errors.push('Add at least one skill.');
   if (form.shareContacts && !form.contacts.some((contact) => contact.value.trim() && contact.is_public)) errors.push('Add at least one contact method.');
   form.contacts.forEach((contact) => {
-    if (contact.value && contact.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.value)) {
+    if (contact.value && contact.type === 'email' && !emailPattern.test(contact.value)) {
       errors.push('Enter a valid email contact.');
     }
   });

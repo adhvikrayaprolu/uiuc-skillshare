@@ -2,27 +2,31 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Save, Trash2 } from 'lucide-react';
 import { api, shouldUseMocks } from '../lib/api';
-import { defaultProfileForm, formFromProfile, saveProfileForm, type ProfileFormState } from '../lib/profilePersistence';
+import { defaultProfileForm, formFromProfile, saveProfileForm, validateProfileForm, type ProfileFormState } from '../lib/profilePersistence';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
-import {LearningGoals, SharingPreferences} from '../components/profile/ProfilePreferences';
-import {AvailabilityFields} from '../components/profile/AvailabilityFields';
+import {SharingPreferences} from '../components/profile/ProfilePreferences';
+import {AvailabilityGrid} from '../components/profile/AvailabilityGrid';
+import {SkillPicker} from '../components/profile/SkillPicker';
 import {SkillSuggestion} from '../components/profile/SkillSuggestion';
 import {useUnsavedChanges} from '../hooks/useUnsavedChanges';
 import {apiErrorMessage} from '../lib/errors';
 import {useQueryClient} from '@tanstack/react-query';
 import type { ContactMethodType, CredentialType, ProfileSkill, StudentYear } from '../types/api';
 
-const tabs = ['Basic Info', 'Skills', 'Availability', 'Contact', 'Credentials', 'Privacy'];
+const tabs = ['Basics', 'Teaching', 'Learning', 'Availability', 'Contact', 'Links', 'Privacy'];
 const tabParamMap: Record<string, number> = {
   basic: 0,
+  teaching: 1,
   skills: 1,
-  availability: 2,
-  contact: 3,
-  credentials: 4,
-  privacy: 5,
+  learning: 2,
+  availability: 3,
+  contact: 4,
+  evidence: 5,
+  credentials: 5,
+  privacy: 6,
 };
 const years: StudentYear[] = ['freshman', 'sophomore', 'junior', 'senior', 'graduate', 'alumni', 'other'];
 const contactTypes: ContactMethodType[] = ['email', 'phone', 'instagram', 'linkedin', 'github', 'portfolio', 'website', 'other'];
@@ -104,9 +108,12 @@ export function EditProfilePage() {
   useUnsavedChanges(dirty && !isSaving);
   const handleSave = async () => {
     if (shouldUseMocks()) {toast.info('Synthetic demo edits are not persisted.'); return;}
+    const next = {...form, selectedSkillIds: skillsDraft.map(row => row.skill), skillDetails: Object.fromEntries(skillsDraft.map(row => [row.skill, {confidence_level: row.confidence_level, description: row.description, is_featured: row.is_featured}]))};
+    const problems = validateProfileForm(next);
+    if (problems.length) {setSaveError(problems[0]); return;}
     setIsSaving(true); setSaveError('');
     try {
-      await saveProfileForm({...form, selectedSkillIds: skillsDraft.map(row => row.skill), skillDetails: Object.fromEntries(skillsDraft.map(row => [row.skill, {confidence_level: row.confidence_level, description: row.description, is_featured: row.is_featured}]))});
+      await saveProfileForm(next);
       await currentProfile.refetch(); await queryClient.invalidateQueries();
       toast.success('All profile changes saved together.');
     } catch (error) {setSaveError(apiErrorMessage(error)); toast.error('Profile was not saved. Review the field errors.');}
@@ -121,15 +128,15 @@ export function EditProfilePage() {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
-        <h1 className="mb-2 text-3xl font-bold text-[#0F172A]">Edit Profile</h1>
-        <p className="text-[#64748B]">Update your information to help students find and connect with you</p>
+        <h1 className="mb-2 text-3xl font-bold text-[#0F172A]">Edit profile</h1>
+        <p className="text-[#475569]">All changes are saved together when you press Save changes.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="lg:col-span-1">
-          <div className="sticky top-6 rounded-2xl border border-[#E2E8F0] bg-white p-4">
+          <div className="sticky top-6 flex gap-1 overflow-x-auto rounded-2xl border border-[#E2E8F0] bg-white p-2 lg:block lg:p-4">
             {tabs.map((tab, idx) => (
-              <button key={tab} onClick={() => setActiveTab(idx)} className={`mb-1 w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-colors ${activeTab === idx ? 'bg-[#E8EEF7] text-[#13294B]' : 'text-[#64748B] hover:bg-[#F8FAFC]'}`}>
+              <button key={tab} type="button" aria-current={activeTab === idx ? 'true' : undefined} onClick={() => setActiveTab(idx)} className={`flex-shrink-0 rounded-xl px-4 py-2.5 text-left text-sm font-medium transition-colors lg:mb-1 lg:w-full lg:py-3 ${activeTab === idx ? 'bg-[#E8EEF7] text-[#13294B]' : 'text-[#475569] hover:bg-[#F8FAFC]'}`}>
                 {tab}
               </button>
             ))}
@@ -161,7 +168,6 @@ export function EditProfilePage() {
                 <Input label="Headline" value={form.headline} onChange={(value) => update('headline', value)} />
                 <Textarea label="Bio" value={form.bio} onChange={(value) => update('bio', value)} />
                 <Input label="Interests" value={form.interests} onChange={(value) => update('interests', value)} placeholder="Comma-separated interests" />
-                <LearningGoals form={form} skills={taxonomy.data?.rawSkills || []} onChange={setForm}/>
                 <label className="block text-sm">Optional avatar (image up to 2 MB)<input type="file" accept="image/*" disabled={avatarPending || shouldUseMocks() || dirty} onChange={async event => {const file = event.target.files?.[0]; if (!file) return; const payload = new FormData(); payload.append('avatar', file); setAvatarPending(true); try {await api.post('/profiles/me/avatar/', payload, {headers: {'Content-Type': 'multipart/form-data'}}); await currentProfile.refetch(); toast.success('Avatar saved.');} catch (error) {setSaveError(apiErrorMessage(error));} finally {setAvatarPending(false);}}}/></label>
               </div>
             )}
@@ -325,12 +331,26 @@ export function EditProfilePage() {
 
             {activeTab === 2 && (
               <div className="space-y-4">
-                <AvailabilityFields form={form} onChange={setForm}/>
-                <Textarea label="Availability notes" value={form.availabilityNotes} onChange={(value) => update('availabilityNotes', value)} />
+                <p className="text-sm text-[#475569]">Your learning goals stay private. They decide who we suggest to you.</p>
+                <SkillPicker
+                  label="Skills you want to learn"
+                  skills={taxonomy.data?.rawSkills || []}
+                  categories={taxonomy.data?.rawCategories || []}
+                  selected={form.learningGoalIds}
+                  onToggle={(id) => update('learningGoalIds', form.learningGoalIds.includes(id) ? form.learningGoalIds.filter((value) => value !== id) : [...form.learningGoalIds, id])}
+                />
+                <Textarea label="Anything specific? (optional)" value={form.learningGoalNotes} onChange={(value) => update('learningGoalNotes', value)} />
               </div>
             )}
 
             {activeTab === 3 && (
+              <div className="space-y-4">
+                <AvailabilityGrid value={form.availability} onChange={(value) => update('availability', value)} />
+                <Textarea label="Availability notes" value={form.availabilityNotes} onChange={(value) => update('availabilityNotes', value)} />
+              </div>
+            )}
+
+            {activeTab === 4 && (
               <div className="space-y-4">
                 {form.contacts.map((contact, index) => (
                   <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-[#E2E8F0] p-4 md:grid-cols-[150px_1fr_100px]">
@@ -356,32 +376,33 @@ export function EditProfilePage() {
               </div>
             )}
 
-            {activeTab === 4 && (
+            {activeTab === 5 && (
               <div className="space-y-4">
+                <p className="text-sm text-[#475569]">Link projects, a portfolio or GitHub so people can see your work. Links give context; they are not verified.</p>
                 {form.credentials.map((credential, index) => (
                   <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-[#E2E8F0] p-4 md:grid-cols-[150px_1fr_120px]">
-                    <input value={credential.title} onChange={(event) => {
+                    <input aria-label={`Link ${index + 1} title`} value={credential.title} onChange={(event) => {
                       const credentials = [...form.credentials];
                       credentials[index] = { ...credential, title: event.target.value };
                       update('credentials', credentials);
                     }} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm" />
-                    <input value={credential.url} onChange={(event) => {
+                    <input aria-label={`Link ${index + 1} URL`} value={credential.url} onChange={(event) => {
                       const credentials = [...form.credentials];
                       credentials[index] = { ...credential, url: event.target.value };
                       update('credentials', credentials);
                     }} placeholder="https://..." className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm" />
-                    <select value={credential.visibility} onChange={(event) => {
+                    <select aria-label={`Link ${index + 1} visibility`} value={credential.visibility} onChange={(event) => {
                       const credentials = [...form.credentials];
                       credentials[index] = { ...credential, visibility: event.target.value as 'public' | 'private' | 'hidden' };
                       update('credentials', credentials);
                     }} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"><option value="public">Public</option><option value="private">Private</option><option value="hidden">Hidden</option></select>
                   </div>
                 ))}
-                <button type="button" onClick={() => update('credentials', [...form.credentials, { credential_type: 'portfolio' as CredentialType, title: 'Portfolio', url: '', visibility: 'public' }])} className="w-full rounded-xl border-2 border-dashed border-[#E2E8F0] px-4 py-3 text-[#64748B] hover:border-[#13294B]">Add Credential Link</button>
+                <button type="button" onClick={() => update('credentials', [...form.credentials, { credential_type: 'portfolio' as CredentialType, title: 'Portfolio', url: '', visibility: 'public' }])} className="w-full rounded-xl border-2 border-dashed border-[#E2E8F0] px-4 py-3 text-[#64748B] hover:border-[#13294B]">Add a link</button>
               </div>
             )}
 
-            {activeTab === 5 && (
+            {activeTab === 6 && (
               <div className="space-y-6">
                 <SharingPreferences form={form} onChange={setForm}/>
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] p-4 hover:bg-[#F8FAFC]">
@@ -399,7 +420,7 @@ export function EditProfilePage() {
           {saveError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{saveError}</p>}
           <div className="flex justify-end">
             <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 rounded-xl bg-[#13294B] px-6 py-3 font-medium text-white transition-colors hover:bg-[#1a3a6b] disabled:opacity-60">
-              <Save className="h-5 w-5" />{isSaving ? 'Saving...' : 'Save Changes'}
+              <Save className="h-5 w-5" />{isSaving ? 'Saving...' : 'Save changes'}
             </button>
           </div>
         </div>

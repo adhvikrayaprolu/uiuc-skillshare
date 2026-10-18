@@ -14,8 +14,8 @@ function view(entry: string | {pathname: string; state: unknown} = '/') {
           <Route path="/" element={<p>Marketing page</p>} />
           <Route path="/login" element={<p>Sign-in form</p>} />
         </Route>
-        <Route path="/dashboard" element={<p>Member home</p>} />
-        <Route path="/onboarding" element={<p>Setup</p>} />
+        <Route path="/home" element={<p>Member home</p>} />
+        <Route path="/welcome" element={<p>Setup</p>} />
         <Route path="/requests" element={<p>Requests</p>} />
       </Routes>
     </MemoryRouter>,

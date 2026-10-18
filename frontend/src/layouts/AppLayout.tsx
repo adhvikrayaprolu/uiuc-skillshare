@@ -21,14 +21,14 @@ import { useCurrentProfile, useProfileEditor } from '../hooks/useProfileEditor';
 import { useNotifications } from '../hooks/useNotifications';
 import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
-import { APP_HOME } from '../lib/routes';
+import { APP_HOME, MY_PROFILE } from '../lib/routes';
 import { useHelpRequests } from '../hooks/useHelpRequests';
 
 const navItems = [
   { path: APP_HOME, label: 'Home', icon: Home, matches: [APP_HOME] },
   { path: '/discover', label: 'Discover', icon: Compass, matches: ['/discover', '/profiles', '/saved'] },
   { path: '/requests', label: 'Requests', icon: MessageCircle, matches: ['/requests', '/connections'] },
-  { path: '/profile/edit', label: 'Profile', icon: User, matches: ['/profile'] },
+  { path: MY_PROFILE, label: 'Profile', icon: User, matches: [MY_PROFILE] },
 ];
 
 const isActivePath = (pathname: string, matches: string[]) =>

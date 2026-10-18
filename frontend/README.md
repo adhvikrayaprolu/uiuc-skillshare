@@ -58,11 +58,15 @@ npm --prefix frontend run build
 ## Main Routes
 
 - `/`: landing page.
-- `/login`: local demo login.
-- `/dashboard`: authenticated home.
+- `/login`: Illinois email-code sign-in.
+- `/welcome`: four-step first-run setup (required before the app).
+- `/welcome/matches`: first suggestions right after setup.
+- `/home`: signed-in home with items needing attention, suggestions and a profile checklist.
 - `/discover`: profile search and discovery.
 - `/profiles/:id`: full student profile.
-- `/profile/edit`: edit own profile.
+- `/me`: your own profile preview.
+- `/me/edit`: edit own profile (`?tab=basic|teaching|learning|availability|contact|evidence|privacy`).
+- `/dashboard`, `/onboarding`, `/profile/edit`: redirects kept for old links.
 - `/saved`: saved profiles.
 - `/requests`: help requests.
 - `/connections`: accepted help requests.

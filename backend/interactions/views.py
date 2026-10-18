@@ -1,10 +1,12 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from profiles.models import StudentProfile
 from profiles.policy import visible_feedback, visible_profiles
+from .buckets import BUCKETS, filter_bucket
 from .models import BlockedUser, Endorsement, HelpRequest, Report, Review, SavedProfile
 from .permissions import IsHelpRequestParticipant, IsReviewOwnerOrReadOnly
 from .serializers import BlockedUserSerializer, EndorsementSerializer, HelpRequestSerializer, ReportSerializer, ReviewSerializer, SavedProfileSerializer
@@ -109,9 +111,23 @@ class HelpRequestViewSet(viewsets.ModelViewSet):
                 Q(seeker_id__in=self.request.user.blocked_by.values("blocker_id")) |
                 Q(helper_profile__user_id__in=self.request.user.blocked_users.values("blocked_user_id")) |
                 Q(helper_profile__user_id__in=self.request.user.blocked_by.values("blocker_id")))
-            .select_related("seeker", "seeker__profile", "helper_profile", "related_skill")
+            .select_related("seeker", "seeker__profile", "helper_profile", "related_skill", "offered_skill")
             .prefetch_related("helper_profile__contact_methods", "seeker__profile__contact_methods")
         )
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        bucket = self.request.query_params.get("bucket")
+        if self.action != "list" or not bucket:
+            return queryset
+        if bucket not in BUCKETS:
+            raise ValidationError({"bucket": f"Choose one of: {', '.join(BUCKETS)}."})
+        return filter_bucket(queryset, self.request.user, bucket)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["include_feedback"] = self.action in {"retrieve", "partial_update"}
+        return context
 
     def perform_create(self, serializer):
         serializer.save(seeker=self.request.user)

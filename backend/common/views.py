@@ -99,10 +99,10 @@ def attention_items(user, requests):
             action = "respond"
         elif row.status == "accepted":
             action = "complete"
-        elif row.status == "completed" and not incoming and row.pk not in reviewed:
+        elif row.status == "completed" and (not incoming or row.kind == "swap") and row.pk not in reviewed:
             action = "feedback"
         if action:
-            items.append({"action": action, "request_id": row.pk, "topic": row.topic, "skill": row.related_skill.name if row.related_skill_id else None, "peer": peer, "updated_at": row.updated_at})
+            items.append({"action": action, "request_id": row.pk, "href": f"/requests/{row.pk}", "kind": row.kind, "topic": row.topic, "skill": row.related_skill.name if row.related_skill_id else None, "peer": peer, "updated_at": row.updated_at})
     order = {"respond": 0, "complete": 1, "feedback": 2}
     return sorted(items, key=lambda item: order[item["action"]])[:10]
 

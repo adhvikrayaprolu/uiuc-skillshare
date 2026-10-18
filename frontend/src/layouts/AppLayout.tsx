@@ -22,12 +22,12 @@ import { useNotifications } from '../hooks/useNotifications';
 import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
 import { APP_HOME, MY_PROFILE } from '../lib/routes';
-import { useHelpRequests } from '../hooks/useHelpRequests';
+import { useRequestBucket } from '../hooks/useHelpRequests';
 
 const navItems = [
   { path: APP_HOME, label: 'Home', icon: Home, matches: [APP_HOME] },
   { path: '/discover', label: 'Discover', icon: Compass, matches: ['/discover', '/profiles'] },
-  { path: '/requests', label: 'Requests', icon: MessageCircle, matches: ['/requests', '/connections'] },
+  { path: '/requests', label: 'Requests', icon: MessageCircle, matches: ['/requests'] },
   { path: MY_PROFILE, label: 'Profile', icon: User, matches: [MY_PROFILE] },
 ];
 
@@ -44,7 +44,7 @@ export function AppLayout() {
   const currentProfile = useCurrentProfile();
   const { updateProfile } = useProfileEditor();
   const notifications = useNotifications();
-  const helpRequests = useHelpRequests();
+  const needsAction = useRequestBucket('needs_action');
 
   const [globalSearch, setGlobalSearch] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -62,9 +62,7 @@ export function AppLayout() {
       : auth.user?.email || 'Student');
   const myProfileId = currentProfile.data?.id ?? null;
   const useMocks = shouldUseMocks();
-  const pendingIncoming = useMocks || !myProfileId
-    ? 0
-    : (helpRequests.data?.raw ?? []).filter((row) => row.helper_profile === myProfileId && row.status === 'pending').length;
+  const pendingIncoming = useMocks || !myProfileId ? 0 : needsAction.data?.count ?? 0;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -146,7 +144,7 @@ export function AppLayout() {
                 {isActive && <div className="absolute bottom-0 left-0 top-0 w-1 rounded-r bg-[#B83E00]" />}
                 <Icon className="h-5 w-5" aria-hidden="true" />
                 {item.label}
-                {badge > 0 && <span className="ml-auto rounded-full bg-[#B83E00] px-2 py-0.5 text-xs font-semibold text-white" aria-label={`${badge} waiting for your reply`}>{badge}</span>}
+                {badge > 0 && <span className="ml-auto rounded-full bg-[#B83E00] px-2 py-0.5 text-xs font-semibold text-white" aria-label={`${badge} need your action`}>{badge}</span>}
               </Link>
             );
           })}
@@ -278,7 +276,7 @@ export function AppLayout() {
             >
               <Icon className="h-5 w-5" aria-hidden="true" />
               <span>{item.label}</span>
-              {badge > 0 && <span className="absolute right-1/4 top-1 min-w-[1.25rem] rounded-full bg-[#B83E00] px-1 text-center text-[10px] font-semibold text-white" aria-label={`${badge} waiting for your reply`}>{badge}</span>}
+              {badge > 0 && <span className="absolute right-1/4 top-1 min-w-[1.25rem] rounded-full bg-[#B83E00] px-1 text-center text-[10px] font-semibold text-white" aria-label={`${badge} need your action`}>{badge}</span>}
             </Link>
           );
         })}

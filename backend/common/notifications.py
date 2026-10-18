@@ -15,8 +15,9 @@ from .models import EmailDelivery, Notification
 @transaction.atomic
 def notify_request(interaction, kind, actor_id):
     recipient_id = interaction.helper_profile.user_id if actor_id == interaction.seeker_id else interaction.seeker_id
-    created_title = "New swap proposal" if getattr(interaction, "kind", "help") == "swap" else "New help request"
-    title = created_title if kind == "created" else "New interaction feedback" if kind == "reviewed" or kind.startswith("endorsed-") else f"Help request {kind}"
+    swap = getattr(interaction, "kind", "help") == "swap"
+    created_title = "New swap proposal" if swap else "New help request"
+    title = created_title if kind == "created" else "New interaction feedback" if kind == "reviewed" or kind.startswith("endorsed-") else f"{'Swap' if swap else 'Help request'} {kind}"
     record, created = Notification.objects.get_or_create(
         recipient_id=recipient_id, event_key=f"request:{interaction.pk}:{kind}:{interaction.version}",
         defaults={"peer_id": actor_id, "help_request": interaction, "kind": kind, "title": title},
@@ -61,7 +62,7 @@ def deliver_email(delivery_id):
     row.attempts += 1
     try:
         if user.is_active and user.is_student_verified and getattr(getattr(user, "profile", None), "notification_email_enabled", False) and notification.peer.is_active and not users_blocked(user, notification.peer):
-            send_mail(notification.title, f"You have an update in Illini SkillShare. Open {settings.APP_PUBLIC_URL}/requests to view it.", settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+            send_mail(notification.title, f"You have an update in Illini SkillShare. Open {settings.APP_PUBLIC_URL}/requests/{notification.help_request_id} to view it.", settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
         row.delivered_at = timezone.now()  # Includes consent withdrawal; never deliver later.
         row.last_error = ""
     except Exception as error:

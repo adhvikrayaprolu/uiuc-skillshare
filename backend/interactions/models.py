@@ -21,7 +21,7 @@ class SavedProfile(models.Model):
 class Review(models.Model):
     reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="written_reviews", on_delete=models.CASCADE)
     profile = models.ForeignKey("profiles.StudentProfile", related_name="reviews", on_delete=models.CASCADE)
-    help_request = models.OneToOneField("HelpRequest", null=True, blank=True, on_delete=models.CASCADE, related_name="review")
+    help_request = models.ForeignKey("HelpRequest", null=True, blank=True, on_delete=models.CASCADE, related_name="reviews")
     rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField()
     related_skill = models.ForeignKey("taxonomy.SkillTag", null=True, blank=True, on_delete=models.SET_NULL)
@@ -30,6 +30,7 @@ class Review(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["help_request", "reviewer"], condition=models.Q(help_request__isnull=False), name="unique_review_per_reviewer")]
 
     def __str__(self):
         return f"{self.rating}/5 for {self.profile}"
@@ -99,6 +100,7 @@ class HelpRequest(models.Model):
     content_hash = models.CharField(max_length=64, blank=True)
     topic_key = models.CharField(max_length=64, blank=True)
     response_message = models.TextField(blank=True)
+    cancel_reason = models.CharField(max_length=300, blank=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     declined_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -115,6 +117,14 @@ class HelpRequest(models.Model):
 
     def __str__(self):
         return f"{self.topic} -> {self.helper_profile}"
+
+    def feedback_target(self, user):
+        """Who `user` may give feedback to and for which skill; help requests are one-way."""
+        if user.pk == self.seeker_id:
+            return self.helper_profile, self.related_skill
+        if self.kind == self.Kind.SWAP and user.pk == self.helper_profile.user_id:
+            return getattr(self.seeker, "profile", None), self.offered_skill
+        return None, None
 
     def mark_status_timestamp(self):
         now = timezone.now()

@@ -3,28 +3,26 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { MapPin, Clock, Star, Bookmark, Mail, Linkedin, Github, ExternalLink, ArrowLeft, ArrowLeftRight } from 'lucide-react';
 import { mockProfiles } from '../data/mockData';
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
 import { SkillChip } from '../components/ui/SkillChip';
 import { InsightChips } from '../lib/profileInsightBadges';
 import { profileInsightLabels } from '../lib/profileInsightLabels';
 import { RequestModal } from '../components/modals/RequestModal';
 import { useContactClick, useProfile, useSimilarProfiles } from '../hooks/useProfile';
-import { useHelpRequests, useCreateHelpRequest } from '../hooks/useHelpRequests';
+import { useCreateHelpRequest } from '../hooks/useHelpRequests';
 import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
 import { api, shouldUseMocks } from '../lib/api';
 import type { ContactMethodType, RequestKind } from '../types/api';
-import { createEndorsement, createReview, getEndorsements, getReviews } from '../lib/interactionsApi';
+import { getEndorsements, getReviews } from '../lib/interactionsApi';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 
 export function ProfileDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   const myProfileQuery = useCurrentProfile();
-  const helpRequestsQuery = useHelpRequests();
-  const [feedbackRequestId, setFeedbackRequestId] = useState<number | ''>('');
   const [submissionKey, setSubmissionKey] = useState(() => createSubmissionKey());
   const queryClient = useQueryClient();
   const fallbackProfile = mockProfiles.find(p => p.id === Number(id)) || mockProfiles[0];
@@ -37,12 +35,6 @@ export function ProfileDetailPage() {
   const toast = useToast();
   const [isSaved, setIsSaved] = useState(false);
   const [requestKind, setRequestKind] = useState<RequestKind | null>(null);
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [showEndorseForm, setShowEndorseForm] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [endorseSkill, setEndorseSkill] = useState<number | ''>('');
-  const [endorseNote, setEndorseNote] = useState('');
   const profile = profileQuery.data?.profile ?? fallbackProfile;
   const profileId = Number(id || profile.id);
   const isOwnProfile = !shouldUseMocks() && myProfileQuery.data?.id === profileId;
@@ -57,31 +49,6 @@ export function ProfileDetailPage() {
     queryFn: () => getEndorsements(profileId),
     enabled: !shouldUseMocks() && Boolean(profileId),
   });
-  const completedRequests = (helpRequestsQuery.data?.raw || []).filter(row => row.helper_profile === profileId && row.status === 'completed' && row.seeker !== profileQuery.data?.raw?.user_id);
-  const selectedInteraction = completedRequests.find(row => row.id === feedbackRequestId);
-  const reviewMutation = useMutation({
-    mutationFn: () => createReview(profileId, { help_request: Number(feedbackRequestId), rating: reviewRating, comment: reviewComment }),
-    onSuccess: async () => {
-      await reviewsQuery.refetch();
-      setShowReviewForm(false);
-      setReviewComment('');
-      setReviewRating(5);
-      toast.success('Review submitted.');
-    },
-    onError: () => toast.error('Could not submit review.'),
-  });
-  const endorsementMutation = useMutation({
-    mutationFn: () => createEndorsement(profileId, { help_request: Number(feedbackRequestId), skill: endorseSkill || undefined, note: endorseNote || undefined }),
-    onSuccess: async () => {
-      await endorsementsQuery.refetch();
-      setShowEndorseForm(false);
-      setEndorseSkill('');
-      setEndorseNote('');
-      toast.success('Endorsement submitted.');
-    },
-    onError: () => toast.error('Could not submit endorsement.'),
-  });
-
   useEffect(() => {
     if (location.hash !== '#contact') return;
     const el = document.getElementById('contact');
@@ -294,104 +261,9 @@ export function ProfileDetailPage() {
           <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-xl font-semibold text-[#0F172A]">Reviews & Endorsements</h2>
-              {!isOwnProfile && (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowReviewForm((cur) => !cur)}
-                    className="rounded-lg border border-[#13294B] px-3 py-1.5 text-xs font-medium text-[#13294B] hover:bg-[#E8EEF7]"
-                  >
-                    Add Review
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowEndorseForm((cur) => !cur)}
-                    className="rounded-lg border border-[#13294B] px-3 py-1.5 text-xs font-medium text-[#13294B] hover:bg-[#E8EEF7]"
-                  >
-                    Endorse Skill
-                  </button>
-                </div>
-              )}
             </div>
 
-            {!shouldUseMocks() && <p className="mb-3 text-sm text-[#475569]">Feedback is from completed requests, not independent verification of expertise.</p>}
-            {(showReviewForm || showEndorseForm) && <label className="block mb-3">Completed request
-              <select aria-label="Completed request" value={feedbackRequestId} onChange={event => { setFeedbackRequestId(event.target.value ? Number(event.target.value) : ''); setEndorseSkill(''); }} className="w-full rounded-lg border p-2">
-                <option value="">Choose an interaction</option>{completedRequests.map(row => <option key={row.id} value={row.id}>{row.topic}</option>)}
-              </select>
-            </label>}
-            {showReviewForm && !shouldUseMocks() && (
-              <div className="mb-4 space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-[#0F172A]">Rating</label>
-                  <select aria-label="Rating"
-                    value={reviewRating}
-                    onChange={(event) => setReviewRating(Number(event.target.value))}
-                    className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-sm"
-                  >
-                    {[5, 4, 3, 2, 1].map((rating) => (
-                      <option key={rating} value={rating}>
-                        {rating}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <textarea
-                  rows={3}
-                  aria-label="Review feedback"
-                  value={reviewComment}
-                  onChange={(event) => setReviewComment(event.target.value)}
-                  placeholder="Share specific feedback..."
-                  className="w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
-                />
-                <button
-                  type="button"
-                  disabled={!feedbackRequestId || !reviewComment.trim() || reviewMutation.isPending}
-                  onClick={() => reviewMutation.mutate()}
-                  className="rounded-lg bg-[#13294B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a3a6b] disabled:opacity-60"
-                >
-                  Submit Review
-                </button>
-              </div>
-            )}
-
-            {showEndorseForm && !shouldUseMocks() && (
-              <div className="mb-4 space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                <select aria-label="Endorsement skill"
-                  value={endorseSkill}
-                  onChange={(event) => setEndorseSkill(event.target.value ? Number(event.target.value) : '')}
-                  className="w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
-                >
-                  <option value="">Select the request skill</option>
-                  {profile.skills.map((skill) => {
-                    const mapped = (taxonomy.data?.rawSkills || []).find((row) => row.name === skill.name);
-                    if (!mapped || mapped.id !== selectedInteraction?.related_skill) return null;
-                    return (
-                      <option key={mapped.id} value={mapped.id}>
-                        {skill.name}
-                      </option>
-                    );
-                  })}
-                </select>
-                <textarea
-                  rows={2}
-                  aria-label="Endorsement note"
-                  value={endorseNote}
-                  onChange={(event) => setEndorseNote(event.target.value)}
-                  placeholder="Optional endorsement note..."
-                  className="w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
-                />
-                <button
-                  type="button"
-                  disabled={!feedbackRequestId || !endorseSkill || endorsementMutation.isPending}
-                  onClick={() => endorsementMutation.mutate()}
-                  className="rounded-lg bg-[#13294B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a3a6b] disabled:opacity-60"
-                >
-                  Submit Endorsement
-                </button>
-              </div>
-            )}
-
+            {!shouldUseMocks() && <p className="mb-3 text-sm text-[#475569]">Feedback comes from completed requests and swaps, not independent verification of expertise. {!isOwnProfile && <>Worked with {profile.name.split(' ')[0]}? Leave feedback from the request in <Link to="/requests?tab=needs_action" className="font-medium text-[#13294B] underline">Requests</Link>.</>}</p>}
             <div className="space-y-4">
               {reviewRows.map((review) => (
                 <div key={review.id} className="pb-4 border-b border-[#E2E8F0] last:border-0">

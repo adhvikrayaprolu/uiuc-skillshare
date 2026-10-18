@@ -13,7 +13,7 @@ import { mockProfiles } from '../data/mockData';
 import type { AttentionItem } from '../types/api';
 
 const actionCopy: Record<AttentionItem['action'], { label: string; verb: string; icon: typeof Inbox }> = {
-  respond: { label: 'wants your help', verb: 'Reply', icon: Inbox },
+  respond: { label: 'sent you a request', verb: 'Reply', icon: Inbox },
   complete: { label: 'is in progress', verb: 'Mark done', icon: MessageCircle },
   feedback: { label: 'is finished. How did it go?', verb: 'Leave feedback', icon: Star },
 };
@@ -74,7 +74,7 @@ export function HomePage() {
                         {item.action === 'respond' ? <>{copy.label} with <span className="font-medium">{item.skill || item.topic}</span></> : <>with {item.peer.name} {copy.label}</>}
                       </p>
                     </div>
-                    <Link to="/requests" className="rounded-lg border border-[#13294B] px-3 py-1.5 text-center text-sm font-medium text-[#13294B] hover:bg-[#E8EEF7]">{copy.verb}</Link>
+                    <Link to={item.href ?? `/requests/${item.request_id}`} aria-label={`${copy.verb}: ${item.topic}`} className="rounded-lg border border-[#13294B] px-3 py-1.5 text-center text-sm font-medium text-[#13294B] hover:bg-[#E8EEF7]">{copy.verb}</Link>
                   </li>
                 );
               })}

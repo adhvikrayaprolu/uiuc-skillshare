@@ -98,16 +98,34 @@ def validate_feedback(attrs, context, instance=None, endorsement=False):
     profile = context.get("profile") or getattr(instance, "profile", None)
     interaction = attrs.get("help_request") or getattr(instance, "help_request", None)
     viewer = context["request"].user
-    if not interaction or interaction.status != "completed" or interaction.seeker_id != viewer.pk or interaction.helper_profile_id != profile.pk or not can_view_profile(viewer, profile):
-        raise serializers.ValidationError({"help_request": "Feedback requires your completed request with this helper."})
+    target, target_skill = interaction.feedback_target(viewer) if interaction else (None, None)
+    if not interaction or interaction.status != "completed" or not target or target.pk != profile.pk or not can_view_profile(viewer, profile):
+        raise serializers.ValidationError({"help_request": "Feedback requires your completed request with this member."})
     if instance and interaction.pk != instance.help_request_id:
         raise serializers.ValidationError({"help_request": "Cannot reassign feedback."})
     skill = attrs.get("skill" if endorsement else "related_skill")
     if endorsement and not skill:
         raise serializers.ValidationError({"skill": "Select the skill involved in this request."})
-    if skill and interaction.related_skill_id != skill.pk:
-        raise serializers.ValidationError("Feedback must concern the skill involved in the request.")
-    if not endorsement and not instance and Review.objects.filter(help_request=interaction).exists():
-        raise serializers.ValidationError("This request already has a review.")
-    if endorsement and Endorsement.objects.filter(help_request=interaction, skill=skill).exists():
-        raise serializers.ValidationError("This request already has that endorsement.")
+    if skill and (not target_skill or target_skill.pk != skill.pk):
+        raise serializers.ValidationError("Feedback must concern the skill this member taught you.")
+    if not endorsement and not instance and Review.objects.filter(help_request=interaction, reviewer=viewer).exists():
+        raise serializers.ValidationError("You already left a review for this request.")
+    if endorsement and Endorsement.objects.filter(help_request=interaction, endorser=viewer).exists():
+        raise serializers.ValidationError("You already endorsed a skill for this request.")
+
+
+def feedback_state(interaction, user):
+    """Per-viewer feedback flags for the request detail page."""
+    target, skill = interaction.feedback_target(user)
+    eligible = interaction.status == HelpRequest.Status.COMPLETED and target is not None and can_view_profile(user, target)
+    reviewed = Review.objects.filter(help_request=interaction, reviewer=user).first()
+    endorsed = Endorsement.objects.filter(help_request=interaction, endorser=user).exists()
+    return {
+        "target_profile_id": target.pk if eligible else None,
+        "skill": {"id": skill.pk, "name": skill.name} if eligible and skill else None,
+        "can_review": eligible and reviewed is None,
+        "can_endorse": eligible and skill is not None and not endorsed and target.profile_skills.filter(skill=skill).exists()
+        and not Endorsement.objects.filter(endorser=user, profile=target, skill=skill).exists(),
+        "my_review": {"rating": reviewed.rating, "comment": reviewed.comment} if reviewed else None,
+        "endorsed": endorsed,
+    }

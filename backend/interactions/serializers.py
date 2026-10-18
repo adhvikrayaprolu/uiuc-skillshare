@@ -7,6 +7,13 @@ from .models import BlockedUser, Endorsement, HelpRequest, Report, Review, Saved
 from profiles.policy import can_share_contacts, can_view_profile, users_blocked
 
 
+def author_name(author, viewer):
+    profile = getattr(author, "profile", None)
+    if profile and profile.display_name and can_view_profile(viewer, profile):
+        return profile.display_name
+    return "Member"
+
+
 class SavedProfileSerializer(serializers.ModelSerializer):
     saved_profile_detail = PublicStudentProfileListSerializer(source="saved_profile", read_only=True)
 
@@ -40,7 +47,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "reviewer", "profile", "created_at", "updated_at"]
 
     def get_reviewer_name(self, obj) -> str:
-        return f"{obj.reviewer.first_name} {obj.reviewer.last_name}".strip() or "Member"
+        return author_name(obj.reviewer, self.context["request"].user)
 
     def get_reviewer_profile_id(self, obj) -> int | None:
         profile = getattr(obj.reviewer, "profile", None)
@@ -80,7 +87,7 @@ class EndorsementSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "endorser", "profile", "created_at"]
 
     def get_endorser_name(self, obj) -> str:
-        return f"{obj.endorser.first_name} {obj.endorser.last_name}".strip() or "Member"
+        return author_name(obj.endorser, self.context["request"].user)
 
     def get_endorser_profile_id(self, obj) -> int | None:
         profile = getattr(obj.endorser, "profile", None)
@@ -122,6 +129,9 @@ class HelpRequestSerializer(serializers.ModelSerializer):
     helper_contact_methods = serializers.SerializerMethodField()
     seeker_contact_methods = serializers.SerializerMethodField()
     next_step = serializers.SerializerMethodField()
+    my_role = serializers.SerializerMethodField()
+    feedback = serializers.SerializerMethodField()
+    cancel_reason = serializers.CharField(max_length=300, required=False, allow_blank=True)
 
     class Meta:
         model = HelpRequest
@@ -148,6 +158,9 @@ class HelpRequestSerializer(serializers.ModelSerializer):
             "idempotency_key",
             "status",
             "response_message",
+            "cancel_reason",
+            "my_role",
+            "feedback",
             "helper_contact_methods",
             "seeker_contact_methods",
             "next_step",
@@ -175,8 +188,7 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         profile = getattr(obj.seeker, "profile", None)
         if not profile or not can_view_profile(self.context["request"].user, profile):
             return "Unavailable member"
-        full_name = f"{obj.seeker.first_name} {obj.seeker.last_name}".strip()
-        return full_name or "Member"
+        return profile.display_name or f"{obj.seeker.first_name} {obj.seeker.last_name}".strip() or "Member"
 
     def get_seeker_profile_id(self, obj) -> int | None:
         profile = getattr(obj.seeker, "profile", None)
@@ -219,6 +231,15 @@ class HelpRequestSerializer(serializers.ModelSerializer):
 
         return ContactMethodSerializer(seeker_profile.contact_methods.filter(is_public=True), many=True, context=self.context).data
 
+    def get_my_role(self, obj) -> str:
+        return "seeker" if self.context["request"].user.id == obj.seeker_id else "helper"
+
+    def get_feedback(self, obj) -> dict | None:
+        if not self.context.get("include_feedback"):
+            return None
+        from .lifecycle import feedback_state
+        return feedback_state(obj, self.context["request"].user)
+
     def get_next_step(self, obj) -> str:
         if obj.status == HelpRequest.Status.ACCEPTED:
             return "Request accepted. Coordinate directly using the shared contact method."
@@ -236,10 +257,10 @@ class HelpRequestSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context["request"]
         if not self.instance:
-            if attrs.get("status", "pending") != "pending" or attrs.get("response_message"):
+            if attrs.get("status", "pending") != "pending" or attrs.get("response_message") or attrs.pop("cancel_reason", ""):
                 raise serializers.ValidationError("New requests must start pending without a helper response.")
         else:
-            immutable = set(self.initial_data) - {"status", "response_message", "version"}
+            immutable = set(self.initial_data) - {"status", "response_message", "cancel_reason", "version"}
             if immutable:
                 raise serializers.ValidationError({field: "Cannot change a submitted request." for field in immutable})
             if users_blocked(request.user, self.instance.helper_profile.user if request.user == self.instance.seeker else self.instance.seeker):
@@ -247,6 +268,8 @@ class HelpRequestSerializer(serializers.ModelSerializer):
             if "response_message" in attrs and self.instance.helper_profile.user_id != request.user.id:
                 raise serializers.ValidationError("Only the helper can write a response.")
             new_status = attrs.get("status")
+            if attrs.get("cancel_reason") and new_status != "cancelled":
+                raise serializers.ValidationError({"cancel_reason": "A reason can only be given when cancelling."})
             if not new_status or new_status == self.instance.status:
                 return attrs
             allowed = {
@@ -258,8 +281,8 @@ class HelpRequestSerializer(serializers.ModelSerializer):
             }
             if new_status not in allowed[self.instance.status]:
                 raise serializers.ValidationError(f"Cannot transition help request from {self.instance.status} to {new_status}.")
-            if new_status == "cancelled" and self.instance.seeker_id != request.user.id:
-                raise serializers.ValidationError("Only the seeker can cancel this request.")
+            if new_status == "cancelled" and self.instance.status == "pending" and self.instance.seeker_id != request.user.id:
+                raise serializers.ValidationError("Only the sender can withdraw a pending request. Decline it instead.")
             helper_statuses = {"accepted", "declined"}
             if new_status in helper_statuses and self.instance.helper_profile.user_id != request.user.id:
                 raise serializers.ValidationError("Only the helper can accept or decline this request.")

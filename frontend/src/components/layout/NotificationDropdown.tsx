@@ -30,7 +30,7 @@ const sampleNotifications: NotificationItem[] = [
     type: 'accepted',
     title: 'Request accepted',
     description: 'Daniel Kim accepted your Figma design review request',
-    href: '/connections',
+    href: '/requests?tab=active',
     timeLabel: '5h ago',
     from: 'Daniel Kim',
     read: false,

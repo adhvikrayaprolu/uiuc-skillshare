@@ -9,7 +9,7 @@ import { InsightChips } from '../lib/profileInsightBadges';
 import { profileInsightLabels } from '../lib/profileInsightLabels';
 import { HelpRequestModal } from '../components/modals/HelpRequestModal';
 import { useContactClick, useProfile, useSimilarProfiles } from '../hooks/useProfile';
-import { useCreateHelpRequest } from '../hooks/useHelpRequests';
+import { useHelpRequests, useCreateHelpRequest } from '../hooks/useHelpRequests';
 import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
@@ -22,6 +22,9 @@ export function ProfileDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   const myProfileQuery = useCurrentProfile();
+  const helpRequestsQuery = useHelpRequests();
+  const [feedbackRequestId, setFeedbackRequestId] = useState<number | ''>('');
+  const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
   const queryClient = useQueryClient();
   const fallbackProfile = mockProfiles.find(p => p.id === Number(id)) || mockProfiles[0];
   const profileQuery = useProfile(id);
@@ -53,8 +56,10 @@ export function ProfileDetailPage() {
     queryFn: () => getEndorsements(profileId),
     enabled: !shouldUseMocks() && Boolean(profileId),
   });
+  const completedRequests = (helpRequestsQuery.data?.raw || []).filter(row => row.helper_profile === profileId && row.status === 'completed' && row.seeker !== profileQuery.data?.raw?.user_id);
+  const selectedInteraction = completedRequests.find(row => row.id === feedbackRequestId);
   const reviewMutation = useMutation({
-    mutationFn: () => createReview(profileId, { rating: reviewRating, comment: reviewComment }),
+    mutationFn: () => createReview(profileId, { help_request: Number(feedbackRequestId), rating: reviewRating, comment: reviewComment }),
     onSuccess: async () => {
       await reviewsQuery.refetch();
       setShowReviewForm(false);
@@ -65,7 +70,7 @@ export function ProfileDetailPage() {
     onError: () => toast.error('Could not submit review.'),
   });
   const endorsementMutation = useMutation({
-    mutationFn: () => createEndorsement(profileId, { skill: endorseSkill || undefined, note: endorseNote || undefined }),
+    mutationFn: () => createEndorsement(profileId, { help_request: Number(feedbackRequestId), skill: endorseSkill || undefined, note: endorseNote || undefined }),
     onSuccess: async () => {
       await endorsementsQuery.refetch();
       setShowEndorseForm(false);
@@ -281,6 +286,12 @@ export function ProfileDetailPage() {
               )}
             </div>
 
+            {!shouldUseMocks() && <p className="mb-3 text-sm text-[#475569]">Feedback is from completed requests, not independent verification of expertise.</p>}
+            {(showReviewForm || showEndorseForm) && <label className="block mb-3">Completed request
+              <select aria-label="Completed request" value={feedbackRequestId} onChange={event => { setFeedbackRequestId(event.target.value ? Number(event.target.value) : ''); setEndorseSkill(''); }} className="w-full rounded-lg border p-2">
+                <option value="">Choose an interaction</option>{completedRequests.map(row => <option key={row.id} value={row.id}>{row.topic}</option>)}
+              </select>
+            </label>}
             {showReviewForm && !shouldUseMocks() && (
               <div className="mb-4 space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
                 <div className="flex items-center gap-2">
@@ -306,7 +317,7 @@ export function ProfileDetailPage() {
                 />
                 <button
                   type="button"
-                  disabled={!reviewComment.trim() || reviewMutation.isPending}
+                  disabled={!feedbackRequestId || !reviewComment.trim() || reviewMutation.isPending}
                   onClick={() => reviewMutation.mutate()}
                   className="rounded-lg bg-[#13294B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a3a6b] disabled:opacity-60"
                 >
@@ -322,10 +333,10 @@ export function ProfileDetailPage() {
                   onChange={(event) => setEndorseSkill(event.target.value ? Number(event.target.value) : '')}
                   className="w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
                 >
-                  <option value="">General endorsement</option>
+                  <option value="">Select the request skill</option>
                   {profile.skills.map((skill) => {
                     const mapped = (taxonomy.data?.rawSkills || []).find((row) => row.name === skill.name);
-                    if (!mapped) return null;
+                    if (!mapped || mapped.id !== selectedInteraction?.related_skill) return null;
                     return (
                       <option key={mapped.id} value={mapped.id}>
                         {skill.name}
@@ -342,7 +353,7 @@ export function ProfileDetailPage() {
                 />
                 <button
                   type="button"
-                  disabled={endorsementMutation.isPending}
+                  disabled={!feedbackRequestId || !endorseSkill || endorsementMutation.isPending}
                   onClick={() => endorsementMutation.mutate()}
                   className="rounded-lg bg-[#13294B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a3a6b] disabled:opacity-60"
                 >
@@ -553,12 +564,14 @@ export function ProfileDetailPage() {
               : undefined;
             await createHelpRequestMutation.mutateAsync({
               helper_profile: profile.id,
+              idempotency_key: submissionKey,
               topic: payload.topic,
               message: payload.message,
               urgency: payload.urgency,
               preferred_contact_method: payload.preferredContactMethod as ContactMethodType,
               ...(skillMatch ? { related_skill: skillMatch.id } : {}),
             });
+            setSubmissionKey(crypto.randomUUID());
             toast.success('Help request sent.');
           } catch {
             toast.error('Could not send help request.');

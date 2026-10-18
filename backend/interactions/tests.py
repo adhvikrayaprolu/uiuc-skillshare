@@ -58,7 +58,7 @@ class InteractionTests(APITestCase):
         )
         request_id = create.data["id"]
         self.client.force_authenticate(self.helper_user)
-        accepted = self.client.patch(reverse("help-requests-detail", args=[request_id]), {"status": "accepted", "response_message": "Sure."}, format="json")
+        accepted = self.client.patch(reverse("help-requests-detail", args=[request_id]), {"status": "accepted", "response_message": "Sure.", "version": 1}, format="json")
         self.assertEqual(accepted.status_code, 200)
         self.assertIsNotNone(accepted.data["accepted_at"])
         invalid = self.client.patch(reverse("help-requests-detail", args=[request_id]), {"status": "declined"}, format="json")
@@ -97,7 +97,9 @@ class InteractionTests(APITestCase):
         self.assertEqual(self_endorse.status_code, 400)
 
     def test_endorsement_created(self):
-        response = self.client.post(reverse("profile-endorsements", args=[self.helper_profile.id]), {"skill": self.skill.id, "note": "Great Git help."}, format="json")
+        from .models import HelpRequest
+        interaction = HelpRequest.objects.create(seeker=self.user, helper_profile=self.helper_profile, topic="GitHub", message="Help", related_skill=self.skill, status="completed")
+        response = self.client.post(reverse("profile-endorsements", args=[self.helper_profile.id]), {"help_request": interaction.pk, "skill": self.skill.id, "note": "Great Git help."}, format="json")
         self.assertEqual(response.status_code, 201)
         self.assertTrue(AnalyticsEvent.objects.filter(event_type="endorsement_created").exists())
 
@@ -132,10 +134,10 @@ class AccessPolicyRegressionTests(APITestCase):
         self.assertIsNone(created.data["seeker_email"])
         self.client.force_authenticate(self.helper_user)
         request_url = reverse("help-requests-detail", args=[created.data["id"]])
-        self.assertEqual(self.client.patch(request_url, {"status": "accepted"}, format="json").status_code, 200)
+        self.assertEqual(self.client.patch(request_url, {"status": "accepted", "version": 1}, format="json").status_code, 200)
         self.client.force_authenticate(self.user)
         self.assertEqual(len(self.client.get(url).data["contact_methods"]), 1)
-        self.assertEqual(self.client.patch(request_url, {"status": "completed"}, format="json").status_code, 200)
+        self.assertEqual(self.client.patch(request_url, {"status": "completed", "version": 2}, format="json").status_code, 200)
         self.assertEqual(len(self.client.get(url).data["contact_methods"]), 1)
         BlockedUser.objects.create(blocker=self.helper_user, blocked_user=self.user)
         self.assertEqual(self.client.get(url).status_code, 404)

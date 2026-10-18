@@ -151,6 +151,7 @@ export interface SavedProfile {
 
 export interface HelpRequest {
   id: number;
+  version: number;
   seeker: number;
   seeker_email?: string;
   seeker_display_name?: string;
@@ -250,6 +251,7 @@ export interface AnalyticsSummaryResponse {
 }
 
 export interface HelpRequestPayload {
+  idempotency_key?: string;
   helper_profile: number;
   topic: string;
   message: string;

@@ -22,7 +22,7 @@ export function ConnectionsPage() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-6">
           <h1 className="mb-2 text-3xl font-bold text-[#0F172A]">Connections</h1>
-          <p className="text-[#64748B]">Peers you are connected with through accepted help requests</p>
+          <p className="text-[#64748B]">Peers you are connected with through accepted and completed help requests</p>
         </div>
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-12 text-center">
           <Users className="mx-auto mb-4 h-10 w-10 text-[#64748B]" />
@@ -42,7 +42,7 @@ export function ConnectionsPage() {
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
         <h1 className="mb-2 text-3xl font-bold text-[#0F172A]">Connections</h1>
-        <p className="text-[#64748B]">People you are connected with through accepted help requests</p>
+        <p className="text-[#64748B]">People you are connected with through accepted and completed help requests</p>
       </div>
 
       <div className="space-y-4">
@@ -74,7 +74,7 @@ export function ConnectionsPage() {
                     </div>
                   </div>
                   <p className="text-xs text-[#64748B]">
-                    Accepted {row.acceptedAt ? row.acceptedAt.slice(0, 10) : '—'} · Preferred: {row.preferredContactMethod}
+                    {row.status === 'completed' ? 'Completed connection' : 'Accepted'} {row.acceptedAt ? row.acceptedAt.slice(0, 10) : '—'} · Preferred: {row.preferredContactMethod}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Link

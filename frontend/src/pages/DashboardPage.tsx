@@ -161,7 +161,7 @@ export function DashboardPage() {
       <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-[#0F172A]">Recommended for you</h2>
+            <h2 className="text-xl font-bold text-[#0F172A]">{recommendedQuery.data?.matching?.recommendation_basis === 'learning_goals' ? 'Matches your learning goals' : 'Discovery suggestions'}</h2>
             <p className="text-sm text-[#64748B]">Students you may want to connect with</p>
           </div>
           <Link

@@ -30,23 +30,13 @@ export function useDiscoverySearch(params: DiscoverySearchParams) {
       if (shouldUseMocks()) {
         return { count: filterMockProfiles(params).length, profiles: filterMockProfiles(params), isMock: true };
       }
-      let response;
-      try {
-        response = await searchDiscovery(params);
-      } catch (error) {
-        // Graceful fallback: if semantic mode errors, retry once in default mode.
-        if (params.mode === 'semantic') {
-          const fallbackParams = { ...params };
-          delete fallbackParams.mode;
-          response = await searchDiscovery(fallbackParams);
-        } else {
-          throw error;
-        }
-      }
+      const response = await searchDiscovery(params);
       return {
         count: response.count,
         profiles: response.results.map(mapBackendProfileListItemToProfileCard),
-        ai: response.ai,
+        matching: response.matching,
+        next: response.next,
+        previous: response.previous,
         isMock: false,
       };
     },

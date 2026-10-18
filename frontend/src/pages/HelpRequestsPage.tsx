@@ -1,3 +1,5 @@
+import { useListPage } from '../hooks/useListPage';
+import { ListPagination } from '../components/ui/ListPagination';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
@@ -60,6 +62,7 @@ export function HelpRequestsPage() {
       });
 
   const displayRequests = activeTab === 'incoming' ? incomingRequests : outgoingRequests;
+  const pagination = useListPage(displayRequests, activeTab);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -100,7 +103,7 @@ export function HelpRequestsPage() {
       </div>
 
       <div className="space-y-4">
-        {displayRequests.map((request) => {
+        {pagination.items.map((request) => {
           const StatusIcon = statusConfig[request.status].icon;
           const raw = rawRequests.find((r) => r.id === request.id);
           const peerProfileId = activeTab === 'incoming' ? request.requester.id : request.helper.id;
@@ -297,6 +300,7 @@ export function HelpRequestsPage() {
           </p>
         </div>
       )}
+      <ListPagination {...pagination}/>
     </div>
   );
 }

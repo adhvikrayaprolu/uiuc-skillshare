@@ -1,10 +1,9 @@
 import { getAllPages } from './pagination';
 import { api } from './api';
-import type { Endorsement, HelpRequest, HelpRequestPayload, PaginatedResponse, Review, SavedProfile } from '../types/api';
+import type { Endorsement, HelpRequest, HelpRequestPayload, Review, SavedProfile } from '../types/api';
 
 export async function getSavedProfiles() {
-  const { data } = await api.get<PaginatedResponse<SavedProfile> | SavedProfile[]>('/saved-profiles/');
-  return Array.isArray(data) ? data : data.results;
+  return getAllPages<SavedProfile>('/saved-profiles/');
 }
 
 export async function saveProfile(savedProfile: number, note = '') {
@@ -31,8 +30,7 @@ export async function updateHelpRequest(id: number, payload: Partial<HelpRequest
 }
 
 export async function getReviews(profileId: number) {
-  const { data } = await api.get<PaginatedResponse<Review> | Review[]>(`/profiles/${profileId}/reviews/`);
-  return Array.isArray(data) ? data : data.results;
+  return getAllPages<Review>(`/profiles/${profileId}/reviews/`);
 }
 
 export async function createReview(profileId: number, payload: { help_request: number; rating: number; comment: string; related_skill?: number | null }) {
@@ -41,8 +39,7 @@ export async function createReview(profileId: number, payload: { help_request: n
 }
 
 export async function getEndorsements(profileId: number) {
-  const { data } = await api.get<PaginatedResponse<Endorsement> | Endorsement[]>(`/profiles/${profileId}/endorsements/`);
-  return Array.isArray(data) ? data : data.results;
+  return getAllPages<Endorsement>(`/profiles/${profileId}/endorsements/`);
 }
 
 export async function createEndorsement(profileId: number, payload: { help_request: number; skill?: number | null; note?: string }) {

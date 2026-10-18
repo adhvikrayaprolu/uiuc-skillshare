@@ -10,7 +10,7 @@ export function useRecommendedProfiles() {
     queryFn: async () => {
       if (shouldUseMocks()) return { profiles: mockProfiles.slice(0, 3), isMock: true };
       const response = await getRecommendedProfiles();
-      return { profiles: response.results.map(mapBackendProfileListItemToProfileCard), isMock: false };
+      return { profiles: response.results.map(mapBackendProfileListItemToProfileCard), matching: response.matching, isMock: false };
     },
     retry: 1,
   });

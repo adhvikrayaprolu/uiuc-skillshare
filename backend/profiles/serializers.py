@@ -209,11 +209,15 @@ class PublicStudentProfileListSerializer(FeedbackPolicyMixin, serializers.ModelS
         ]
 
     def get_top_skills(self, obj):
-        return [ps.skill.name for ps in obj.profile_skills.select_related("skill").order_by("-is_featured", "-updated_at")[:3]]
+        skills = getattr(obj, "offered_skills", None)
+        if skills is None: skills = list(obj.profile_skills.select_related("skill").order_by("-is_featured", "id"))
+        return [ps.skill.name for ps in sorted(skills, key=lambda ps: (not ps.is_featured, ps.pk))[:3]]
 
     def get_top_categories(self, obj):
         seen = []
-        for ps in obj.profile_skills.select_related("skill__category").order_by("-is_featured", "-updated_at"):
+        skills = getattr(obj, "offered_skills", None)
+        if skills is None: skills = obj.profile_skills.select_related("skill__category").order_by("-is_featured", "id")
+        for ps in skills:
             name = ps.skill.category.name
             if name not in seen:
                 seen.append(name)
@@ -223,7 +227,7 @@ class PublicStudentProfileListSerializer(FeedbackPolicyMixin, serializers.ModelS
 
     def get_average_rating(self, obj):
         value = getattr(obj, "average_rating", None)
-        if value is None:
+        if not hasattr(obj, "average_rating"):
             value = self._reviews(obj).aggregate(avg=Avg("rating"))["avg"]
         return round(value, 2) if value is not None else None
 

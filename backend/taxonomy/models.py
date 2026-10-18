@@ -22,6 +22,7 @@ class SkillTag(models.Model):
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=140)
     description = models.TextField(blank=True)
+    aliases = models.JSONField(default=list, blank=True)
     is_approved = models.BooleanField(default=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)

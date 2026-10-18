@@ -1,3 +1,5 @@
+import { useListPage } from '../hooks/useListPage';
+import { ListPagination } from '../components/ui/ListPagination';
 import { Link } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
@@ -17,6 +19,7 @@ export function ConnectionsPage() {
   const { connections, isLoading } = useConnections();
   const showMockEmpty = shouldUseMocks();
 
+  const pagination = useListPage(connections);
   if (showMockEmpty) {
     return (
       <div className="mx-auto max-w-5xl">
@@ -46,7 +49,7 @@ export function ConnectionsPage() {
       </div>
 
       <div className="space-y-4">
-        {connections.map((row) => {
+        {pagination.items.map((row) => {
           const name = row.peer?.display_name || 'Student';
           const major = row.peer?.major || '';
           const year = row.peer?.year ? normalizeYear(String(row.peer.year)) : '';
@@ -105,6 +108,7 @@ export function ConnectionsPage() {
         })}
       </div>
 
+      <ListPagination {...pagination}/>
       {connections.length === 0 && (
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-12 text-center">
           <Users className="mx-auto mb-4 h-10 w-10 text-[#64748B]" />

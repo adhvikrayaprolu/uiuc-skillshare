@@ -50,7 +50,7 @@ def missing_onboarding_steps(profile):
     if not profile:
         return ["create_profile"]
     steps = []
-    if profile.profile_skills.count() < 3:
+    if profile.profile_skills.count() < 1:
         steps.append("add_skills")
     if not profile.availability.exists() and not profile.availability_notes:
         steps.append("add_availability")
@@ -65,22 +65,25 @@ def build_dashboard_payload(request):
     profile = getattr(request.user, "profile", None)
     incoming = profile.received_help_requests.exclude(status__in=["completed", "cancelled"]).count() if profile else 0
     outgoing = request.user.sent_help_requests.exclude(status__in=["completed", "cancelled"]).count()
-    connections_count = HelpRequest.objects.filter(status=HelpRequest.Status.ACCEPTED).filter(
+    connections_count = HelpRequest.objects.filter(status__in=[HelpRequest.Status.ACCEPTED, HelpRequest.Status.COMPLETED]).filter(
         Q(seeker=request.user) | Q(helper_profile__user=request.user)
     ).count()
     next_actions = []
     if not profile:
         next_actions.append("Create your profile")
     else:
-        if profile.profile_skills.count() < 3:
-            next_actions.append("Add at least 3 skills")
+        if profile.profile_skills.count() < 1:
+            next_actions.append("Add a skill you can help with")
         if not profile.availability.exists() and not profile.availability_notes:
             next_actions.append("Add availability")
         if not profile.credentials.filter(visibility="public").exists():
             next_actions.append("Add a LinkedIn or GitHub credential")
         if not profile.contact_methods.filter(is_public=True).exists():
-            next_actions.append("Add a public contact method")
+            next_actions.append("Choose contacts to share after acceptance")
+    from discovery.services import apply_discovery_filters, recommend_profiles_for_user
+    recommendations = recommend_profiles_for_user(request.user, apply_discovery_filters(StudentProfile.objects.exclude(user=request.user), {}, request.user))
     return {
+        "recommendation_basis": recommendations.metadata["recommendation_basis"],
         "user": CurrentUserSerializer(request.user).data,
         "profile": StudentProfileSerializer(profile, context={"request": request}).data if profile else None,
         "profile_completeness": profile.profile_completeness if profile else 0,
@@ -92,7 +95,7 @@ def build_dashboard_payload(request):
         "review_count": profile.reviews.count() if profile else 0,
         "next_actions": next_actions,
         "recommended_profiles": PublicStudentProfileListSerializer(
-            visible_profiles(StudentProfile.objects.filter(open_to_connect=True), request.user).exclude(user=request.user)[:6],
+            [p for _, p in recommendations[:6]],
             many=True,
             context={"request": request},
         ).data,

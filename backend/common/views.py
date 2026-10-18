@@ -235,6 +235,7 @@ def analytics_payload(request):
                     "declined": request_status_counts.get(HelpRequest.Status.DECLINED, 0),
                     "completed": request_status_counts.get(HelpRequest.Status.COMPLETED, 0),
                     "cancelled": request_status_counts.get(HelpRequest.Status.CANCELLED, 0),
+                    "expired": request_status_counts.get(HelpRequest.Status.EXPIRED, 0),
                 },
             },
         }

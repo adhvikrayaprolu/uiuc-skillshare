@@ -17,6 +17,9 @@ import { MyProfilePage } from '../pages/MyProfilePage';
 import { ProfileDetailPage } from '../pages/ProfileDetailPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { RequestDetailPage } from '../pages/RequestDetailPage';
+import { GuidelinesPage } from '../pages/legal/GuidelinesPage';
+import { PrivacyPage } from '../pages/legal/PrivacyPage';
+import { TermsPage } from '../pages/legal/TermsPage';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { LegacyRedirect as Redirect } from '../components/layout/LegacyRedirect';
 import { APP_HOME, EDIT_PROFILE, SETUP_HOME } from '../lib/routes';
@@ -33,6 +36,9 @@ export const router = createBrowserRouter([
           { path: "login", Component: LoginPage },
         ],
       },
+      { path: "guidelines", Component: GuidelinesPage },
+      { path: "privacy", Component: PrivacyPage },
+      { path: "terms", Component: TermsPage },
     ],
   },
   {

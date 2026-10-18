@@ -114,6 +114,7 @@ export function LoginPage() {
             <button disabled={pending} className="w-full rounded-xl bg-[#13294B] p-3 font-semibold text-white disabled:opacity-60">{pending ? 'Please wait…' : challenge ? 'Verify and sign in' : 'Send email code'}</button>
             {challenge && <div className="flex justify-between text-sm"><button type="button" disabled={pending} onClick={async () => {setPending(true); try {await resendEmailCode(); toast.success('A new code was sent.');} catch {setError('Please wait before resending, or start again.');} finally {setPending(false);}}}>Resend code</button><button type="button" onClick={() => {setChallenge(false); setCode(''); setError('');}}>Use another email</button></div>}
           </form>
+          <p className="mb-6 text-center text-xs text-[#64748B]">By continuing you agree to the <Link to="/terms" className="font-medium text-[#13294B] underline">Terms</Link>, <Link to="/guidelines" className="font-medium text-[#13294B] underline">Community guidelines</Link> and <Link to="/privacy" className="font-medium text-[#13294B] underline">Privacy</Link> page.</p>
           {useMocks && <button type="button" onClick={handleMockDemoLogin} className="mb-4 w-full rounded-lg border p-3">Explore synthetic demo data</button>}
 
           <div className="space-y-4 border-t border-[#E2E8F0] pt-6">

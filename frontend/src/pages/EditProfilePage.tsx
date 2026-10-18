@@ -12,6 +12,7 @@ import {AvailabilityGrid} from '../components/profile/AvailabilityGrid';
 import {SkillPicker} from '../components/profile/SkillPicker';
 import {SkillSuggestion} from '../components/profile/SkillSuggestion';
 import {useUnsavedChanges} from '../hooks/useUnsavedChanges';
+import {ConfirmDialog} from '../components/ui/ConfirmDialog';
 import {apiErrorMessage} from '../lib/errors';
 import {useQueryClient} from '@tanstack/react-query';
 import type { ContactMethodType, CredentialType, ProfileSkill, StudentYear } from '../types/api';
@@ -105,7 +106,7 @@ export function EditProfilePage() {
   );
 
   const dirty = Boolean(currentProfile.data && (JSON.stringify(form) !== JSON.stringify(formFromProfile(currentProfile.data)) || JSON.stringify(skillsDraft) !== JSON.stringify(currentProfile.data.profile_skills.map(skill => ({id: skill.id, skill: skill.skill, confidence_level: skill.confidence_level, description: skill.description || '', is_featured: skill.is_featured})))));
-  useUnsavedChanges(dirty && !isSaving);
+  const unsaved = useUnsavedChanges(dirty && !isSaving);
   const handleSave = async () => {
     if (shouldUseMocks()) {toast.info('Synthetic demo edits are not persisted.'); return;}
     const next = {...form, selectedSkillIds: skillsDraft.map(row => row.skill), skillDetails: Object.fromEntries(skillsDraft.map(row => [row.skill, {confidence_level: row.confidence_level, description: row.description, is_featured: row.is_featured}]))};
@@ -127,6 +128,16 @@ export function EditProfilePage() {
   if (!shouldUseMocks() && currentProfile.isError) return <div role="alert">Could not load your profile. <button onClick={() => void currentProfile.refetch()}>Try again</button></div>;
   return (
     <div className="mx-auto max-w-5xl">
+      <ConfirmDialog
+        open={unsaved.leaving}
+        tone="danger"
+        title="Discard your changes?"
+        description="You have edits that haven't been saved. If you leave now, they'll be lost."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        onConfirm={unsaved.leave}
+        onCancel={unsaved.stay}
+      />
       <div className="mb-6">
         <h1 className="mb-2 text-3xl font-bold text-[#0F172A]">Edit profile</h1>
         <p className="text-[#475569]">All changes are saved together when you press Save changes.</p>

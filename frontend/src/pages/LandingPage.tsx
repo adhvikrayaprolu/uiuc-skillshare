@@ -180,7 +180,12 @@ export function LandingPage() {
       </section>
 
       <footer className="bg-[#0F172A] py-8 text-[#CBD5E1]">
-        <div className="mx-auto max-w-6xl px-6 text-center text-sm">
+        <div className="mx-auto max-w-6xl space-y-3 px-6 text-center text-sm">
+          <nav aria-label="Policies" className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <Link to="/guidelines" className="hover:text-white">Community guidelines</Link>
+            <Link to="/privacy" className="hover:text-white">Privacy</Link>
+            <Link to="/terms" className="hover:text-white">Terms</Link>
+          </nav>
           <p>© 2026 Illini SkillShare. An independent student project, not affiliated with or endorsed by the University of Illinois.</p>
         </div>
       </footer>

@@ -57,12 +57,15 @@ def create_request(serializer, data):
             if previous.content_hash != digest:
                 raise Conflict("That submission key was used for a different request.")
             return previous
-    if HelpRequest.objects.filter(seeker=user, created_at__gte=timezone.now()-timedelta(days=1)).count() >= 10:
+    now = timezone.now()
+    if HelpRequest.objects.filter(seeker=user, created_at__gte=now-timedelta(days=1)).count() >= 10:
         raise serializers.ValidationError("You can send at most 10 requests in 24 hours.")
+    if HelpRequest.objects.filter(seeker=user, status=HelpRequest.Status.PENDING).count() >= HelpRequest.MAX_PENDING_PER_SEEKER:
+        raise serializers.ValidationError(f"You already have {HelpRequest.MAX_PENDING_PER_SEEKER} requests waiting for a reply. Withdraw one or wait for an answer before sending another.")
     normalized = topic_key(data["topic"])
     if HelpRequest.objects.filter(seeker=user, helper_profile=helper, topic_key=normalized, status__in=["pending", "accepted"]).exists():
         raise Conflict("An active request for this topic already exists.")
-    data.update(seeker=user, status="pending", version=1, content_hash=digest, topic_key=normalized)
+    data.update(seeker=user, status="pending", version=1, content_hash=digest, topic_key=normalized, expires_at=now+HelpRequest.PENDING_LIFETIME)
     obj = HelpRequest.objects.create(**data)
     track_event(user, "help_request_created", {"help_request_id": obj.pk, "helper_profile_id": helper.pk, "kind": obj.kind}, serializer.context["request"])
     from common.notifications import notify_request

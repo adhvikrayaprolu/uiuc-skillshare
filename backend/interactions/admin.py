@@ -20,7 +20,7 @@ class ReviewAdmin(admin.ModelAdmin):
 class HelpRequestAdmin(admin.ModelAdmin):
     list_display = ("topic", "seeker", "helper_profile", "urgency", "status", "created_at")
     search_fields = ("topic", "message", "seeker__email", "helper_profile__display_name")
-    list_filter = ("urgency", "status", "created_at")
+    list_filter = ("kind", "status", "urgency", "created_at")
 
 
 @admin.register(Endorsement)
@@ -34,7 +34,45 @@ class EndorsementAdmin(admin.ModelAdmin):
 class ReportAdmin(admin.ModelAdmin):
     list_display = ("reason", "reporter", "reported_profile", "reported_user", "reported_review", "status", "created_at")
     search_fields = ("reporter__email", "reported_profile__display_name", "reported_user__email", "description")
-    list_filter = ("reason", "status", "created_at")
+    list_filter = ("status", "reason", "created_at")
+    readonly_fields = ("reporter", "reported_profile", "reported_user", "reported_review", "reason", "description", "created_at", "updated_at")
+    actions = ["mark_reviewed", "dismiss", "suspend_reported_members"]
+
+    def _resolve(self, request, queryset, status, action):
+        for report in queryset:
+            report.status = status
+            report.save(update_fields=["status", "updated_at"])
+            ModerationAudit.objects.create(actor=request.user, subject=report_subject(report), action=action)
+
+    @admin.action(description="Mark selected reports reviewed (no action needed)")
+    def mark_reviewed(self, request, queryset):
+        self._resolve(request, queryset, Report.Status.REVIEWED, "report_reviewed")
+
+    @admin.action(description="Dismiss selected reports")
+    def dismiss(self, request, queryset):
+        self._resolve(request, queryset, Report.Status.DISMISSED, "report_dismissed")
+
+    @admin.action(description="Suspend the reported members and close these reports")
+    def suspend_reported_members(self, request, queryset):
+        from accounts.lifecycle import suspend_user
+        suspended = 0
+        for report in queryset:
+            subject = report_subject(report)
+            if subject:
+                suspended += suspend_user(request.user, subject)
+            report.status = Report.Status.ACTION_TAKEN
+            report.save(update_fields=["status", "updated_at"])
+        self.message_user(request, f"Suspended {suspended} member(s).")
+
+
+def report_subject(report):
+    if report.reported_user_id:
+        return report.reported_user
+    if report.reported_profile_id:
+        return report.reported_profile.user
+    if report.reported_review_id:
+        return report.reported_review.reviewer
+    return None
 
 
 @admin.register(BlockedUser)

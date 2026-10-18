@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ArrowLeftRight, Send, X } from 'lucide-react';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
+import { requestErrorMessage } from '../../lib/requests';
 import type { RequestKind, Urgency } from '../../types/api';
 
 export interface RequestSubmission {
@@ -66,8 +67,8 @@ function RequestDialog({
       setTopic('');
       setMessage('');
       onClose();
-    } catch {
-      setError(isSwap ? 'The swap proposal was not sent. Check the details and try again.' : 'The request was not sent. Check the details and try again.');
+    } catch (caught) {
+      setError(requestErrorMessage(caught, isSwap ? 'The swap proposal was not sent. Check the details and try again.' : 'The request was not sent. Check the details and try again.'));
     }
   };
 

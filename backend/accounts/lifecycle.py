@@ -22,6 +22,31 @@ def revoke_sessions(user_id):
             session.delete()
 
 
+@transaction.atomic
+def suspend_user(actor, user):
+    """Deactivate a member, end their sessions, drop them from search and close their open requests. Superusers are never suspended."""
+    if user.is_superuser or not user.is_active:
+        return False
+    from discovery.models import ProfileSearchIndex
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+    revoke_sessions(user.pk)
+    ProfileSearchIndex.objects.filter(profile__user=user).delete()
+    now = timezone.now()
+    open_requests = HelpRequest.objects.select_for_update().filter(
+        Q(seeker=user) | Q(helper_profile__user=user),
+        status__in=[HelpRequest.Status.PENDING, HelpRequest.Status.ACCEPTED],
+    )
+    for help_request in open_requests:
+        help_request.status = HelpRequest.Status.CANCELLED
+        help_request.cancelled_at = now
+        help_request.cancel_reason = "This member is no longer available."
+        help_request.version += 1
+        help_request.save(update_fields=["status", "cancelled_at", "cancel_reason", "version", "updated_at"])
+    ModerationAudit.objects.create(actor=actor, subject=user, action="suspended")
+    return True
+
+
 class AccountExportView(APIView):
     @extend_schema(responses=dict)
     def get(self, request):

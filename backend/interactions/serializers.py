@@ -168,10 +168,12 @@ class HelpRequestSerializer(serializers.ModelSerializer):
             "declined_at",
             "completed_at",
             "cancelled_at",
+            "expires_at",
+            "expired_at",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "seeker", "accepted_at", "declined_at", "completed_at", "cancelled_at", "created_at", "updated_at"]
+        read_only_fields = ["id", "seeker", "accepted_at", "declined_at", "completed_at", "cancelled_at", "expires_at", "expired_at", "created_at", "updated_at"]
 
     def get_helper_display_name(self, obj) -> str:
         return obj.helper_profile.display_name if can_view_profile(self.context["request"].user, obj.helper_profile) else "Unavailable member"
@@ -278,9 +280,14 @@ class HelpRequestSerializer(serializers.ModelSerializer):
                 "declined": set(),
                 "cancelled": set(),
                 "completed": set(),
+                "expired": set(),
             }
+            if self.instance.status == "expired":
+                raise serializers.ValidationError("This request expired without a reply. Send a new one if you still want to connect.")
             if new_status not in allowed[self.instance.status]:
                 raise serializers.ValidationError(f"Cannot transition help request from {self.instance.status} to {new_status}.")
+            if new_status == "accepted" and self.instance.is_past_expiry:
+                raise serializers.ValidationError("This request expired without a reply. Ask them to send a new one.")
             if new_status == "cancelled" and self.instance.status == "pending" and self.instance.seeker_id != request.user.id:
                 raise serializers.ValidationError("Only the sender can withdraw a pending request. Decline it instead.")
             helper_statuses = {"accepted", "declined"}
@@ -304,6 +311,13 @@ class ReportSerializer(serializers.ModelSerializer):
         model = Report
         fields = ["id", "reported_profile", "reported_user", "reported_review", "reason", "description", "status", "created_at", "updated_at"]
         read_only_fields = ["id", "status", "created_at", "updated_at"]
+        extra_kwargs = {"description": {"max_length": 2000}}
+
+    def validate_description(self, value):
+        value = value.strip()
+        if len(value) < 10:
+            raise serializers.ValidationError("Tell the moderators what happened in a sentence or two.")
+        return value
 
     def validate(self, attrs):
         request = self.context["request"]

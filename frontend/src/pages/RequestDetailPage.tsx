@@ -112,6 +112,7 @@ function RequestActions({ request, view }: { request: HelpRequest; view: Request
   const isAccepted = request.status === 'accepted';
   if (!canRespond && !canWithdraw && !isAccepted) {
     if (request.status === 'declined') return <p className={`${panel} text-sm text-[#475569]`}>{view.sent ? `${view.peerFirstName} declined this request.` : 'You declined this request.'}</p>;
+    if (request.status === 'expired') return <p className={`${panel} text-sm text-[#475569]`}>{view.sent ? `${view.peerFirstName} didn't reply within 14 days, so this request expired. You can send a new one from their profile.` : "This request expired because it wasn't answered within 14 days."}</p>;
     if (request.status === 'cancelled') return <p className={`${panel} text-sm text-[#475569]`}>This request was cancelled{request.cancel_reason ? `: “${request.cancel_reason}”` : '.'}</p>;
     return null;
   }
@@ -136,7 +137,8 @@ function RequestActions({ request, view }: { request: HelpRequest; view: Request
         </>
       )}
 
-      {canWithdraw && <p className="mb-4 text-sm text-[#475569]">{view.peerFirstName} hasn't replied yet. You'll get a notification when they do.</p>}
+      {canRespond && request.expires_at && <p className="mb-3 text-xs text-[#92400E]">Reply by {formatDate(request.expires_at)}, or this request expires.</p>}
+      {canWithdraw && <p className="mb-4 text-sm text-[#475569]">{view.peerFirstName} hasn't replied yet. You'll get a notification when they do.{request.expires_at && ` If there's no reply by ${formatDate(request.expires_at)}, it expires and frees up a slot.`}</p>}
       {isAccepted && (
         <>
           <p className="mb-4 text-sm text-[#475569]">Use the contact details below to meet up. When you're done, mark it complete so you can both leave feedback.</p>
@@ -285,6 +287,7 @@ function Timeline({ request, view }: { request: HelpRequest; view: RequestView }
     { label: 'Declined', at: request.declined_at },
     { label: 'Marked complete', at: request.completed_at },
     { label: request.cancel_reason ? `Cancelled: “${request.cancel_reason}”` : 'Cancelled', at: request.cancelled_at },
+    { label: 'Expired without a reply', at: request.expired_at },
   ].filter((event) => event.at);
   return (
     <section aria-labelledby="timeline-heading" className={panel}>

@@ -8,6 +8,7 @@ const statusStyles: Record<HelpRequestStatus, { className: string; icon: typeof 
   completed: { className: 'bg-[#E8EEF7] text-[#13294B]', icon: CheckCircle2 },
   declined: { className: 'bg-red-50 text-[#B91C1C]', icon: XCircle },
   cancelled: { className: 'bg-[#F1F5F9] text-[#475569]', icon: XCircle },
+  expired: { className: 'bg-[#F1F5F9] text-[#475569]', icon: Clock },
 };
 
 export function RequestStatusBadge({ status }: { status: HelpRequestStatus }) {

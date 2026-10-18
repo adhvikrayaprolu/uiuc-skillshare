@@ -51,6 +51,25 @@ PGSERVICE=skillshare_restore pg_restore --role=skillshare_migrate --clean --if-e
 
 The clean option drops the target application schema: require explicit target verification and maintenance approval. Restore the corresponding avatar backup, then run migrations/checks, restricted-role verification, content checks and a two-member smoke journey before switching traffic. Freeze writes for a coordinated final snapshot; keep the source intact until recovery is accepted. Migrate real data only with separate authorization. The local script tests this sequence; hosted backup retention, recovery timing and storage recovery remain unverified.
 
+## Moderation runbook
+
+Members report from a profile (Report member). Each report records a reason (`harassment`, `inappropriate_content`, `spam`, `fake_profile`, `misleading_credentials` or `other`) and a description of at least 10 characters. Reports are never shown to the reported member. Moderators are Django staff users. They work in `/admin/` → Interactions → Reports, filtering by status `open` and sorting by date. The report fields are read-only in the admin.
+
+1. **Triage within two days.** Open the report, then follow the reported profile, user or review to its admin page. Use the Help requests admin to search by topic, seeker email or helper name for the related interactions, and filter by kind or status as needed.
+2. **Decide and apply one action** from the Reports action menu. Each action writes a `ModerationAudit` row with the acting staff user:
+   - *Mark selected reports reviewed (no action needed)*: the report was checked and nothing broke the guidelines. Status becomes `reviewed`.
+   - *Dismiss selected reports*: the report is spam, a duplicate or made in bad faith. Status becomes `dismissed`.
+   - *Suspend the reported members and close these reports*: for harassment, threats, impersonation, selling, academic dishonesty or repeated problems. It deactivates the account, revokes every session and removes the profile from search. Peers can no longer see the profile. It also cancels the member's pending and accepted requests with the reason "This member is no longer available.", and finished history is kept. Superusers are never suspended. Status becomes `action_taken`.
+3. **Content-only problems** (an inappropriate headline, bio or review): edit or hide that record in the admin, then mark the report reviewed. Hide a profile by setting its visibility to private.
+4. **Restore** a suspended account from Accounts → Users with *Restore selected accounts*, which is also audited and rebuilds their search entry. Cancelled requests stay cancelled.
+5. **Emergencies.** If a report describes immediate danger, contact campus or local emergency services first. The product tells members to call 911. Do not message the reported member from personal accounts.
+
+Policy pages are `/guidelines`, `/privacy` and `/terms`. Their text describes current product behaviour and needs human or legal review before real-user launch. If you change sharing, retention, analytics or AI behaviour, update `frontend/src/pages/legal/` and the "Last updated" date in the same change.
+
+## Request expiry and reminders
+
+A pending request gets `expires_at = created_at + 14 days`. If no one has replied after 7 days, the `dispatch_jobs` loop sends the receiver one reminder notification. At expiry, the loop marks the request `expired`, bumps its version so a racing accept gets a 409, and notifies both sides. Each pass processes up to 100 rows with `SELECT … FOR UPDATE SKIP LOCKED`, so multiple dispatchers are safe. Migration `0008_request_expiry` backfills existing pending rows with at least 7 more days. A sender can have at most 5 pending requests at once.
+
 ## Future release gates
 
 Run `make check` and require green PR CI before human review/merge. Build the frontend with the same Google client ID as Django. Rehearse HTTPS proxy/TLS, configured Google audience/domain, actual SMTP delivery/retry, Supabase certificates/connections/grants, private bucket access, backup recovery and startup on the intended host. Validate process restart/persistence and resource budgets. Restrict Django admin to operators and use strong admin credentials; normal members use verified Google/email flows.

@@ -9,6 +9,7 @@ from accounts.serializers import CurrentUserSerializer
 from interactions.models import SavedProfile
 from interactions.models import HelpRequest
 from profiles.models import StudentProfile
+from profiles.policy import visible_profiles
 from profiles.serializers import PublicStudentProfileListSerializer, StudentProfileSerializer
 from taxonomy.models import SkillCategory, SkillTag
 from taxonomy.serializers import SkillCategorySerializer, SkillTagSerializer
@@ -75,7 +76,7 @@ def build_dashboard_payload(request):
         "review_count": profile.reviews.count() if profile else 0,
         "next_actions": next_actions,
         "recommended_profiles": PublicStudentProfileListSerializer(
-            StudentProfile.objects.filter(visibility="public", open_to_connect=True).exclude(user=request.user)[:6],
+            visible_profiles(StudentProfile.objects.filter(open_to_connect=True), request.user).exclude(user=request.user)[:6],
             many=True,
             context={"request": request},
         ).data,

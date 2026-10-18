@@ -4,6 +4,7 @@ from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from profiles.models import StudentProfile
+from profiles.policy import visible_profiles
 from .models import BlockedUser, Endorsement, HelpRequest, Report, Review, SavedProfile
 from .permissions import IsHelpRequestParticipant, IsReviewOwnerOrReadOnly
 from .serializers import BlockedUserSerializer, EndorsementSerializer, HelpRequestSerializer, ReportSerializer, ReviewSerializer, SavedProfileSerializer
@@ -17,7 +18,7 @@ class SavedProfileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return SavedProfile.objects.none()
-        return SavedProfile.objects.filter(seeker=self.request.user).select_related("saved_profile")
+        return SavedProfile.objects.filter(seeker=self.request.user, saved_profile__in=visible_profiles(StudentProfile.objects.all(), self.request.user)).select_related("saved_profile", "saved_profile__user")
 
 
 class ProfileReviewListCreateView(generics.ListCreateAPIView):
@@ -25,7 +26,7 @@ class ProfileReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
 
     def get_profile(self):
-        return get_object_or_404(StudentProfile, pk=self.kwargs["profile_id"], visibility="public")
+        return get_object_or_404(visible_profiles(StudentProfile.objects.all(), self.request.user), pk=self.kwargs["profile_id"])
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
@@ -44,13 +45,16 @@ class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Review.objects.select_related("reviewer", "profile")
     http_method_names = ["get", "patch", "delete", "head", "options"]
 
+    def get_queryset(self):
+        return super().get_queryset().filter(profile__in=visible_profiles(StudentProfile.objects.all(), self.request.user))
+
 
 class ProfileEndorsementListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EndorsementSerializer
 
     def get_profile(self):
-        return get_object_or_404(StudentProfile, pk=self.kwargs["profile_id"], visibility="public")
+        return get_object_or_404(visible_profiles(StudentProfile.objects.all(), self.request.user), pk=self.kwargs["profile_id"])
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
@@ -80,7 +84,11 @@ class HelpRequestViewSet(viewsets.ModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return HelpRequest.objects.none()
         return (
-            HelpRequest.objects.filter(Q(seeker=self.request.user) | Q(helper_profile__user=self.request.user))
+            HelpRequest.objects.filter(Q(seeker=self.request.user) | Q(helper_profile__user=self.request.user)).exclude(
+                Q(seeker_id__in=self.request.user.blocked_users.values("blocked_user_id")) |
+                Q(seeker_id__in=self.request.user.blocked_by.values("blocker_id")) |
+                Q(helper_profile__user_id__in=self.request.user.blocked_users.values("blocked_user_id")) |
+                Q(helper_profile__user_id__in=self.request.user.blocked_by.values("blocker_id")))
             .select_related("seeker", "seeker__profile", "helper_profile", "related_skill")
             .prefetch_related("helper_profile__contact_methods", "seeker__profile__contact_methods")
         )

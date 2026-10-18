@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from common.analytics import track_event
 from discovery.services import apply_discovery_filters, base_discoverable_queryset, rebuild_profile_search_index, similar_profiles_for
+from .policy import can_share_contacts, visible_profiles
 from .models import Availability, ContactMethod, Credential, ProfileSkill, StudentProfile
 from .serializers import (
     AvailabilitySerializer,
@@ -65,6 +66,9 @@ class PublicProfileDetailView(generics.RetrieveAPIView):
     queryset = StudentProfile.objects.filter(visibility="public").prefetch_related(
         "profile_skills__skill__category", "contact_methods", "availability", "credentials", "reviews"
     )
+
+    def get_queryset(self):
+        return visible_profiles(super().get_queryset(), self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
@@ -133,7 +137,7 @@ class SimilarProfilesView(generics.ListAPIView):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return StudentProfile.objects.none()
-        profile = get_object_or_404(StudentProfile, pk=self.kwargs["pk"], visibility="public")
+        profile = get_object_or_404(visible_profiles(StudentProfile.objects.all(), self.request.user), pk=self.kwargs["pk"])
         queryset = base_discoverable_queryset(StudentProfile.objects.filter(open_to_connect=True), user=self.request.user)
         ranked = similar_profiles_for(profile, queryset)[:10]
         return [profile for _, profile in ranked]
@@ -144,7 +148,9 @@ class ContactClickView(APIView):
 
     @extend_schema(request=None, responses=dict)
     def post(self, request, pk):
-        profile = get_object_or_404(StudentProfile, pk=pk, visibility="public")
+        profile = get_object_or_404(visible_profiles(StudentProfile.objects.all(), request.user), pk=pk)
+        if not can_share_contacts(request.user, profile):
+            raise PermissionDenied("Contacts are shared only after request acceptance.")
         contact_method_id = request.data.get("contact_method_id")
         contact = get_object_or_404(ContactMethod, pk=contact_method_id, profile=profile, is_public=True)
         track_event(request.user, "contact_clicked", {"profile_id": profile.id, "contact_method_id": contact.id, "type": contact.type}, request)

@@ -16,7 +16,7 @@ function contactHref(type: string, value: string) {
 }
 
 export function ConnectionsPage() {
-  const { connections, isLoading } = useConnections();
+  const { connections, isLoading, isError } = useConnections();
   const showMockEmpty = shouldUseMocks();
 
   const pagination = useListPage(connections);
@@ -41,6 +41,7 @@ export function ConnectionsPage() {
     return <div className="mx-auto max-w-5xl text-[#64748B]">Loading connections...</div>;
   }
 
+  if (isError) return <p role="alert">Could not load connections. Refresh to try again.</p>;
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">

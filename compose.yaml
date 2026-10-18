@@ -9,7 +9,7 @@ x-application: &application
     ENVIRONMENT: ${ENVIRONMENT:-local}
     DEBUG: "False"
     SECRET_KEY: ${SECRET_KEY:-dev-only-local-secret-key-change-before-production-12345}
-    ALLOWED_HOSTS: localhost,127.0.0.1,app,testserver
+    ALLOWED_HOSTS: localhost,127.0.0.1,app,skillshare-app,testserver
     DATABASE_URL: postgresql://skillshare:${POSTGRES_PASSWORD:-local-skillshare-only}@db:5432/skillshare
     REDIS_URL: redis://redis:6379/0
     EMAIL_HOST: mail
@@ -53,6 +53,9 @@ services:
     depends_on:
       db: {condition: service_healthy}
   app:
+    networks:
+      default:
+        aliases: [skillshare-app]
     <<: *application
     ports: ["127.0.0.1:${APP_PORT:-8080}:8000"]
     volumes: [avatar-data:/data/media]
@@ -83,6 +86,20 @@ services:
     profiles: [checks]
     build: {context: ., target: frontend-check}
     command: [sh, -c, "npm test && npm run lint && npm run build"]
+  browser-check:
+    profiles: [checks]
+    build: {context: ., dockerfile: Dockerfile.e2e}
+    environment:
+      E2E_APP_URL: http://skillshare-app:8000
+      E2E_MAIL_URL: http://mail:8025
+      E2E_PAGINATION_FIXTURES: "true"
+    volumes:
+      - ./frontend/test-results:/workspace/frontend/test-results
+      - ./frontend/playwright-report:/workspace/frontend/playwright-report
+      - ./docs/screenshots:/workspace/docs/screenshots
+    shm_size: 1gb
+    depends_on:
+      app: {condition: service_healthy}
 volumes:
   postgres-data:
   redis-data:

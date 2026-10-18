@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Search, Filter, ChevronDown, Sparkles, X, Info } from 'lucide-react';
 import { useTaxonomy } from '../hooks/useTaxonomy';
@@ -9,17 +10,18 @@ import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
 
 export function DiscoveryPage() {
+  const [searchParams] = useSearchParams();
   const taxonomy = useTaxonomy();
   const quickCategories = taxonomy.data?.categories || [];
   const allSkills = taxonomy.data?.skills || [];
   const [page, setPage] = useState(1);
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState(searchParams.get('q') || '');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState('All Years');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [savedProfiles, setSavedProfiles] = useState<number[]>([]);
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [openOnly, setOpenOnly] = useState(false);
   const [ordering, setOrdering] = useState('best_match');
   const [aiAssisted, setAiAssisted] = useState(true);
@@ -81,7 +83,7 @@ export function DiscoveryPage() {
       </div>
 
       {discoveryQuery.isError && !shouldUseMocks() && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           Could not load discovery results. Check that the API is running and you are signed in.
         </div>
       )}
@@ -92,7 +94,7 @@ export function DiscoveryPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#64748B] w-5 h-5" />
           <input
             type="text"
-            placeholder="Search resume help, Figma, startup advice, GitHub, research, project collaborators..."
+            aria-label="Search helpers" placeholder="Search resume help, Figma, startup advice, GitHub, research, project collaborators..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-4 bg-white border-2 border-[#E2E8F0] rounded-2xl text-[15px] focus:outline-none focus:border-[#13294B] transition-colors"
@@ -101,7 +103,7 @@ export function DiscoveryPage() {
         <div className="mt-3 rounded-xl border border-[#E2E8F0] bg-white p-3">
           <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#0F172A]">
             <input type="checkbox" checked={aiAssisted} onChange={(e) => {setPage(1); setAiAssisted(e.target.checked);}} />
-            <Sparkles className="h-3.5 w-3.5 text-[#FF5F05]" />
+            <Sparkles className="h-3.5 w-3.5 text-[#B83E00]" />
             Use semantic matching when available
           </label>
           <p className="mt-2 text-xs text-[#64748B]">
@@ -129,16 +131,16 @@ export function DiscoveryPage() {
         ))}
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-6 md:flex-row">
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
-          className="hidden"
+          className="md:hidden rounded border p-2"
+          aria-expanded={showFilters}
           aria-label="Toggle filters"
-        />
+        >{showFilters ? 'Hide filters' : 'Show filters'}</button>
         {/* Filter Sidebar */}
-        {showFilters && (
-          <aside className="w-72 flex-shrink-0">
+        <aside className={`${showFilters ? "block" : "hidden md:block"} w-full md:w-64 lg:w-72 flex-shrink-0`}>
             <div className="sticky top-6 rounded-2xl border border-[#E2E8F0] bg-white p-5">
               <div className="mb-5 flex items-center justify-between">
                 <h3 className="font-semibold text-[#0F172A] flex items-center gap-2">
@@ -147,7 +149,7 @@ export function DiscoveryPage() {
                 </h3>
                 <button
                   onClick={clearAllFilters}
-                  className="text-sm text-[#FF5F05] hover:underline"
+                  className="text-sm text-[#B83E00] hover:underline"
                 >
                   Clear all
                 </button>
@@ -156,7 +158,7 @@ export function DiscoveryPage() {
               {/* Year Filter */}
               <div className="mb-5">
                 <label className="mb-2 block text-sm font-semibold text-[#0F172A]">Year</label>
-                <select
+                <select aria-label="Filter by year"
                   value={selectedYear}
                   onChange={(e) => {setPage(1); setSelectedYear(e.target.value);}}
                   className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm focus:border-[#13294B] focus:outline-none"
@@ -208,10 +210,9 @@ export function DiscoveryPage() {
               </div>
             </div>
           </aside>
-        )}
 
         {/* Main Content */}
-        <main className="flex-1">
+        <section aria-label="Matching peers" className="flex-1">
           {/* Active Filters */}
           {(selectedSkills.length > 0 || selectedYear !== 'All Years' || selectedCategory !== 'All') && (
             <div className="mb-6 flex flex-wrap gap-2">
@@ -223,7 +224,7 @@ export function DiscoveryPage() {
                   {skill}
                   <button
                     onClick={() => setSelectedSkills(selectedSkills.filter(s => s !== skill))}
-                    className="hover:text-[#FF5F05]"
+                    className="hover:text-[#B83E00]"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -234,7 +235,7 @@ export function DiscoveryPage() {
                   {selectedYear}
                   <button
                     onClick={() => setSelectedYear('All Years')}
-                    className="hover:text-[#FF5F05]"
+                    className="hover:text-[#B83E00]"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -245,7 +246,7 @@ export function DiscoveryPage() {
                   {selectedCategory}
                   <button
                     onClick={() => setSelectedCategory('All')}
-                    className="hover:text-[#FF5F05]"
+                    className="hover:text-[#B83E00]"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -258,7 +259,7 @@ export function DiscoveryPage() {
           <div className="mb-5 flex items-center justify-between">
             <p className="text-sm text-[#64748B]">
               <span className="font-semibold text-[#0F172A]">{resultCount}</span> {resultCount === 1 ? 'student' : 'students'} found
-              {discoveryQuery.isFetching && <span className="ml-2 text-[#FF5F05]">Updating...</span>}
+              {discoveryQuery.isFetching && <span className="ml-2 text-[#B83E00]">Updating...</span>}
               {discoveryQuery.data?.matching?.mode === 'hybrid' && (
                 <span className="ml-2 rounded-full bg-[#FFF3EA] px-2 py-0.5 text-xs text-[#C2410C]">
                   Semantic + keyword
@@ -267,7 +268,7 @@ export function DiscoveryPage() {
             </p>
             <label className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-[#0F172A] transition-colors hover:bg-[#F8FAFC]">
               Sort by:
-              <select
+              <select aria-label="Sort matches"
                 value={ordering}
                 onChange={(event) => {setPage(1); setOrdering(event.target.value);}}
                 className="bg-transparent font-medium focus:outline-none"
@@ -287,7 +288,7 @@ export function DiscoveryPage() {
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#334155]">
               <Info className="h-3.5 w-3.5 text-[#64748B]" />
               {aiAssisted
-                ? 'Using Use semantic matching when available to rank profiles by intent, skills, and profile context.'
+                ? `Matching mode: ${discoveryQuery.data?.matching?.mode || 'keyword_taxonomy'}.`
                 : 'Using keyword and filter search.'}
             </div>
           )}
@@ -323,7 +324,7 @@ export function DiscoveryPage() {
               }}
             />
           )}
-        </main>
+        </section>
       </div>
     </div>
   );

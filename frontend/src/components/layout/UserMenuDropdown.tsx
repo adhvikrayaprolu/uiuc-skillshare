@@ -6,6 +6,7 @@ interface UserMenuDropdownProps {
   userName?: string;
   userEmail?: string;
   myProfileId?: number | null;
+  isPublished?: boolean;
   onLogout: () => void;
 }
 
@@ -13,9 +14,10 @@ export function UserMenuDropdown({
   userName = 'Student',
   userEmail = '',
   myProfileId,
+  isPublished = false,
   onLogout,
 }: UserMenuDropdownProps) {
-  const profileHref = myProfileId ? `/profiles/${myProfileId}` : '/onboarding';
+  const profileHref = myProfileId ? (isPublished ? `/profiles/${myProfileId}` : '/profile/edit') : '/onboarding';
 
   return (
     <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-lg border border-[#E2E8F0] overflow-hidden z-50">

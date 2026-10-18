@@ -17,6 +17,15 @@ export function useProfileEditor() {
   const queryClient = useQueryClient();
   const updateProfile = useMutation({
     mutationFn: (payload: Partial<ProfileDetail>) => (shouldUseMocks() ? Promise.resolve(payload) : updateCurrentProfile(payload)),
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({queryKey: ['current-profile']});
+      const previous = queryClient.getQueryData<ProfileDetail>(['current-profile']);
+      if (previous) queryClient.setQueryData(['current-profile'], {...previous, ...payload});
+      return {previous};
+    },
+    onError: (_error, _payload, context) => {
+      if (context?.previous) queryClient.setQueryData(['current-profile'], context.previous);
+    },
     onSuccess: () => queryClient.invalidateQueries(),
   });
   const createProfile = useMutation({

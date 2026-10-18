@@ -1,3 +1,4 @@
+import {submissionKey as createSubmissionKey} from '../lib/idempotency';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { MapPin, Clock, Star, Bookmark, Mail, Linkedin, Github, ExternalLink, ArrowLeft } from 'lucide-react';
 import { mockProfiles } from '../data/mockData';
@@ -24,7 +25,7 @@ export function ProfileDetailPage() {
   const myProfileQuery = useCurrentProfile();
   const helpRequestsQuery = useHelpRequests();
   const [feedbackRequestId, setFeedbackRequestId] = useState<number | ''>('');
-  const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
+  const [submissionKey, setSubmissionKey] = useState(() => createSubmissionKey());
   const queryClient = useQueryClient();
   const fallbackProfile = mockProfiles.find(p => p.id === Number(id)) || mockProfiles[0];
   const profileQuery = useProfile(id);
@@ -94,7 +95,7 @@ export function ProfileDetailPage() {
       <div className="mx-auto max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white p-10 text-center">
         <h1 className="mb-2 text-xl font-semibold text-[#0F172A]">Profile could not be loaded</h1>
         <p className="mb-6 text-[#64748B]">Check that you are signed in and the profile exists.</p>
-        <Link to="/discover" className="text-sm font-medium text-[#13294B] hover:text-[#FF5F05]">
+        <Link to="/discover" className="text-sm font-medium text-[#13294B] hover:text-[#B83E00]">
           ← Back to Discover
         </Link>
       </div>
@@ -162,10 +163,10 @@ export function ProfileDetailPage() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Profile Header */}
-          <div className="bg-white rounded-2xl p-8 border border-[#E2E8F0]">
-            <div className="flex items-start gap-6 mb-6">
+          <div className="bg-white rounded-2xl p-4 sm:p-8 border border-[#E2E8F0]">
+            <div className="flex flex-col sm:flex-row items-start gap-4 mb-6">
               <InitialsAvatar src={profileQuery.data?.raw?.profile_picture || undefined} name={profile.name} size="xl" />
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h1 className="text-3xl font-bold text-[#0F172A] mb-1">{profile.name}</h1>
@@ -173,9 +174,11 @@ export function ProfileDetailPage() {
                   </div>
                   <button
                     onClick={handleToggleSave}
+                    aria-label={isProfileSaved ? `Unsave ${profile.name}` : `Save ${profile.name}`}
+                    aria-pressed={isProfileSaved}
                     className={`p-3 rounded-xl transition-colors ${
                       isProfileSaved
-                        ? 'bg-[#FF5F05] text-white'
+                        ? 'bg-[#B83E00] text-white'
                         : 'bg-[#F8FAFC] text-[#64748B] hover:bg-[#E8EEF7]'
                     }`}
                   >
@@ -296,7 +299,7 @@ export function ProfileDetailPage() {
               <div className="mb-4 space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-[#0F172A]">Rating</label>
-                  <select
+                  <select aria-label="Rating"
                     value={reviewRating}
                     onChange={(event) => setReviewRating(Number(event.target.value))}
                     className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-sm"
@@ -310,6 +313,7 @@ export function ProfileDetailPage() {
                 </div>
                 <textarea
                   rows={3}
+                  aria-label="Review feedback"
                   value={reviewComment}
                   onChange={(event) => setReviewComment(event.target.value)}
                   placeholder="Share specific feedback..."
@@ -328,7 +332,7 @@ export function ProfileDetailPage() {
 
             {showEndorseForm && !shouldUseMocks() && (
               <div className="mb-4 space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                <select
+                <select aria-label="Endorsement skill"
                   value={endorseSkill}
                   onChange={(event) => setEndorseSkill(event.target.value ? Number(event.target.value) : '')}
                   className="w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
@@ -346,6 +350,7 @@ export function ProfileDetailPage() {
                 </select>
                 <textarea
                   rows={2}
+                  aria-label="Endorsement note"
                   value={endorseNote}
                   onChange={(event) => setEndorseNote(event.target.value)}
                   placeholder="Optional endorsement note..."
@@ -449,7 +454,7 @@ export function ProfileDetailPage() {
               {profile.contacts.find(c => c.preferred) && (
                 <div className="flex items-center gap-2 p-3 bg-[#E8EEF7] rounded-lg">
                   <Mail className="w-4 h-4 text-[#13294B]" />
-                  <span className="text-sm font-medium text-[#13294B]">Email</span>
+                  <span className="text-sm font-medium text-[#13294B]">{profile.contacts.find(c => c.preferred)?.type}</span>
                 </div>
               )}
             </div>
@@ -519,11 +524,12 @@ export function ProfileDetailPage() {
             <div className="space-y-3">
               <button
                 onClick={() => setShowHelpRequest(true)}
-                className="w-full px-4 py-3 bg-[#FF5F05] text-white font-medium rounded-xl hover:bg-[#e55505] transition-colors"
+                className="w-full px-4 py-3 bg-[#B83E00] text-white font-medium rounded-xl hover:bg-[#e55505] transition-colors"
               >
                 Send Help Request
               </button>
               <button
+                disabled={!profile.contacts.some(contact => contact.type === 'email')}
                 onClick={async () => {
                   const email = profile.contacts.find((contact) => contact.type === 'email')?.value;
                   if (!email) {
@@ -571,7 +577,7 @@ export function ProfileDetailPage() {
               preferred_contact_method: payload.preferredContactMethod as ContactMethodType,
               ...(skillMatch ? { related_skill: skillMatch.id } : {}),
             });
-            setSubmissionKey(crypto.randomUUID());
+            setSubmissionKey(createSubmissionKey());
             toast.success('Help request sent.');
           } catch {
             toast.error('Could not send help request.');

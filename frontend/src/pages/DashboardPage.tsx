@@ -87,7 +87,7 @@ export function DashboardPage() {
           </Link>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-[#E2E8F0]">
-          <div className="h-full bg-[#FF5F05] transition-all" style={{ width: `${profileCompleteness}%` }} />
+          <div className="h-full bg-[#B83E00] transition-all" style={{ width: `${profileCompleteness}%` }} />
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export function DashboardPage() {
               <p className="text-sm text-[#64748B]">Saved profiles</p>
             </div>
           </div>
-          <Link to="/saved" className="mt-3 inline-block text-sm font-medium text-[#13294B] hover:text-[#FF5F05]">
+          <Link to="/saved" className="mt-3 inline-block text-sm font-medium text-[#13294B] hover:text-[#B83E00]">
             View saved →
           </Link>
         </div>
@@ -120,7 +120,7 @@ export function DashboardPage() {
           <p className="mt-1 text-xs text-[#64748B]">
             {incomingRequestCount} incoming · {outgoingRequestCount} outgoing
           </p>
-          <Link to="/requests" className="mt-2 inline-block text-sm font-medium text-[#13294B] hover:text-[#FF5F05]">
+          <Link to="/requests" className="mt-2 inline-block text-sm font-medium text-[#13294B] hover:text-[#B83E00]">
             Open requests →
           </Link>
         </div>
@@ -136,7 +136,7 @@ export function DashboardPage() {
             </div>
           </div>
           <p className="mt-1 text-xs text-[#64748B]">Accepted help requests</p>
-          <Link to="/connections" className="mt-2 inline-block text-sm font-medium text-[#13294B] hover:text-[#FF5F05]">
+          <Link to="/connections" className="mt-2 inline-block text-sm font-medium text-[#13294B] hover:text-[#B83E00]">
             View connections →
           </Link>
         </div>
@@ -166,7 +166,7 @@ export function DashboardPage() {
           </div>
           <Link
             to="/discover"
-            className="flex items-center gap-1 text-sm font-medium text-[#13294B] transition-colors hover:text-[#FF5F05]"
+            className="flex items-center gap-1 text-sm font-medium text-[#13294B] transition-colors hover:text-[#B83E00]"
           >
             View all
             <ArrowRight className="h-4 w-4" />

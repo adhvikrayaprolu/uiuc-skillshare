@@ -12,6 +12,7 @@ import {AvailabilityFields} from '../components/profile/AvailabilityFields';
 import {SkillSuggestion} from '../components/profile/SkillSuggestion';
 import {LearningGoals, SharingPreferences} from '../components/profile/ProfilePreferences';
 import {apiErrorMessage} from '../lib/errors';
+import {useUnsavedChanges} from '../hooks/useUnsavedChanges';
 import {useQueryClient} from '@tanstack/react-query';
 
 const steps = ['Basic Info', 'Skills & Experiences', 'Availability', 'Contact Methods', 'Optional Credentials', 'Preview & Publish'];
@@ -30,6 +31,7 @@ export function OnboardingPage() {
   const [form, setForm] = useState(() => defaultProfileForm(auth.user?.email || ''));
   const [isPublishing, setIsPublishing] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  useUnsavedChanges(!isPublishing && Boolean(form.displayName || form.headline || form.selectedSkillIds.length));
 
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -78,17 +80,17 @@ export function OnboardingPage() {
           <div className="flex items-center justify-between mb-4">
             {steps.map((_, idx) => (
               <div key={idx} className="flex items-center">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${idx < currentStep ? 'bg-[#16A34A] text-white' : idx === currentStep ? 'bg-[#13294B] text-white' : 'bg-[#E2E8F0] text-[#64748B]'}`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${idx < currentStep ? 'bg-[#15803D] text-white' : idx === currentStep ? 'bg-[#13294B] text-white' : 'bg-[#E2E8F0] text-[#64748B]'}`}>
                   {idx < currentStep ? <CheckCircle2 className="h-5 w-5" /> : idx + 1}
                 </div>
-                {idx < steps.length - 1 && <div className={`mx-2 h-1 w-12 ${idx < currentStep ? 'bg-[#16A34A]' : 'bg-[#E2E8F0]'}`} />}
+                {idx < steps.length - 1 && <div className={`mx-1 h-1 w-2 sm:mx-2 sm:w-12 ${idx < currentStep ? 'bg-[#15803D]' : 'bg-[#E2E8F0]'}`} />}
               </div>
             ))}
           </div>
           <p className="text-center text-sm text-[#64748B]">Step {currentStep + 1} of {steps.length}: {steps[currentStep]}</p>
         </div>
 
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-8 shadow-lg">
+        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-8 shadow-lg">
           <h2 className="mb-6 text-2xl font-bold text-[#0F172A]">{steps[currentStep]}</h2>
           {errors.length > 0 && (
             <div role="alert" className="mb-5 rounded-xl border border-[#DC2626]/20 bg-[#FEF2F2] p-4 text-sm text-[#7F1D1D]">
@@ -96,6 +98,7 @@ export function OnboardingPage() {
             </div>
           )}
 
+          {taxonomy.isError && <p role="alert">Could not load skills. <button onClick={() => void taxonomy.refetch()}>Try again</button></p>}
           <div className="mb-8">
             {currentStep === 0 && (
               <div className="space-y-4">
@@ -147,12 +150,12 @@ export function OnboardingPage() {
                 {form.contacts.map((contact, index) => (
                   <div key={index} className="rounded-xl border border-[#E2E8F0] p-4">
                     <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-[160px_1fr_120px]">
-                      <select className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" value={contact.type} onChange={(event) => {
+                      <select className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" aria-label={`Contact method ${index + 1}`} value={contact.type} onChange={(event) => {
                         const contacts = [...form.contacts];
                         contacts[index] = { ...contact, type: event.target.value as ContactMethodType };
                         update('contacts', contacts);
                       }}>{contactTypes.map((type) => <option key={type} value={type}>{titleCase(type)}</option>)}</select>
-                      <input className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm" value={contact.value} onChange={(event) => {
+                      <input className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm" aria-label={`Contact value ${index + 1}`} value={contact.value} onChange={(event) => {
                         const contacts = [...form.contacts];
                         contacts[index] = { ...contact, value: event.target.value };
                         update('contacts', contacts);
@@ -174,17 +177,17 @@ export function OnboardingPage() {
               <div className="space-y-4">
                 {form.credentials.map((credential, index) => (
                   <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-[#E2E8F0] p-4 md:grid-cols-[150px_1fr_120px]">
-                    <input className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm" value={credential.title} onChange={(event) => {
+                    <input className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm" aria-label={`Evidence title ${index + 1}`} value={credential.title} onChange={(event) => {
                       const credentials = [...form.credentials];
                       credentials[index] = { ...credential, title: event.target.value };
                       update('credentials', credentials);
                     }} />
-                    <input className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm" value={credential.url} onChange={(event) => {
+                    <input className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm" aria-label={`Evidence link ${index + 1}`} value={credential.url} onChange={(event) => {
                       const credentials = [...form.credentials];
                       credentials[index] = { ...credential, url: event.target.value };
                       update('credentials', credentials);
                     }} placeholder="https://..." />
-                    <select className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" value={credential.visibility} onChange={(event) => {
+                    <select className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" aria-label={`Evidence visibility ${index + 1}`} value={credential.visibility} onChange={(event) => {
                       const credentials = [...form.credentials];
                       credentials[index] = { ...credential, visibility: event.target.value as 'public' | 'private' | 'hidden' };
                       update('credentials', credentials);
@@ -199,7 +202,7 @@ export function OnboardingPage() {
               <div className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#E8EEF7]"><CheckCircle2 className="h-8 w-8 text-[#13294B]" /></div>
                 <h3 className="mb-2 text-2xl font-bold text-[#0F172A]">You're all set</h3>
-                <p className="mb-6 text-[#64748B]">Publish your profile so other students can discover and connect with you.</p>
+                <p className="mb-6 text-[#64748B]">Choose whether to publish your profile. You can change these choices in Settings.</p>
                 <SharingPreferences form={form} onChange={setForm}/>
                 <label className="mb-6 flex cursor-pointer items-center justify-center gap-2">
                   <input type="checkbox" className="h-5 w-5 rounded" checked={form.openToConnect} onChange={(event) => update('openToConnect', event.target.checked)} />
@@ -209,10 +212,10 @@ export function OnboardingPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0] pt-6">
             <button onClick={() => setCurrentStep(Math.max(0, currentStep - 1))} disabled={currentStep === 0 || isPublishing} className="flex items-center gap-2 rounded-xl border-2 border-[#E2E8F0] px-6 py-3 font-medium text-[#64748B] transition-colors hover:border-[#13294B] hover:text-[#0F172A] disabled:cursor-not-allowed disabled:opacity-50"><ChevronLeft className="h-5 w-5" />Back</button>
-            <div className="text-sm text-[#64748B]">{currentStep + 1} of {steps.length}</div>
-            <button onClick={nextStep} disabled={isPublishing} className="flex items-center gap-2 rounded-xl bg-[#13294B] px-6 py-3 font-medium text-white transition-colors hover:bg-[#1a3a6b] disabled:opacity-60">{currentStep === steps.length - 1 ? (isPublishing ? 'Publishing...' : 'Save Profile') : 'Continue'}<ChevronRight className="h-5 w-5" /></button>
+            <div className="hidden sm:block text-sm text-[#64748B]">{currentStep + 1} of {steps.length}</div>
+            <button onClick={nextStep} disabled={isPublishing} className="flex items-center gap-2 rounded-xl bg-[#13294B] px-6 py-3 font-medium text-white transition-colors hover:bg-[#1a3a6b] disabled:opacity-60">{currentStep === steps.length - 1 ? (isPublishing ? 'Saving...' : 'Save Profile') : 'Continue'}<ChevronRight className="h-5 w-5" /></button>
           </div>
         </div>
       </div>

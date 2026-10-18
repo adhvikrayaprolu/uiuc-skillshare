@@ -14,8 +14,8 @@ import { shouldUseMocks } from '../lib/api';
 import type { HelpRequest as ApiHelpRequest } from '../types/api';
 
 const statusConfig = {
-  Pending: { color: 'text-[#F59E0B] bg-[#FFF3EA]', icon: Clock },
-  Accepted: { color: 'text-[#16A34A] bg-green-50', icon: CheckCircle2 },
+  Pending: { color: 'text-[#92400E] bg-[#FFF3EA]', icon: Clock },
+  Accepted: { color: 'text-[#15803D] bg-green-50', icon: CheckCircle2 },
   Declined: { color: 'text-[#DC2626] bg-red-50', icon: XCircle },
   Completed: { color: 'text-[#64748B] bg-gray-50', icon: CheckCircle2 },
   Cancelled: { color: 'text-[#64748B] bg-gray-50', icon: XCircle },
@@ -72,7 +72,7 @@ export function HelpRequestsPage() {
       </div>
 
       {helpRequestsQuery.isError && !isMock && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           Could not load help requests. Check your connection and try again.
         </div>
       )}
@@ -156,7 +156,7 @@ export function HelpRequestsPage() {
                         request.urgency === 'High'
                           ? 'text-[#DC2626]'
                           : request.urgency === 'Medium'
-                            ? 'text-[#F59E0B]'
+                            ? 'text-[#92400E]'
                             : 'text-[#64748B]'
                       }`}
                     />
@@ -267,7 +267,7 @@ export function HelpRequestsPage() {
                               toast.error('Could not update request.');
                             }
                           }}
-                          className="rounded-xl bg-[#16A34A] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
+                          className="rounded-xl bg-[#15803D] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
                         >
                           Mark Complete
                         </button>
@@ -287,7 +287,7 @@ export function HelpRequestsPage() {
         })}
       </div>
 
-      {displayRequests.length === 0 && (
+      {displayRequests.length === 0 && !helpRequestsQuery.isLoading && !helpRequestsQuery.isError && (
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-12 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#F8FAFC]">
             <MessageCircle className="h-8 w-8 text-[#64748B]" />

@@ -1,0 +1,22 @@
+import {expect, it, vi} from 'vitest';
+import {act, renderHook, waitFor} from '@testing-library/react';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import type {ReactNode} from 'react';
+import {useProfileEditor} from './useProfileEditor';
+const update = vi.hoisted(() => vi.fn());
+vi.mock('../lib/api', () => ({shouldUseMocks: () => false}));
+vi.mock('../lib/profilesApi', () => ({updateCurrentProfile:update}));
+it('updates privacy controls while pending and restores the saved choice after a failure', async () => {
+  let fail: (error: Error) => void = () => undefined;
+  update.mockImplementation(() => new Promise((_resolve,reject) => {fail=reject;}));
+  const client=new QueryClient({defaultOptions:{mutations:{retry:false}}});
+  client.setQueryData(['current-profile'],{id:4,visibility:'public',share_contacts:true});
+  const wrapper=({children}:{children:ReactNode}) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const {result,unmount}=renderHook(useProfileEditor,{wrapper});
+  act(() => result.current.updateProfile.mutate({visibility:'private'}));
+  await waitFor(() => expect(client.getQueryData(['current-profile'])).toMatchObject({visibility:'private'}));
+  act(() => fail(new Error('Service unavailable')));
+  await waitFor(() => expect(result.current.updateProfile.isError).toBe(true));
+  expect(client.getQueryData(['current-profile'])).toMatchObject({visibility:'public',share_contacts:true});
+  unmount(); client.clear();
+});

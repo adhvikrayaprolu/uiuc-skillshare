@@ -47,6 +47,7 @@ export function AppLayout() {
   const { updateProfile } = useProfileEditor();
   const notifications = useNotifications();
 
+  const [globalSearch, setGlobalSearch] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -75,8 +76,10 @@ export function AppLayout() {
         setShowStatusMenu(false);
       }
     }
+    const closeMenus = (event: KeyboardEvent) => {if (event.key === 'Escape') {setShowNotifications(false); setShowUserMenu(false); setShowStatusMenu(false);}};
+    document.addEventListener('keydown', closeMenus);
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {document.removeEventListener('mousedown', handleClickOutside); document.removeEventListener('keydown', closeMenus);};
   }, []);
 
   const apiAvailabilityStatus = useMemo<AvailabilityUi>(() => {
@@ -135,10 +138,10 @@ export function AppLayout() {
                 key={item.path}
                 to={item.path}
                 className={`relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-[#FFF3EA] text-[#FF5F05]' : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+                  isActive ? 'bg-[#FFF3EA] text-[#B83E00]' : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
                 }`}
               >
-                {isActive && <div className="absolute bottom-0 left-0 top-0 w-1 rounded-r bg-[#FF5F05]" />}
+                {isActive && <div className="absolute bottom-0 left-0 top-0 w-1 rounded-r bg-[#B83E00]" />}
                 <Icon className="h-5 w-5" />
                 {item.label}
               </Link>
@@ -170,16 +173,16 @@ export function AppLayout() {
           <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <div className="hidden max-w-md flex-1 sm:block">
               {location.pathname !== '/discover' ? (
-                <div className="relative">
+                <form onSubmit={event => {event.preventDefault(); navigate(`/discover?q=${encodeURIComponent(globalSearch)}`);}} className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
                   <input
                     type="text"
-                    placeholder="Search students..."
+                    aria-label="Search helpers from any page" value={globalSearch} onChange={event => setGlobalSearch(event.target.value)} placeholder="Search helpers…"
                     className="w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] py-2 pl-10 pr-4 text-sm transition-colors focus:border-[#13294B] focus:outline-none"
                   />
-                </div>
+                </form>
               ) : (
-                <p className="text-sm text-[#64748B]">Use the Discover search bar for AI-assisted matching.</p>
+                <p className="text-sm text-[#64748B]">Search offered skills and published profile text in Discover.</p>
               )}
             </div>
 
@@ -188,7 +191,7 @@ export function AppLayout() {
                 <button
                   type="button"
                   onClick={() => setShowStatusMenu(!showStatusMenu)}
-                  className="flex items-center gap-1.5 rounded-full bg-[#FFF3EA] px-3 py-1.5 text-xs font-medium text-[#FF5F05] transition-colors hover:bg-opacity-80"
+                  className="flex items-center gap-1.5 rounded-full bg-[#FFF3EA] px-3 py-1.5 text-xs font-medium text-[#B83E00] transition-colors hover:bg-opacity-80"
                 >
                   {availabilityStatus === 'open' ? 'Open to Connect' : 'Status'}
                   <ChevronDown className="h-3 w-3" />
@@ -214,7 +217,7 @@ export function AppLayout() {
                 >
                   <Bell className="h-5 w-5 text-[#64748B]" />
                   {(notifications.query.data?.unread_count || 0) > 0 && (
-                    <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#FF5F05]" />
+                    <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#B83E00]" />
                   )}
                 </button>
                 {showNotifications && <NotificationDropdown onNavigate={()=>setShowNotifications(false)} showSamples={useMocks} items={useMocks ? undefined : notifications.items} loading={!useMocks && notifications.query.isLoading} error={!useMocks && notifications.query.isError}
@@ -229,6 +232,7 @@ export function AppLayout() {
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
+                  aria-label="Account menu" aria-expanded={showUserMenu}
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="transition-opacity hover:opacity-80"
                 >
@@ -238,7 +242,7 @@ export function AppLayout() {
                   <UserMenuDropdown
                     userName={displayName}
                     userEmail={auth.user?.email}
-                    myProfileId={myProfileId}
+                    myProfileId={myProfileId} isPublished={currentProfile.data?.visibility === 'public'}
                     onLogout={handleLogout}
                   />
                 )}
@@ -262,7 +266,7 @@ export function AppLayout() {
               key={item.path}
               to={item.path}
               className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 text-[10px] font-medium ${
-                isActive ? 'bg-[#FFF3EA] text-[#FF5F05]' : 'text-[#64748B]'
+                isActive ? 'bg-[#FFF3EA] text-[#B83E00]' : 'text-[#64748B]'
               }`}
             >
               <Icon className="h-4 w-4" />

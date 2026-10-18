@@ -28,10 +28,11 @@ export function ProfileCard({ profile, isSaved = false, onToggleSave, reasonText
             </div>
             {onToggleSave && (
               <button
+                aria-label={`${isSaved ? 'Unsave' : 'Save'} ${profile.name}`} aria-pressed={isSaved}
                 onClick={onToggleSave}
                 className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
                   isSaved
-                    ? 'bg-[#FF5F05] text-white'
+                    ? 'bg-[#B83E00] text-white'
                     : 'hover:bg-[#F8FAFC] text-[#64748B]'
                 }`}
               >

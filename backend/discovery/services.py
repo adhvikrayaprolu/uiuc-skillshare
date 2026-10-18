@@ -26,7 +26,7 @@ def build_profile_search_text(profile):
 
 
 def base_discoverable_queryset(queryset, user=None):
-    return visible_profiles(queryset, user).filter(open_to_connect=True)
+    return visible_profiles(queryset, user).filter(open_to_connect=True).exclude(user=user)
 
 
 def apply_discovery_filters(queryset, params, user=None):
@@ -74,7 +74,7 @@ def retrieve_candidates(queryset, query, matched):
         search = SearchQuery(tokens[0], config='english')
         for token in tokens[1:]:
             search |= SearchQuery(token, config='english')
-        indexes = ProfileSearchIndex.objects.filter(profile__in=queryset).annotate(vector=SearchVector('search_text', config='english'), relevance=SearchRank(SearchVector('search_text', config='english'), search)).filter(vector=search).order_by('-relevance', 'profile_id')
+        indexes = ProfileSearchIndex.objects.filter(profile__in=queryset).annotate(keyword_vector=SearchVector('search_text', config='english'), relevance=SearchRank(SearchVector('search_text', config='english'), search)).filter(keyword_vector=search).order_by('-relevance', 'profile_id')
         rows = list(indexes.values_list('profile_id', 'relevance')[:CANDIDATE_LIMIT+1])
         for pk, relevance in rows[:CANDIDATE_LIMIT]:
             ids.append(pk); full_text_scores[pk] = min(float(relevance)*10, 1)
@@ -96,7 +96,11 @@ def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=No
     ids, text_scores, limited = retrieve_candidates(queryset, query, matched)
     # Semantic retrieval is independent; its IDs were selected after privacy/filter checks.
     semantic_scores = semantic_scores or {}
-    ids = list(dict.fromkeys(ids + list(semantic_scores)))[:CANDIDATE_LIMIT]
+    from itertools import zip_longest
+    combined = [pk for pair in zip_longest(ids, list(semantic_scores)) for pk in pair if pk is not None]
+    unique = list(dict.fromkeys(combined))
+    limited |= len(unique) > CANDIDATE_LIMIT
+    ids = unique[:CANDIDATE_LIMIT]
     reviews = visible_feedback(Review.objects.all(), user) if user else Review.objects.none()
     endorsements = visible_feedback(Endorsement.objects.all(), user, 'endorser') if user else Endorsement.objects.none()
     profiles = queryset.filter(pk__in=ids).select_related('user').prefetch_related(
@@ -166,8 +170,12 @@ def build_profile_search_text_cached(profile):
 
 
 def semantic_rank_profiles(queryset, query='', params=None, user=None):
-    # The gated provider adapter is introduced separately; this fallback is truthful.
-    return rank_profiles(queryset, query, params, user=user)
+    from .semantic import semantic_candidates
+    scores, reason = semantic_candidates(queryset, query)
+    ranked = rank_profiles(queryset, query, params, user=user, semantic_scores=scores)
+    ranked.metadata['fallback_reason'] = reason
+    ranked.metadata['model'] = 'text-embedding-3-small' if scores else None
+    return ranked
 
 
 def recommend_profiles_for_user(user, queryset):
@@ -190,6 +198,8 @@ def rebuild_profile_search_index(profile):
         return None
     text = build_profile_search_text(profile)
     index, _ = ProfileSearchIndex.objects.update_or_create(profile=profile, defaults={'search_text': text, 'extracted_keywords': [], 'suggested_skill_names': list(profile.profile_skills.values_list('skill__name', flat=True))})
+    from .embedding_jobs import sync_embedding_job
+    sync_embedding_job(index, profile)
     return index
 
 

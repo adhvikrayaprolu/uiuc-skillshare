@@ -39,7 +39,8 @@ export function PrivacyPage() {
             <ul>
               <li>To run the service: show profiles, suggest matches, deliver requests and send notifications.</li>
               <li>To send sign-in codes and, if you turn on "Email me request and feedback updates" in Settings, emails about your requests.</li>
-              <li>To keep the community safe: rate limits, spam prevention, moderation and suspensions.</li>
+              <li>To send skill alerts when someone new teaches a skill you want to learn, and, only if you turn it on, a weekly digest email. You can turn either off in Settings.</li>
+            <li>To keep the community safe: rate limits, spam prevention, moderation and suspensions.</li>
               <li>To understand overall usage, such as how many swaps are completed, so we can improve the product.</li>
             </ul>
             ),

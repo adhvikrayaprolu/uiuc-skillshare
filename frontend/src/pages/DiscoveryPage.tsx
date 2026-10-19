@@ -14,6 +14,7 @@ import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
 import { PageControls } from '../components/ui/ListPagination';
 import { TabPanel, Tabs } from '../components/ui/Tabs';
+import { ColdStartPanel } from '../components/growth/ColdStartPanel';
 
 type DiscoverTab = 'helpers' | 'swaps' | 'saved';
 const tabs: { key: DiscoverTab; label: string }[] = [
@@ -96,6 +97,7 @@ function SwapMatchesPanel({ onBrowse }: { onBrowse: () => void }) {
           </div>
         </div>
       )}
+      {!rows.length && <ColdStartPanel />}
     </div>
   );
 }
@@ -396,6 +398,9 @@ function AllHelpersPanel() {
                 onClick: clearAllFilters
               }}
             />
+          )}
+          {filteredProfiles.length === 0 && !discoveryQuery.isLoading && !discoveryQuery.isError && (
+            <div className="mt-4"><ColdStartPanel onPickSkill={(name) => { clearAllFilters(); setSearchQuery(name); }} /></div>
           )}
         </section>
       </div>

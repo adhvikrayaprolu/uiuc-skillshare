@@ -2,7 +2,14 @@ import signal
 from threading import Event
 from django.core.management.base import BaseCommand
 from django.db import close_old_connections
+from common.avatar_cleanup import enqueue_due_avatar_deletions
 from common.notifications import enqueue_due_emails
+from common.retention import send_skill_alerts, send_weekly_digests
+from discovery.embedding_jobs import enqueue_due_embeddings
+from interactions.expiry import process_pending_requests
+
+# Each job runs independently so one failing job never starves the others.
+JOBS = (enqueue_due_emails, enqueue_due_embeddings, enqueue_due_avatar_deletions, process_pending_requests, send_skill_alerts, send_weekly_digests)
 
 
 class Command(BaseCommand):
@@ -15,15 +22,10 @@ class Command(BaseCommand):
         signal.signal(signal.SIGINT, lambda *_: stopped.set())
         while not stopped.is_set():
             close_old_connections()
-            try:
-                enqueue_due_emails()
-                from discovery.embedding_jobs import enqueue_due_embeddings
-                enqueue_due_embeddings()
-                from common.avatar_cleanup import enqueue_due_avatar_deletions
-                enqueue_due_avatar_deletions()
-                from interactions.expiry import process_pending_requests
-                process_pending_requests()
-            except Exception as error:
-                self.stderr.write(f"Dispatcher retry: {type(error).__name__}")
+            for job in JOBS:
+                try:
+                    job()
+                except Exception as error:
+                    self.stderr.write(f"Dispatcher retry: {job.__name__} {type(error).__name__}")
             if not options["loop"] or stopped.wait(5):
                 break

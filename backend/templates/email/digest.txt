@@ -1,0 +1,14 @@
+{% autoescape off %}Hi {{ name }}, here's your week on Illini SkillShare.
+{% if waiting_count %}
+{{ waiting_count }} waiting on you:
+{% for topic in waiting %}- {{ topic }}
+{% endfor %}Open requests: {{ app_url }}/requests
+{% endif %}{% if new_teacher_count %}
+New people who teach what you want to learn:
+{% for line in new_teachers %}- {{ line }}
+{% endfor %}See your matches: {{ app_url }}/discover?tab=swaps
+{% endif %}
+--
+Turn off the weekly digest: {{ settings_url }}
+Illini SkillShare is an independent student project, not affiliated with or endorsed by the University of Illinois.
+{% endautoescape %}

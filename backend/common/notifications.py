@@ -2,13 +2,12 @@
 from datetime import timedelta
 
 import django_rq
-from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from profiles.policy import users_blocked
+from .emails import send_notification_email
 from .models import EmailDelivery, Notification
 
 
@@ -37,8 +36,21 @@ def notify_request(interaction, kind, actor_id):
 def visible_notifications(user):
     return Notification.objects.filter(recipient=user, peer__is_active=True, peer__is_student_verified=True).exclude(
         Q(peer_id__in=user.blocked_users.values("blocked_user_id")) |
-        Q(peer_id__in=user.blocked_by.values("blocker_id"))
+        Q(peer_id__in=user.blocked_by.values("blocker_id")) |
+        Q(profile__isnull=False, help_request__isnull=True) & ~Q(profile__visibility="public")
     )
+
+
+def may_email(notification):
+    user, peer = notification.recipient, notification.peer
+    profile = getattr(user, "profile", None)
+    if not (user.is_active and user.is_student_verified and profile and profile.notification_email_enabled):
+        return False
+    if not peer.is_active or users_blocked(user, peer):
+        return False
+    if notification.kind == "skill_alert":
+        return profile.skill_alerts_enabled and notification.profile is not None and notification.profile.visibility == "public"
+    return True
 
 
 def enqueue_due_emails():
@@ -61,15 +73,14 @@ def enqueue_due_emails():
 
 @transaction.atomic
 def deliver_email(delivery_id):
-    row = EmailDelivery.objects.select_for_update(of=("self",)).select_related("notification__recipient__profile", "notification__peer").filter(pk=delivery_id).first()
+    row = EmailDelivery.objects.select_for_update(of=("self",)).select_related("notification__recipient__profile", "notification__peer", "notification__profile").filter(pk=delivery_id).first()
     if not row or row.delivered_at or row.attempts >= 6 or row.next_attempt_at > timezone.now():
         return
     notification = row.notification
-    user = notification.recipient
     row.attempts += 1
     try:
-        if user.is_active and user.is_student_verified and getattr(getattr(user, "profile", None), "notification_email_enabled", False) and notification.peer.is_active and not users_blocked(user, notification.peer):
-            send_mail(notification.title, f"You have an update in Illini SkillShare. Open {settings.APP_PUBLIC_URL}/requests/{notification.help_request_id} to view it.", settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+        if may_email(notification):
+            send_notification_email(notification)
         row.delivered_at = timezone.now()  # Includes consent withdrawal; never deliver later.
         row.last_error = ""
     except Exception as error:

@@ -28,6 +28,9 @@ class AccountAdapter(DefaultAccountAdapter):
     def is_open_for_signup(self, request):
         return False  # Accounts are created only by the narrow email/Google flows.
 
+    def format_email_subject(self, subject):
+        return subject.strip()
+
     def pre_login(self, request, user, **kwargs):
         if not user.is_active or user.is_demo:
             deny("This account cannot sign in.")

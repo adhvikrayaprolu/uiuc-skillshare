@@ -38,6 +38,11 @@ class StudentProfile(models.Model):
     learning_goals_public = models.BooleanField(default=False)
     share_contacts = models.BooleanField(default=False)
     notification_email_enabled = models.BooleanField(default=False)
+    skill_alerts_enabled = models.BooleanField(default=True)
+    digest_email_enabled = models.BooleanField(default=False)
+    last_digest_at = models.DateTimeField(null=True, blank=True)
+    # Set once the profile has been announced to matching learners; republishing never re-alerts.
+    alerts_sent_at = models.DateTimeField(null=True, blank=True)
     embedding_consent = models.BooleanField(default=False)
     availability_confirmed_at = models.DateTimeField(null=True, blank=True)
     location = models.CharField(max_length=160, blank=True)

@@ -85,7 +85,25 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
     await h.goto('/privacy'); await audit(h,'mobile privacy'); await h.screenshot({path:path.resolve('../docs/screenshots/privacy-mobile.png'),fullPage:true});
     await login(h,helperEmail); const helperId=await onboard(h,'Local test helper','React','GitHub','mobile');
     await h.goto('/welcome'); await expect(h).toHaveURL(/\/home$/);
-    await login(s,seekerEmail); await onboard(s,'Local test seeker','GitHub','React','desktop');
+    await h.goto('/settings'); await expect(h.getByLabel('Alert me when someone new teaches what I want to learn')).toBeChecked();
+    await expect(h.getByLabel('Send me a weekly digest email')).not.toBeChecked();
+    await h.getByLabel('Email me request and feedback updates').check(); await expect(h.getByText('Preference saved.',{exact:true})).toBeVisible();
+    await h.goto('/discover?tab=swaps'); await expect(h.getByRole('button',{name:'Copy invite link'})).toBeVisible(); await audit(h,'cold start swaps');
+    await h.screenshot({path:path.resolve('../docs/screenshots/cold-start-mobile.png'),fullPage:true});
+    await h.setViewportSize({width:1440,height:1000}); await h.goto('/home'); await expect(h.getByRole('button',{name:'Copy invite link'})).toBeVisible(); await audit(h,'cold start home');
+    await h.screenshot({path:path.resolve('../docs/screenshots/home-invite-desktop.png'),fullPage:true}); await h.setViewportSize({width:390,height:844});
+    await login(s,seekerEmail); const seekerId=await onboard(s,'Local test seeker','GitHub','React','desktop');
+    console.log('Waiting for the skill alert email');
+    let alertBody: {Text: string; HTML: string} | undefined;
+    await expect.poll(async () => {
+      const list = await (await h.request.get(`${mail}/api/v1/messages`)).json();
+      const message = list.messages?.find((m: {To: {Address: string}[]; Subject: string}) => m.To.some(t => t.Address === helperEmail) && m.Subject === 'Local just joined and teaches GitHub');
+      if (message) alertBody = await (await h.request.get(`${mail}/api/v1/message/${message.ID}`)).json();
+      return Boolean(alertBody);
+    }, {timeout:30_000}).toBe(true);
+    expect(alertBody!.Text).toContain(`/profiles/${seekerId}`); expect(alertBody!.HTML).toContain('View profile'); expect(alertBody!.Text).toContain('Turn off skill alerts');
+    await h.goto('/home'); await h.getByRole('button',{name:'Notifications',exact:true}).click();
+    await expect(h.locator(`a[href="/profiles/${seekerId}"]`).first()).toBeVisible(); await h.keyboard.press('Escape');
     await expect(s.getByRole('link',{name:"View Local test helper's profile"})).toBeVisible(); await audit(s,'first matches');
     await s.screenshot({path:path.resolve('../docs/screenshots/welcome-matches-desktop.png'),fullPage:true});
     await s.getByRole('link',{name:'Go to Home',exact:true}).click(); await expect(s).toHaveURL(/\/home$/);

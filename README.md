@@ -19,6 +19,7 @@ An Illinois-email member can publish offered skills and evidence links, discover
 - Consent-based contacts, private profiles, blocking/reporting and account export/deletion.
 - Transactional requests, verified-interaction reviews and persistent notifications.
 - Requests expire after 14 days without a reply, with a reminder at day 7. Each member can have at most 5 requests waiting.
+- Cold-start help: "Be the first to teach X", popular skills and an invite link. Skill alerts when someone new teaches your goals, an optional weekly digest, and branded HTML email.
 - Reason-coded reports with a staff moderation queue and an audit trail ([runbook](docs/operations.md#moderation-runbook)). Public policy pages at `/guidelines`, `/privacy` and `/terms` ([source](frontend/src/pages/legal/)).
 
 ## Architecture / Tech stack

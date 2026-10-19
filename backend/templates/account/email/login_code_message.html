@@ -1,0 +1,9 @@
+{% extends "email/base.html" %}
+{% block title %}Your sign-in code{% endblock %}
+{% block content %}
+<h1 style="margin:0 0 12px;font-size:20px;line-height:1.3;color:#0F172A;">Your sign-in code</h1>
+<p style="margin:0 0 16px;color:#475569;">Enter this code in the browser window where you asked for it. It expires in 5 minutes.</p>
+<p style="margin:0 0 20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:28px;font-weight:700;letter-spacing:4px;color:#13294B;background:#E8EEF7;border-radius:12px;padding:14px 18px;text-align:center;">{{ code }}</p>
+<p style="margin:0;font-size:13px;color:#64748B;">If you didn't try to sign in, you can ignore this email. Nobody can sign in without the code.</p>
+{% endblock %}
+{% block footer %}You're getting this because someone entered this address on the Illini SkillShare sign-in page.{% endblock %}

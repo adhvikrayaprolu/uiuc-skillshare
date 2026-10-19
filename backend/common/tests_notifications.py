@@ -52,14 +52,14 @@ class NotificationTests(APITestCase):
         with patch("common.notifications.django_rq.get_queue", side_effect=ConnectionError):
             self.assertEqual(enqueue_due_emails(), 1)
         self.assertEqual(HelpRequest.objects.count(), 1)
-        with patch("common.notifications.send_mail", side_effect=TimeoutError):
+        with patch("common.notifications.send_notification_email", side_effect=TimeoutError):
             deliver_email(delivery.pk)
         delivery.refresh_from_db()
         self.assertEqual(delivery.attempts, 1)
         self.assertEqual(delivery.last_error, "TimeoutError")
         self.assertGreater(delivery.next_attempt_at, timezone.now())
         EmailDelivery.objects.filter(pk=delivery.pk).update(next_attempt_at=timezone.now()-timedelta(seconds=1))
-        with patch("common.notifications.send_mail") as send:
+        with patch("common.notifications.send_notification_email") as send:
             deliver_email(delivery.pk)
             deliver_email(delivery.pk)
             self.assertEqual(send.call_count, 1)
@@ -76,6 +76,6 @@ class NotificationTests(APITestCase):
         self.client.post(reverse("help-requests-list"), {"helper_profile": self.helper_profile.pk, "topic": "Consent", "message": "Help"}, format="json")
         self.helper_profile.notification_email_enabled = False
         self.helper_profile.save()
-        with patch("common.notifications.send_mail") as send:
+        with patch("common.notifications.send_notification_email") as send:
             deliver_email(EmailDelivery.objects.get().pk)
             send.assert_not_called()

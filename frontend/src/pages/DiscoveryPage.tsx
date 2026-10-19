@@ -28,7 +28,11 @@ export function DiscoveryPage() {
   const savedActions = useSavedProfileActions();
   const toast = useToast();
 
-  useEffect(() => { const timer = window.setTimeout(() => {setDebouncedQuery(searchQuery); setPage(1);}, 300); return () => window.clearTimeout(timer); }, [searchQuery]);
+  useEffect(() => {
+    if (searchQuery === debouncedQuery) return;
+    const timer = window.setTimeout(() => {setDebouncedQuery(searchQuery); setPage(1);}, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery, debouncedQuery]);
   const discoveryQuery = useDiscoverySearch({
     page,
     q: debouncedQuery || undefined,

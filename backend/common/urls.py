@@ -1,4 +1,5 @@
 from django.urls import path
+from .client_errors import ClientErrorView
 from .notification_views import NotificationViewSet
 
 from .views import analytics_summary, admin_analytics_summary, bootstrap, dashboard, health, readiness, onboarding_status
@@ -16,4 +17,5 @@ urlpatterns = [
     path("onboarding/status/", onboarding_status, name="onboarding-status"),
     path("analytics/summary/", analytics_summary, name="analytics-summary"),
     path("admin/analytics/summary/", admin_analytics_summary, name="admin-analytics-summary"),
+    path("client-errors/", ClientErrorView.as_view(), name="client-errors"),
 ]

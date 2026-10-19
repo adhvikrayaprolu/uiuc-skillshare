@@ -147,8 +147,10 @@ REST_FRAMEWORK = {
         "anon": "100/day",
         "user": "1000/day",
         "auth_google": "10/min",
+        "client_errors": "30/hour",
     },
 }
+CLIENT_ERROR_REPORTING = os.getenv("CLIENT_ERROR_REPORTING", "true").lower() == "true"
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

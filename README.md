@@ -21,6 +21,7 @@ An Illinois-email member can publish offered skills and evidence links, discover
 - Requests expire after 14 days without a reply, with a reminder at day 7. Each member can have at most 5 requests waiting.
 - Cold-start help: "Be the first to teach X", popular skills and an invite link. Skill alerts when someone new teaches your goals, an optional weekly digest, and branded HTML email.
 - Reason-coded reports with a staff moderation queue and an audit trail ([runbook](docs/operations.md#moderation-runbook)). Public policy pages at `/guidelines`, `/privacy` and `/terms` ([source](frontend/src/pages/legal/)).
+- Launch basics: per-screen titles, Open Graph/Twitter cards with a share image, favicon, `robots.txt`, a sitemap, `noindex` on signed-in screens, a recovery screen for crashes, first-party scrubbed error reports and staff launch metrics on `/analytics` ([readiness](docs/readiness.md)).
 
 ## Architecture / Tech stack
 

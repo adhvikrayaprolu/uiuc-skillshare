@@ -14,6 +14,7 @@ class AnalyticsEvent(models.Model):
         HELP_REQUEST_CREATED = "help_request_created", "Help request created"
         REVIEW_CREATED = "review_created", "Review created"
         ENDORSEMENT_CREATED = "endorsement_created", "Endorsement created"
+        MATCHES_SHOWN = "matches_shown", "First matches shown"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name="analytics_events", on_delete=models.SET_NULL)
     event_type = models.CharField(max_length=40, choices=EventType.choices)
@@ -61,6 +62,24 @@ class EmailDelivery(models.Model):
     last_error = models.CharField(max_length=80, blank=True)
     class Meta:
         indexes = [models.Index(fields=["delivered_at", "next_attempt_at"])]
+
+
+class ClientError(models.Model):
+    """Grouped browser errors. Stores no user, IP address, query string or request body."""
+    fingerprint = models.CharField(max_length=64, unique=True)
+    message = models.CharField(max_length=300)
+    source = models.CharField(max_length=200, blank=True)
+    path = models.CharField(max_length=200, blank=True)
+    release = models.CharField(max_length=40, blank=True)
+    count = models.PositiveIntegerField(default=1)
+    first_seen = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-last_seen"]
+
+    def __str__(self):
+        return f"{self.message[:60]} ×{self.count}"
 
 
 class AvatarDeletion(models.Model):

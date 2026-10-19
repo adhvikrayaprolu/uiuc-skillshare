@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.analytics import track_event
+from common.analytics import track_event, track_first_match
 from profiles.models import ProfileSkill, StudentProfile
 from profiles.serializers import PublicStudentProfileListSerializer
 from .services import apply_discovery_filters, recommend_profiles_for_user, rank_profiles, semantic_rank_profiles, swap_matches_for_user
@@ -28,6 +28,7 @@ class DiscoverySearchView(APIView):
             {"q": query, "params": dict(request.query_params), "result_count": len(profiles), "mode": mode or "default"},
             request,
         )
+        track_first_match(request.user, len(profiles), "search")
         paginator = PageNumberPagination()
         page = paginator.paginate_queryset(profiles, request)
         serializer = PublicStudentProfileListSerializer(page, many=True, context={"request": request})
@@ -46,8 +47,10 @@ class SwapMatchesView(APIView):
     def get(self, request):
         queryset = apply_discovery_filters(StudentProfile.objects.all(), {}, user=request.user)
         ranked = swap_matches_for_user(request.user, queryset)
+        matches = [profile for _, profile in ranked]
+        track_first_match(request.user, len(matches), "swaps")
         paginator = PageNumberPagination()
-        page = paginator.paginate_queryset([profile for _, profile in ranked], request)
+        page = paginator.paginate_queryset(matches, request)
         serializer = PublicStudentProfileListSerializer(page, many=True, context={"request": request})
         response = paginator.get_paginated_response(serializer.data)
         response.data["matching"] = ranked.metadata
@@ -92,6 +95,7 @@ class RecommendedProfilesView(APIView):
         queryset = apply_discovery_filters(StudentProfile.objects.exclude(user=request.user), {"open_to_connect": "true"}, user=request.user)
         ranked = recommend_profiles_for_user(request.user, queryset)
         profiles = [profile for _, profile in ranked]
+        track_first_match(request.user, len(profiles), "recommended")
         paginator = PageNumberPagination()
         page = paginator.paginate_queryset(profiles, request)
         serializer = PublicStudentProfileListSerializer(page, many=True, context={"request": request})

@@ -47,3 +47,15 @@ class AvatarDeletionAdmin(admin.ModelAdmin):
     def retry_failed(self, request, queryset):
         from django.utils import timezone
         queryset.filter(attempts__gte=6).update(attempts=0, next_attempt_at=timezone.now(), queued_until=None)
+
+
+from .models import ClientError
+
+@admin.register(ClientError)
+class ClientErrorAdmin(admin.ModelAdmin):
+    list_display = ("message", "path", "release", "count", "last_seen")
+    list_filter = ("release",)
+    search_fields = ("message", "source", "path")
+    readonly_fields = ("fingerprint", "message", "source", "path", "release", "count", "first_seen", "last_seen")
+    def has_add_permission(self, request):
+        return False

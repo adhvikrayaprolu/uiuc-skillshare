@@ -311,6 +311,22 @@ export interface AnalyticsSummaryResponse {
     top_skills: Array<{ skill: string; count: number }>;
     request_status_counts: Record<string, number>;
   };
+  launch_metrics?: LaunchMetrics;
+}
+
+export interface LaunchMetrics {
+  signups: number;
+  setup_completion_rate: number | null;
+  median_minutes_to_first_match: number | null;
+  sent_request_within_7_days_rate: number | null;
+  sent_request_cohort: number;
+  acceptance_rate: number | null;
+  median_response_hours: number | null;
+  completion_rate: number | null;
+  feedback_rate: number | null;
+  two_sided_swap_feedback_rate: number | null;
+  review_count: number;
+  generated_at: string;
 }
 
 export interface HelpRequestPayload {

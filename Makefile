@@ -1,4 +1,4 @@
-.PHONY: setup dev stop logs reset-demo smoke screenshots check check-stack check-backend check-frontend browser-check check-recovery check-down native-setup native-dev native-check
+.PHONY: setup dev stop logs reset-demo smoke a11y screenshots check check-stack check-backend check-frontend browser-check check-recovery check-down native-setup native-dev native-check
 
 # Checks run in their own Compose project with demo data off, so they never touch the dev database.
 CHECK_ENV = COMPOSE_PROJECT_NAME=skillshare-check DEMO_MODE=false APP_PORT=8180 MAIL_PORT=8125
@@ -22,9 +22,11 @@ reset-demo:
 	docker compose exec -T app python manage.py seed_demo --reset
 smoke:
 	python3 scripts/smoke.py
+a11y:
+	docker compose --profile checks run --no-deps --build --rm browser-check npx playwright test --config e2e-tour/tour.config.ts a11y.spec.ts
 screenshots:
 	docker compose exec -T app python manage.py seed_demo --reset
-	docker compose --profile checks run --no-deps --build --rm -v ./docs/demo:/workspace/docs/demo browser-check npx playwright test --config e2e-tour/tour.config.ts; result=$$?; docker compose exec -T app python manage.py seed_demo --reset; exit $$result
+	docker compose --profile checks run --no-deps --build --rm -v ./docs/demo:/workspace/docs/demo browser-check npx playwright test --config e2e-tour/tour.config.ts tour.spec.ts; result=$$?; docker compose exec -T app python manage.py seed_demo --reset; exit $$result
 
 check: check-backend check-frontend browser-check check-recovery
 	$(MAKE) check-down

@@ -1,6 +1,6 @@
-# UIUC SkillShare
+# Illini SkillShare
 
-Find Illinois peers offering a skill, request help, and connect after they accept.
+Trade what you know for what you want to learn. Find Illinois peers to swap skills with or ask for help, and connect after they accept.
 
 ## Demo / Screenshots
 

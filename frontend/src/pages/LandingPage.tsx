@@ -1,136 +1,143 @@
 import { Link } from 'react-router-dom';
-import { Search, Users, Shield, Sparkles, ArrowRight, CheckCircle } from 'lucide-react';
+import { ArrowLeftRight, ArrowRight, BookOpen, CheckCircle, Lock, MessageSquareHeart, Search, ShieldCheck, UserCheck } from 'lucide-react';
+import { Logo } from '../components/ui/Logo';
+import { useTaxonomy } from '../hooks/useTaxonomy';
+import type { SkillTag } from '../types/api';
+
+const fallbackCatalogue = [
+  { name: 'Technical', skills: ['Python', 'React', 'GitHub', 'SQL', 'Data Analysis'] },
+  { name: 'Career', skills: ['Resume Review', 'Interview Prep', 'LinkedIn Feedback', 'Internship Search'] },
+  { name: 'Creative', skills: ['Figma', 'Graphic Design', 'Portfolio Review', 'Public Speaking'] },
+  { name: 'Course', skills: ['Course Planning', 'Study Groups', 'Exam Prep'] },
+  { name: 'Campus Life', skills: ['Housing Advice', 'RSO Leadership', 'Transfer Student Advice'] },
+  { name: 'Experience', skills: ['Research Experience', 'Startup Advice', 'Hackathon Teams'] },
+];
+
+const examplePairs = [
+  { teach: 'Python', learn: 'Figma' },
+  { teach: 'Resume Review', learn: 'SQL' },
+  { teach: 'Public Speaking', learn: 'React' },
+];
+
+const steps = [
+  { icon: BookOpen, title: 'List what you know', description: 'Add the skills you can teach and the ones you want to learn. It takes about two minutes.' },
+  { icon: Search, title: 'Find a match', description: 'See students who teach what you want, and who want what you teach. Propose a swap, or simply ask for help.' },
+  { icon: MessageSquareHeart, title: 'Meet and swap', description: 'Contacts are shared once they accept. Meet up, swap skills, then leave each other feedback.' },
+];
+
+const trust = [
+  { icon: UserCheck, title: 'Illinois email sign-in', description: 'Only people with an @illinois.edu email can join. This confirms access, not university approval or current enrollment.' },
+  { icon: Lock, title: 'Contacts stay private', description: 'Your contact details are shared only with people whose request you accept, and only the ones you choose.' },
+  { icon: ShieldCheck, title: 'You stay in control', description: 'Hide your profile, block or report anyone, and export or delete your account at any time.' },
+];
+
+function categoryName(skill: SkillTag) {
+  if (typeof skill.category === 'object' && skill.category) return skill.category.name;
+  return skill.category_detail?.name || 'Other';
+}
+
+function useCatalogue() {
+  const taxonomy = useTaxonomy();
+  const rawSkills = taxonomy.data?.isMock ? [] : taxonomy.data?.rawSkills ?? [];
+  if (!rawSkills.length) return fallbackCatalogue;
+  const groups = new Map<string, string[]>();
+  for (const skill of rawSkills) {
+    const name = categoryName(skill);
+    groups.set(name, [...(groups.get(name) || []), skill.name]);
+  }
+  return [...groups.entries()].map(([name, skills]) => ({ name, skills: skills.slice(0, 5) }));
+}
 
 export function LandingPage() {
+  const catalogue = useCatalogue();
+
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-[#13294B] to-[#1a3a6b] text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-            backgroundSize: '24px 24px'
-          }}></div>
+      <header className="sticky top-0 z-20 border-b border-[#E2E8F0] bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+          <Link to="/" aria-label="Illini SkillShare home"><Logo showSubtitle={false} /></Link>
+          <nav aria-label="Primary" className="flex items-center gap-2 sm:gap-4">
+            <a href="#how-it-works" className="hidden text-sm font-medium text-[#334155] hover:text-[#13294B] sm:inline">How it works</a>
+            <Link to="/login" className="rounded-xl bg-[#13294B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1a3a6b]">Sign in</Link>
+          </nav>
         </div>
+      </header>
 
-        <div className="relative max-w-6xl mx-auto px-6 py-20">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#13294B] to-[#1a3a6b] text-white">
+        <div className="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
+          <div className="grid items-center gap-12 md:grid-cols-2">
             <div>
-              <h1 className="text-5xl font-bold mb-6 leading-tight">
-                Find the right student to learn from, collaborate with, or connect to
-              </h1>
-              <p className="text-xl text-white mb-8">
-                Discover student profiles by skills, experiences, interests, and availability
+              <p className="mb-4 inline-block rounded-full bg-white/15 px-3 py-1 text-sm font-medium">For Illinois students</p>
+              <h1 className="mb-6 text-4xl font-bold leading-tight sm:text-5xl">Trade what you know for what you want to learn</h1>
+              <p className="mb-8 text-lg text-white sm:text-xl">
+                Find another student to swap skills with, or ask someone for a hand. Teach Python, learn Figma. Review a resume, get help with SQL.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link
-                  to="/login"
-                  className="px-8 py-4 bg-[#B83E00] text-white font-semibold rounded-xl hover:bg-[#e55505] transition-colors inline-flex items-center justify-center gap-2"
-                >
-                  Sign in or try the local demo
-                  <ArrowRight className="w-5 h-5" />
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <Link to="/login" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#B83E00] px-8 py-4 font-semibold text-white transition-colors hover:bg-[#9A3400]">
+                  Get started
+                  <ArrowRight className="h-5 w-5" aria-hidden="true" />
                 </Link>
-                <button className="px-8 py-4 bg-white bg-opacity-10 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-opacity-20 transition-colors">
-                  Explore how it works
-                </button>
+                <a href="#how-it-works" className="inline-flex items-center justify-center rounded-xl border border-white/40 px-8 py-4 font-semibold text-white transition-colors hover:bg-white/10">
+                  See how it works
+                </a>
               </div>
             </div>
 
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Search className="w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search for skills..."
-                    className="flex-1 bg-white bg-opacity-20 rounded-lg px-4 py-2 text-white placeholder-blue-200 border-none outline-none"
-                    disabled
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  {['Riya Patel', 'Daniel Kim'].map((name, i) => (
-                    <div key={i} className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4">
-                      <div className="flex gap-3 items-start">
-                        <div className="w-10 h-10 rounded-full bg-[#B83E00] flex-shrink-0"></div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm">{name}</p>
-                          <p className="text-xs text-white">Computer Science · Junior</p>
-                          <div className="flex gap-2 mt-2 flex-wrap">
-                            <span className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">Figma</span>
-                            <span className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">React</span>
-                          </div>
-                        </div>
-                        <span className="px-2 py-1 bg-[#B83E00] bg-opacity-90 rounded-full text-xs font-semibold">Top Match</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="rounded-2xl border border-white/20 bg-white/10 p-6" aria-label="Example skill swaps">
+              <p className="mb-4 text-sm font-semibold">Example swaps</p>
+              <ul className="space-y-3">
+                {examplePairs.map((pair) => (
+                  <li key={pair.teach} className="flex items-center justify-between gap-3 rounded-xl bg-white p-4 text-[#0F172A]">
+                    <span className="min-w-0">
+                      <span className="block text-xs text-[#475569]">You teach</span>
+                      <span className="font-semibold">{pair.teach}</span>
+                    </span>
+                    <ArrowLeftRight className="h-5 w-5 flex-shrink-0 text-[#B83E00]" aria-label="in exchange for" />
+                    <span className="min-w-0 text-right">
+                      <span className="block text-xs text-[#475569]">You learn</span>
+                      <span className="font-semibold">{pair.learn}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl font-bold text-center text-[#0F172A] mb-4">How it works</h2>
-          <p className="text-center text-[#64748B] mb-12">Connect with peers in three simple steps</p>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Users,
-                title: 'Create your profile',
-                description: 'Share your skills, experiences, availability, and contact preferences'
-              },
-              {
-                icon: Search,
-                title: 'Discover peers',
-                description: 'Search by skill, interest, experience, major, year, or topic'
-              },
-              {
-                icon: Sparkles,
-                title: 'Connect directly',
-                description: 'Reach out through approved contact methods or send a help request'
-              }
-            ].map((step, i) => {
+      <section id="how-it-works" className="scroll-mt-20 bg-white py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="mb-4 text-center text-3xl font-bold text-[#0F172A]">How a swap works</h2>
+          <p className="mb-12 text-center text-[#475569]">Three steps, no fees, no credits to track.</p>
+          <ol className="grid gap-8 md:grid-cols-3">
+            {steps.map((step, index) => {
               const Icon = step.icon;
               return (
-                <div key={i} className="text-center">
-                  <div className="w-16 h-16 bg-[#E8EEF7] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-8 h-8 text-[#13294B]" />
+                <li key={step.title} className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8EEF7]">
+                    <Icon className="h-8 w-8 text-[#13294B]" aria-hidden="true" />
                   </div>
-                  <h3 className="text-xl font-semibold text-[#0F172A] mb-2">{step.title}</h3>
-                  <p className="text-[#64748B]">{step.description}</p>
-                </div>
+                  <h3 className="mb-2 text-xl font-semibold text-[#0F172A]"><span className="text-[#B83E00]">{index + 1}.</span> {step.title}</h3>
+                  <p className="text-[#475569]">{step.description}</p>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </div>
       </section>
 
-      {/* Use Cases */}
-      <section className="py-20 bg-[#F8FAFC]">
-        <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl font-bold text-center text-[#0F172A] mb-12">What students can find</h2>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { title: 'Career Guidance', items: ['Resume Review', 'Interview Prep', 'LinkedIn Feedback', 'Networking Advice'] },
-              { title: 'Technical Tools', items: ['Python', 'React', 'GitHub', 'Data Analysis', 'SQL'] },
-              { title: 'Design & Creative', items: ['Figma', 'Graphic Design', 'Portfolio Review', 'Public Speaking'] },
-              { title: 'Project Collaboration', items: ['Hackathon Teams', 'Research Partners', 'Study Groups'] },
-              { title: 'Research & Startups', items: ['Research Experience', 'Startup Advice', 'Lab Opportunities'] },
-              { title: 'Campus Support', items: ['RSO Leadership', 'Housing Advice', 'Course Planning'] }
-            ].map((category, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-3">{category.title}</h3>
+      <section className="bg-[#F8FAFC] py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="mb-4 text-center text-3xl font-bold text-[#0F172A]">Skills students share</h2>
+          <p className="mb-12 text-center text-[#475569]">A few of the skills you can teach or learn.</p>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {catalogue.map((category) => (
+              <div key={category.name} className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
+                <h3 className="mb-3 text-lg font-semibold text-[#0F172A]">{category.name}</h3>
                 <ul className="space-y-2">
-                  {category.items.map((item, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-[#64748B]">
-                      <CheckCircle className="w-4 h-4 text-[#15803D]" />
+                  {category.skills.map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-[#475569]">
+                      <CheckCircle className="h-4 w-4 text-[#15803D]" aria-hidden="true" />
                       {item}
                     </li>
                   ))}
@@ -141,37 +148,19 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Trust Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl font-bold text-center text-[#0F172A] mb-12">Trust & Privacy</h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Shield,
-                title: 'Demo and account access',
-                description: 'Local demo access does not verify university identity. Optional Google sign-in requires configuration.'
-              },
-              {
-                icon: Shield,
-                title: 'Control your privacy',
-                description: 'Choose what contact information appears on your profile'
-              },
-              {
-                icon: Shield,
-                title: 'Optional credentials',
-                description: 'Share your portfolio, resume, or GitHub only if you want to'
-              }
-            ].map((item, i) => {
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="mb-12 text-center text-3xl font-bold text-[#0F172A]">Safe by design</h2>
+          <div className="grid gap-8 md:grid-cols-3">
+            {trust.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={i} className="text-center">
-                  <div className="w-16 h-16 bg-[#FFF3EA] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-8 h-8 text-[#B83E00]" />
+                <div key={item.title} className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFF3EA]">
+                    <Icon className="h-8 w-8 text-[#B83E00]" aria-hidden="true" />
                   </div>
-                  <h3 className="text-lg font-semibold text-[#0F172A] mb-2">{item.title}</h3>
-                  <p className="text-[#64748B]">{item.description}</p>
+                  <h3 className="mb-2 text-lg font-semibold text-[#0F172A]">{item.title}</h3>
+                  <p className="text-[#475569]">{item.description}</p>
                 </div>
               );
             })}
@@ -179,27 +168,20 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 bg-[#13294B] text-white">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-4xl font-bold mb-6">Ready to connect with your peers?</h2>
-          <p className="text-xl text-white mb-8">
-            Join Illini SkillSwap and discover your student network
-          </p>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-[#B83E00] text-white font-semibold rounded-xl hover:bg-[#e55505] transition-colors"
-          >
-            Get Started
-            <ArrowRight className="w-5 h-5" />
+      <section className="bg-[#13294B] py-20 text-white">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <h2 className="mb-6 text-3xl font-bold sm:text-4xl">What could you learn this semester?</h2>
+          <p className="mb-8 text-lg text-white">Join Illini SkillShare with your Illinois email.</p>
+          <Link to="/login" className="inline-flex items-center gap-2 rounded-xl bg-[#B83E00] px-8 py-4 font-semibold text-white transition-colors hover:bg-[#9A3400]">
+            Get started
+            <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </Link>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[#0F172A] text-[#CBD5E1] py-8">
-        <div className="max-w-6xl mx-auto px-6 text-center">
-          <p className="text-sm">© 2026 Illini SkillSwap. A student networking platform for the University of Illinois.</p>
+      <footer className="bg-[#0F172A] py-8 text-[#CBD5E1]">
+        <div className="mx-auto max-w-6xl px-6 text-center text-sm">
+          <p>© 2026 Illini SkillShare. An independent student project, not affiliated with or endorsed by the University of Illinois.</p>
         </div>
       </footer>
     </div>

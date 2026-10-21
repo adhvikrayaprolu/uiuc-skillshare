@@ -22,8 +22,8 @@ export function Logo({ showSubtitle = true, variant = 'full', className = '' }: 
   if (variant === 'text') {
     return (
       <div className={className}>
-        <h1 className="text-xl font-bold text-[#13294B]">Illini SkillSwap</h1>
-        {showSubtitle && <p className="text-xs text-[#64748B]">Peer Network</p>}
+        <p className="text-xl font-bold text-[#13294B]">Illini SkillShare</p>
+        {showSubtitle && <p className="text-xs text-[#64748B]">Peer skill exchange</p>}
       </div>
     );
   }
@@ -40,8 +40,8 @@ export function Logo({ showSubtitle = true, variant = 'full', className = '' }: 
         </svg>
       </div>
       <div>
-        <h1 className="text-xl font-bold text-[#13294B]">Illini SkillSwap</h1>
-        {showSubtitle && <p className="text-xs text-[#64748B]">Peer Network</p>}
+        <p className="text-xl font-bold text-[#13294B]">Illini SkillShare</p>
+        {showSubtitle && <p className="text-xs text-[#64748B]">Peer skill exchange</p>}
       </div>
     </div>
   );

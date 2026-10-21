@@ -18,7 +18,7 @@ export function ProtectedRoute() {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
         <div className="rounded-2xl border border-[#E2E8F0] bg-white px-6 py-4 text-sm text-[#64748B] shadow-sm">
-          Loading your Illini SkillSwap profile...
+          Loading your Illini SkillShare profile...
         </div>
       </div>
     );

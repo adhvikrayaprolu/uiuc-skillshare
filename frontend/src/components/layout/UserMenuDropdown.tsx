@@ -1,12 +1,16 @@
 import { Link } from 'react-router-dom';
-import { User, Edit, Settings, LogOut } from 'lucide-react';
+import { BarChart3, Bookmark, Edit, LogOut, Settings, User } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
+import { SETUP_HOME } from '../../lib/routes';
 
 interface UserMenuDropdownProps {
   userName?: string;
   userEmail?: string;
   myProfileId?: number | null;
   isPublished?: boolean;
+  isStaff?: boolean;
+  onNavigate?: () => void;
   onLogout: () => void;
 }
 
@@ -15,60 +19,44 @@ export function UserMenuDropdown({
   userEmail = '',
   myProfileId,
   isPublished = false,
+  isStaff = false,
+  onNavigate,
   onLogout,
 }: UserMenuDropdownProps) {
-  const profileHref = myProfileId ? (isPublished ? `/profiles/${myProfileId}` : '/profile/edit') : '/onboarding';
+  const profileHref = myProfileId ? (isPublished ? `/profiles/${myProfileId}` : '/profile/edit') : SETUP_HOME;
+  const links: { to: string; label: string; icon: LucideIcon }[] = [
+    { to: profileHref, label: 'View my profile', icon: User },
+    { to: '/profile/edit', label: 'Edit profile', icon: Edit },
+    { to: '/saved', label: 'Saved profiles', icon: Bookmark },
+    { to: '/settings', label: 'Settings', icon: Settings },
+    ...(isStaff ? [{ to: '/analytics', label: 'Analytics', icon: BarChart3 }] : []),
+  ];
 
   return (
-    <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-lg border border-[#E2E8F0] overflow-hidden z-50">
-      {/* User Info */}
-      <div className="px-4 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-        <div className="flex items-center gap-3 mb-2">
+    <div className="absolute right-0 top-12 z-50 w-64 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-lg">
+      <div className="border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
+        <div className="flex items-center gap-3">
           <InitialsAvatar name={userName} size="sm" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-[#0F172A] truncate">{userName}</p>
-            <p className="text-xs text-[#64748B] truncate">{userEmail}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[#0F172A]">{userName}</p>
+            <p className="truncate text-xs text-[#475569]">{userEmail}</p>
           </div>
         </div>
-        <span className="inline-block rounded border border-[#FF5F05]/30 bg-[#FFF3EA] px-2 py-0.5 text-xs font-semibold text-[#C2410C]">
-          Student profile
-        </span>
       </div>
 
-      {/* Menu Items */}
       <div className="py-2">
-        <Link
-          to={profileHref}
-          className="flex items-center gap-3 px-4 py-2 hover:bg-[#F8FAFC] transition-colors"
-        >
-          <User className="w-4 h-4 text-[#64748B]" />
-          <span className="text-sm text-[#0F172A]">View My Profile</span>
-        </Link>
-        <Link
-          to="/profile/edit"
-          className="flex items-center gap-3 px-4 py-2 hover:bg-[#F8FAFC] transition-colors"
-        >
-          <Edit className="w-4 h-4 text-[#64748B]" />
-          <span className="text-sm text-[#0F172A]">Edit Profile</span>
-        </Link>
-        <Link
-          to="/settings"
-          className="flex items-center gap-3 px-4 py-2 hover:bg-[#F8FAFC] transition-colors"
-        >
-          <Settings className="w-4 h-4 text-[#64748B]" />
-          <span className="text-sm text-[#0F172A]">Settings</span>
-        </Link>
+        {links.map(({ to, label, icon: Icon }) => (
+          <Link key={label} to={to} onClick={onNavigate} className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-[#F8FAFC]">
+            <Icon className="h-4 w-4 text-[#475569]" aria-hidden="true" />
+            <span className="text-sm text-[#0F172A]">{label}</span>
+          </Link>
+        ))}
       </div>
 
-      {/* Logout */}
       <div className="border-t border-[#E2E8F0] py-2">
-        <button
-          type="button"
-          onClick={onLogout}
-          className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-red-50 transition-colors text-[#DC2626]"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="text-sm font-medium">Log out</span>
+        <button type="button" onClick={onLogout} className="flex w-full items-center gap-3 px-4 py-2 text-left text-[#DC2626] transition-colors hover:bg-red-50">
+          <LogOut className="h-4 w-4" aria-hidden="true" />
+          <span className="text-sm font-medium">Sign out</span>
         </button>
       </div>
     </div>

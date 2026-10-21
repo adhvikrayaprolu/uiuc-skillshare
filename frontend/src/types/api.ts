@@ -11,6 +11,7 @@ export interface User {
   last_name: string;
   is_student_verified: boolean;
   has_completed_onboarding: boolean;
+  is_staff?: boolean;
 }
 
 export interface AuthResponse {

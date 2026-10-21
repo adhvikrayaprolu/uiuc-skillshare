@@ -249,7 +249,7 @@ PROFILE_SPECS = [
 
 
 class Command(BaseCommand):
-    help = "Seed Illini SkillSwap demo categories, skills, profiles, and interactions (idempotent)."
+    help = "Seed Illini SkillShare demo categories, skills, profiles, and interactions (idempotent)."
 
     def handle(self, *args, **options):
         if not settings.LOCAL_DEVELOPMENT or os.getenv("ENABLE_DEMO", "false").lower() != "true":

@@ -80,6 +80,14 @@ class SessionIdentityTests(APITestCase):
         user.save()
         self.assertEqual(self.browser.get(reverse('auth-me')).status_code, 401)
 
+    def test_staff_flag_is_reported_but_read_only(self):
+        self.sign_in()
+        self.assertIs(self.browser.get(reverse('auth-me')).json()['is_staff'], False)
+        response = self.browser.patch(reverse('auth-me'), {'is_staff': True, 'first_name': 'Sam'}, content_type='application/json', HTTP_X_CSRFTOKEN=self.csrf)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.json()['is_staff'], False)
+        self.assertFalse(User.objects.get(email='student@illinois.edu').is_staff)
+
     def test_developer_login_and_refresh_are_absent(self):
         self.assertEqual(self.client.post('/api/auth/dev-login/', {}).status_code, 404)
         self.assertEqual(self.client.post('/api/auth/token/refresh/', {}).status_code, 404)

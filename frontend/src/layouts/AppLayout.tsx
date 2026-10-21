@@ -1,17 +1,13 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
+  Home,
   Compass,
-  Bookmark,
   MessageCircle,
   User,
-  Settings,
   LogOut,
   Search,
   Bell,
   ChevronDown,
-  Users,
-  BarChart3,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
@@ -19,24 +15,26 @@ import { Logo } from '../components/ui/Logo';
 import { NotificationDropdown } from '../components/layout/NotificationDropdown';
 import { UserMenuDropdown } from '../components/layout/UserMenuDropdown';
 import { AvailabilityStatusDropdown } from '../components/layout/AvailabilityStatusDropdown';
+import { availabilityLabels, type AvailabilityStatus } from '../lib/availabilityStatus';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentProfile, useProfileEditor } from '../hooks/useProfileEditor';
 import { useNotifications } from '../hooks/useNotifications';
 import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
+import { APP_HOME } from '../lib/routes';
+import { useHelpRequests } from '../hooks/useHelpRequests';
 
 const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/discover', label: 'Discover', icon: Compass },
-  { path: '/saved', label: 'Saved Profiles', icon: Bookmark },
-  { path: '/connections', label: 'Connections', icon: Users },
-  { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { path: '/requests', label: 'Requests', icon: MessageCircle },
-  { path: '/profile/edit', label: 'My Profile', icon: User },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { path: APP_HOME, label: 'Home', icon: Home, matches: [APP_HOME] },
+  { path: '/discover', label: 'Discover', icon: Compass, matches: ['/discover', '/profiles', '/saved'] },
+  { path: '/requests', label: 'Requests', icon: MessageCircle, matches: ['/requests', '/connections'] },
+  { path: '/profile/edit', label: 'Profile', icon: User, matches: ['/profile'] },
 ];
 
-type AvailabilityUi = 'open' | 'maybe' | 'not-available' | 'invisible';
+const isActivePath = (pathname: string, matches: string[]) =>
+  matches.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+
+type AvailabilityUi = AvailabilityStatus;
 
 export function AppLayout() {
   const location = useLocation();
@@ -46,6 +44,7 @@ export function AppLayout() {
   const currentProfile = useCurrentProfile();
   const { updateProfile } = useProfileEditor();
   const notifications = useNotifications();
+  const helpRequests = useHelpRequests();
 
   const [globalSearch, setGlobalSearch] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -63,6 +62,9 @@ export function AppLayout() {
       : auth.user?.email || 'Student');
   const myProfileId = currentProfile.data?.id ?? null;
   const useMocks = shouldUseMocks();
+  const pendingIncoming = useMocks || !myProfileId
+    ? 0
+    : (helpRequests.data?.raw ?? []).filter((row) => row.helper_profile === myProfileId && row.status === 'pending').length;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -119,8 +121,6 @@ export function AppLayout() {
     }
   };
 
-  const mobileNavItems = navItems.slice(0, 5);
-
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       <aside className="fixed hidden h-screen w-64 flex-col border-r border-[#E2E8F0] bg-white lg:flex">
@@ -128,22 +128,25 @@ export function AppLayout() {
           <Logo showSubtitle={true} />
         </div>
 
-        <nav className="flex-1 space-y-1 p-4">
+        <nav aria-label="Main" className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+            const isActive = isActivePath(location.pathname, item.matches);
+            const badge = item.path === '/requests' ? pendingIncoming : 0;
 
             return (
               <Link
                 key={item.path}
                 to={item.path}
+                aria-current={isActive ? 'page' : undefined}
                 className={`relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-[#FFF3EA] text-[#B83E00]' : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+                  isActive ? 'bg-[#FFF3EA] text-[#B83E00]' : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
                 }`}
               >
                 {isActive && <div className="absolute bottom-0 left-0 top-0 w-1 rounded-r bg-[#B83E00]" />}
-                <Icon className="h-5 w-5" />
+                <Icon className="h-5 w-5" aria-hidden="true" />
                 {item.label}
+                {badge > 0 && <span className="ml-auto rounded-full bg-[#B83E00] px-2 py-0.5 text-xs font-semibold text-white" aria-label={`${badge} waiting for your reply`}>{badge}</span>}
               </Link>
             );
           })}
@@ -162,8 +165,8 @@ export function AppLayout() {
             onClick={handleLogout}
             className="flex items-center gap-2 text-sm text-[#64748B] transition-colors hover:text-[#DC2626]"
           >
-            <LogOut className="h-4 w-4" />
-            Logout
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            Sign out
           </button>
         </div>
       </aside>
@@ -177,23 +180,23 @@ export function AppLayout() {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
                   <input
                     type="text"
-                    aria-label="Search helpers from any page" value={globalSearch} onChange={event => setGlobalSearch(event.target.value)} placeholder="Search helpers…"
+                    aria-label="Search helpers from any page" value={globalSearch} onChange={event => setGlobalSearch(event.target.value)} placeholder="Search skills or people…"
                     className="w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] py-2 pl-10 pr-4 text-sm transition-colors focus:border-[#13294B] focus:outline-none"
                   />
                 </form>
-              ) : (
-                <p className="text-sm text-[#64748B]">Search offered skills and published profile text in Discover.</p>
-              )}
+              ) : null}
             </div>
 
             <div className="ml-auto flex items-center gap-4">
               <div className="relative hidden sm:block" ref={statusMenuRef}>
                 <button
                   type="button"
+                  aria-expanded={showStatusMenu}
+                  aria-label={`Your status: ${availabilityLabels[availabilityStatus]}`}
                   onClick={() => setShowStatusMenu(!showStatusMenu)}
                   className="flex items-center gap-1.5 rounded-full bg-[#FFF3EA] px-3 py-1.5 text-xs font-medium text-[#B83E00] transition-colors hover:bg-opacity-80"
                 >
-                  {availabilityStatus === 'open' ? 'Open to Connect' : 'Status'}
+                  {availabilityLabels[availabilityStatus]}
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 {showStatusMenu && (
@@ -243,6 +246,8 @@ export function AppLayout() {
                     userName={displayName}
                     userEmail={auth.user?.email}
                     myProfileId={myProfileId} isPublished={currentProfile.data?.visibility === 'public'}
+                    isStaff={Boolean(auth.user?.isStaff)}
+                    onNavigate={() => setShowUserMenu(false)}
                     onLogout={handleLogout}
                   />
                 )}
@@ -256,23 +261,24 @@ export function AppLayout() {
         </main>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 gap-1 border-t border-[#E2E8F0] bg-white px-1 py-2 lg:hidden">
-        {mobileNavItems.map((item) => {
+      <nav aria-label="Main" className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 gap-1 border-t border-[#E2E8F0] bg-white px-1 py-2 lg:hidden">
+        {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path;
+          const isActive = isActivePath(location.pathname, item.matches);
+          const badge = item.path === '/requests' ? pendingIncoming : 0;
 
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 text-[10px] font-medium ${
-                isActive ? 'bg-[#FFF3EA] text-[#B83E00]' : 'text-[#64748B]'
+              aria-current={isActive ? 'page' : undefined}
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium ${
+                isActive ? 'bg-[#FFF3EA] text-[#B83E00]' : 'text-[#475569]'
               }`}
             >
-              <Icon className="h-4 w-4" />
-              <span className="truncate px-0.5 text-center leading-tight">
-                {item.label.replace(' Profiles', '').replace('My Profile', 'Profile')}
-              </span>
+              <Icon className="h-5 w-5" aria-hidden="true" />
+              <span>{item.label}</span>
+              {badge > 0 && <span className="absolute right-1/4 top-1 min-w-[1.25rem] rounded-full bg-[#B83E00] px-1 text-center text-[10px] font-semibold text-white" aria-label={`${badge} waiting for your reply`}>{badge}</span>}
             </Link>
           );
         })}

@@ -38,6 +38,18 @@ class ClientErrorTests(SwapFixture):
         self.assertNotIn("123456", scrubbed)
         self.assertIn("[email]", scrubbed)
 
+    def test_a_duplicate_arriving_concurrently_still_counts(self):
+        real = ClientError.objects.get_or_create
+
+        def racing_insert(**kwargs):
+            # Another request stores the same error between this request's lookup and insert.
+            ClientError.objects.create(fingerprint=kwargs["fingerprint"], message="TypeError: x is undefined")
+            return real(**kwargs)
+
+        with patch.object(ClientError.objects, "get_or_create", side_effect=racing_insert):
+            self.assertEqual(self.report().status_code, 204)
+        self.assertEqual(ClientError.objects.get().count, 2)
+
     def test_reporting_can_be_switched_off(self):
         with override_settings(CLIENT_ERROR_REPORTING=False):
             self.assertEqual(self.report().status_code, 204)

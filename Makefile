@@ -23,7 +23,8 @@ reset-demo:
 smoke:
 	python3 scripts/smoke.py
 screenshots:
-	docker compose --profile checks run --no-deps --build --rm -e E2E_APP_URL=http://skillshare-app:8000 browser-check npx playwright test --config e2e/tour.config.ts
+	docker compose exec -T app python manage.py seed_demo --reset
+	docker compose --profile checks run --no-deps --build --rm -v ./docs/demo:/workspace/docs/demo browser-check npx playwright test --config e2e-tour/tour.config.ts; result=$$?; docker compose exec -T app python manage.py seed_demo --reset; exit $$result
 
 check:
 	$(CHECK_ENV) docker compose up --build --wait

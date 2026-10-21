@@ -1,30 +1,20 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
 import { RedirectIfAuthenticated } from '../components/layout/RedirectIfAuthenticated';
-import { AppLayout } from '../layouts/AppLayout';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { RootLayout } from '../layouts/RootLayout';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
-import { SetupLayout } from '../layouts/SetupLayout';
-import { HomePage } from '../pages/HomePage';
-import { DiscoveryPage } from '../pages/DiscoveryPage';
-import { EditProfilePage } from '../pages/EditProfilePage';
-import { HelpRequestsPage } from '../pages/HelpRequestsPage';
 import { LandingPage } from '../pages/LandingPage';
 import { LoginPage } from '../pages/LoginPage';
-import { NotFoundPage } from '../pages/NotFoundPage';
-import { SetupPage } from '../pages/SetupPage';
-import { WelcomeMatchesPage } from '../pages/WelcomeMatchesPage';
-import { MyProfilePage } from '../pages/MyProfilePage';
-import { ProfileDetailPage } from '../pages/ProfileDetailPage';
-import { SettingsPage } from '../pages/SettingsPage';
-import { RequestDetailPage } from '../pages/RequestDetailPage';
-import { GuidelinesPage } from '../pages/legal/GuidelinesPage';
-import { PrivacyPage } from '../pages/legal/PrivacyPage';
-import { TermsPage } from '../pages/legal/TermsPage';
-import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { LegacyRedirect as Redirect } from '../components/layout/LegacyRedirect';
 import { APP_HOME, EDIT_PROFILE, SETUP_HOME } from '../lib/routes';
+import type { ComponentType } from 'react';
+
+// Every screen except the landing and sign-in pages loads on demand, so a first visit downloads
+// only what it shows. A chunk that fails to load reaches RouteErrorPage's recovery screen.
+function lazyScreen<Name extends string>(load: () => Promise<Record<Name, ComponentType>>, name: Name) {
+  return async () => ({ Component: (await load())[name] });
+}
 
 export const router = createBrowserRouter([
   {
@@ -42,9 +32,9 @@ export const router = createBrowserRouter([
               { path: "login", Component: LoginPage },
             ],
           },
-          { path: "guidelines", Component: GuidelinesPage },
-          { path: "privacy", Component: PrivacyPage },
-          { path: "terms", Component: TermsPage },
+          { path: "guidelines", lazy: lazyScreen(() => import('../pages/legal/GuidelinesPage'), 'GuidelinesPage') },
+          { path: "privacy", lazy: lazyScreen(() => import('../pages/legal/PrivacyPage'), 'PrivacyPage') },
+          { path: "terms", lazy: lazyScreen(() => import('../pages/legal/TermsPage'), 'TermsPage') },
         ],
       },
       {
@@ -53,25 +43,25 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "welcome",
-            Component: SetupLayout,
+            lazy: lazyScreen(() => import('../layouts/SetupLayout'), 'SetupLayout'),
             children: [
-              { index: true, Component: SetupPage },
-              { path: "matches", Component: WelcomeMatchesPage },
+              { index: true, lazy: lazyScreen(() => import('../pages/SetupPage'), 'SetupPage') },
+              { path: "matches", lazy: lazyScreen(() => import('../pages/WelcomeMatchesPage'), 'WelcomeMatchesPage') },
             ],
           },
           {
             path: "/",
-            Component: AppLayout,
+            lazy: lazyScreen(() => import('../layouts/AppLayout'), 'AppLayout'),
             children: [
-              { path: "home", Component: HomePage },
-              { path: "discover", Component: DiscoveryPage },
-              { path: "profiles/:id", Component: ProfileDetailPage },
-              { path: "me", Component: MyProfilePage },
-              { path: "me/edit", Component: EditProfilePage },
-              { path: "requests", Component: HelpRequestsPage },
-              { path: "requests/:id", Component: RequestDetailPage },
-              { path: "settings", Component: SettingsPage },
-              { path: "analytics", Component: AnalyticsPage },
+              { path: "home", lazy: lazyScreen(() => import('../pages/HomePage'), 'HomePage') },
+              { path: "discover", lazy: lazyScreen(() => import('../pages/DiscoveryPage'), 'DiscoveryPage') },
+              { path: "profiles/:id", lazy: lazyScreen(() => import('../pages/ProfileDetailPage'), 'ProfileDetailPage') },
+              { path: "me", lazy: lazyScreen(() => import('../pages/MyProfilePage'), 'MyProfilePage') },
+              { path: "me/edit", lazy: lazyScreen(() => import('../pages/EditProfilePage'), 'EditProfilePage') },
+              { path: "requests", lazy: lazyScreen(() => import('../pages/HelpRequestsPage'), 'HelpRequestsPage') },
+              { path: "requests/:id", lazy: lazyScreen(() => import('../pages/RequestDetailPage'), 'RequestDetailPage') },
+              { path: "settings", lazy: lazyScreen(() => import('../pages/SettingsPage'), 'SettingsPage') },
+              { path: "analytics", lazy: lazyScreen(() => import('../pages/AnalyticsPage'), 'AnalyticsPage') },
             ],
           },
         ],
@@ -82,8 +72,8 @@ export const router = createBrowserRouter([
       { path: "/saved", element: <Navigate to="/discover?tab=saved" replace /> },
       { path: "/connections", element: <Navigate to="/requests?tab=active" replace /> },
       { path: "/app/*", element: <Navigate to={APP_HOME} replace /> },
-      { path: "/404", Component: NotFoundPage },
-      { path: "*", Component: NotFoundPage },
+      { path: "/404", lazy: lazyScreen(() => import('../pages/NotFoundPage'), 'NotFoundPage') },
+      { path: "*", lazy: lazyScreen(() => import('../pages/NotFoundPage'), 'NotFoundPage') },
     ],
   },
 ]);

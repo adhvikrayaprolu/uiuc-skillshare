@@ -31,7 +31,7 @@ class StudentProfile(models.Model):
     major = models.CharField(max_length=160)
     year = models.CharField(max_length=20, choices=Year.choices)
     headline = models.CharField(max_length=255)
-    bio = models.TextField()
+    bio = models.TextField(blank=True)
     interests = models.TextField(blank=True)
     learning_goals = models.ManyToManyField("taxonomy.SkillTag", blank=True, related_name="learners")
     learning_goal_notes = models.CharField(max_length=500, blank=True)
@@ -72,8 +72,15 @@ class StudentProfile(models.Model):
         self.profile_completeness = self.calculate_profile_completeness()
         self.save(update_fields=["profile_completeness", "updated_at"])
 
+    def has_required_setup(self):
+        return bool(
+            self.display_name and self.major and self.year and self.headline
+            and self.profile_skills.exists() and self.learning_goals.exists()
+            and (self.availability.exists() or self.availability_notes)
+        )
+
     def update_onboarding(self):
-        complete = bool(self.display_name and self.major and self.year and self.headline and self.bio and self.profile_skills.exists() and (self.availability.exists() or self.availability_notes))
+        complete = self.has_required_setup()
         from django.contrib.auth import get_user_model
         get_user_model().objects.filter(pk=self.user_id).update(has_completed_onboarding=complete)
 

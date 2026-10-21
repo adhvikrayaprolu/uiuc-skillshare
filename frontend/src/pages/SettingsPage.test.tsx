@@ -10,7 +10,7 @@ vi.mock('../lib/api', () => ({api: state.api}));
 vi.mock('../hooks/useAuth', () => ({useAuth: () => ({user: {email: 'owner@illinois.edu'}, refreshSession: state.refresh, logout: state.logout})}));
 vi.mock('../hooks/useProfileEditor', () => ({useCurrentProfile: () => ({data: {visibility: 'public', share_contacts: false}, isLoading: false}), useProfileEditor: () => ({updateProfile: {mutateAsync: state.update}})}));
 vi.mock('../components/ui/ToastProvider', () => ({useToast: () => ({success: vi.fn()})}));
-function view() {render(<QueryClientProvider client={new QueryClient({defaultOptions: {queries: {retry: false}}})}><MemoryRouter><Routes><Route path="/" element={<SettingsPage/>}/><Route path="/login" element={<p>Signed out</p>}/><Route path="/profile/edit" element={<p>Edit section</p>}/></Routes></MemoryRouter></QueryClientProvider>);}
+function view() {render(<QueryClientProvider client={new QueryClient({defaultOptions: {queries: {retry: false}}})}><MemoryRouter><Routes><Route path="/" element={<SettingsPage/>}/><Route path="/login" element={<p>Signed out</p>}/><Route path="/me/edit" element={<p>Edit section</p>}/></Routes></MemoryRouter></QueryClientProvider>);}
 beforeEach(() => {vi.resetAllMocks(); state.api.get.mockResolvedValue({data: {results: [{id: 7, blocked_label: 'Blocked peer'}], next: null}});});
 afterEach(cleanup);
 it('requires exact account confirmation and retains the account on failed deletion', async () => {

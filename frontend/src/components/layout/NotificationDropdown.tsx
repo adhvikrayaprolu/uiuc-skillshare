@@ -40,7 +40,7 @@ const sampleNotifications: NotificationItem[] = [
     type: 'profile',
     title: 'Availability updated',
     description: 'Sofia Garcia updated availability for this week',
-    href: '/profile/edit',
+    href: '/me/edit',
     timeLabel: '1d ago',
     from: 'Sofia Garcia',
     read: true,

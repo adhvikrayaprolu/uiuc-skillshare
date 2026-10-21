@@ -192,7 +192,25 @@ export interface DashboardResponse {
   connections_count?: number;
   review_count: number;
   next_actions: string[];
+  attention_items?: AttentionItem[];
+  checklist?: ChecklistItem[];
   recommended_profiles?: ProfileListItem[];
+}
+
+export interface AttentionItem {
+  action: 'respond' | 'complete' | 'feedback';
+  request_id: number;
+  topic: string;
+  skill: string | null;
+  peer: { name: string; profile_id: number | null };
+  updated_at: string;
+}
+
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  done: boolean;
+  href: string;
 }
 
 export interface BootstrapResponse {

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Bookmark, MessageSquare } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import { Profile } from '../../data/mockData';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { SkillChip } from '../ui/SkillChip';
@@ -76,16 +76,10 @@ export function ProfileCard({ profile, isSaved = false, onToggleSave, reasonText
       <div className="mt-auto flex gap-2.5 pt-3">
         <Link
           to={`/profiles/${profile.id}`}
+          aria-label={`View ${profile.name}'s profile`}
           className="flex-1 px-4 py-2.5 bg-[#13294B] text-white text-sm font-medium rounded-xl hover:bg-[#1a3a6b] transition-colors text-center"
         >
-          View Profile
-        </Link>
-        <Link
-          to={`/profiles/${profile.id}#contact`}
-          className="px-4 py-2.5 border-2 border-[#13294B] text-[#13294B] text-sm font-medium rounded-xl hover:bg-[#E8EEF7] transition-colors flex items-center gap-2"
-        >
-          <MessageSquare className="w-4 h-4" />
-          View Contact
+          View profile
         </Link>
       </div>
     </div>

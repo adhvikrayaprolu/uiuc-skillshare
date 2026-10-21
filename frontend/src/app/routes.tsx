@@ -4,6 +4,7 @@ import { RedirectIfAuthenticated } from '../components/layout/RedirectIfAuthenti
 import { PublicLayout } from '../layouts/PublicLayout';
 import { RootLayout } from '../layouts/RootLayout';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
+import { ScreenLoading } from '../components/ui/ScreenLoading';
 import { LandingPage } from '../pages/LandingPage';
 import { LoginPage } from '../pages/LoginPage';
 import { LegacyRedirect as Redirect } from '../components/layout/LegacyRedirect';
@@ -19,6 +20,7 @@ function lazyScreen<Name extends string>(load: () => Promise<Record<Name, Compon
 export const router = createBrowserRouter([
   {
     Component: RootLayout,
+    HydrateFallback: ScreenLoading,
     errorElement: <RouteErrorPage />,
     children: [
       {

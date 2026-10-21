@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, shouldUseMocks } from '../lib/api';
+import { api } from '../lib/api';
 import type { NotificationItem } from '../components/layout/NotificationDropdown';
 
 type NotificationPage = {
@@ -11,7 +11,7 @@ export function useNotifications() {
   const [page, setPage] = useState(1);
   const client = useQueryClient();
   const query = useQuery({
-    queryKey: ['notifications', page], enabled: !shouldUseMocks(),
+    queryKey: ['notifications', page],
     queryFn: async () => (await api.get<NotificationPage>('/notifications/', { params: { page } })).data,
     refetchInterval: 30000,
   });

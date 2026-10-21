@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Bookmark } from 'lucide-react';
-import { Profile } from '../../data/mockData';
+import { Profile } from '../../types/profile';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { SkillChip } from '../ui/SkillChip';
 import { InsightChips } from '../../lib/profileInsightBadges';
@@ -76,7 +76,7 @@ export function ProfileCard({ profile, isSaved = false, onToggleSave, reasonText
       <div className="mt-auto flex gap-2.5 pt-3">
         <Link
           to={`/profiles/${profile.id}`}
-          aria-label={`View ${profile.name}'s profile`}
+          aria-label={`View profile: ${profile.name}`}
           className="flex-1 px-4 py-2.5 bg-[#13294B] text-white text-sm font-medium rounded-xl hover:bg-[#1a3a6b] transition-colors text-center"
         >
           View profile

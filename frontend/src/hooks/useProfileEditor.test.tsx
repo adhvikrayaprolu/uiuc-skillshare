@@ -4,7 +4,6 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import type {ReactNode} from 'react';
 import {useProfileEditor} from './useProfileEditor';
 const update = vi.hoisted(() => vi.fn());
-vi.mock('../lib/api', () => ({shouldUseMocks: () => false}));
 vi.mock('../lib/profilesApi', () => ({updateCurrentProfile:update}));
 it('updates privacy controls while pending and restores the saved choice after a failure', async () => {
   let fail: (error: Error) => void = () => undefined;

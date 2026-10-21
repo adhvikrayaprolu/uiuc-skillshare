@@ -8,8 +8,6 @@ import { InitialsAvatar } from '../components/ui/InitialsAvatar';
 import { SkillChip } from '../components/ui/SkillChip';
 import { InsightChips } from '../lib/profileInsightBadges';
 import { profileInsightLabels } from '../lib/profileInsightLabels';
-import { shouldUseMocks } from '../lib/api';
-import { mockProfiles } from '../data/mockData';
 import type { AttentionItem } from '../types/api';
 import { ColdStartPanel } from '../components/growth/ColdStartPanel';
 import { InviteCard } from '../components/growth/InviteCard';
@@ -25,7 +23,6 @@ export function HomePage() {
   const dashboard = useDashboard();
   const recommended = useRecommendedProfiles();
   const profile = useCurrentProfile();
-  const useMocks = shouldUseMocks();
 
   const name = profile.data?.display_name || auth.user?.firstName || '';
   const firstName = name.split(' ')[0];
@@ -33,7 +30,7 @@ export function HomePage() {
   const checklist = dashboard.data?.checklist ?? [];
   const remaining = checklist.filter((item) => !item.done);
   const doneCount = checklist.length - remaining.length;
-  const suggestions = (recommended.data?.profiles ?? (useMocks ? mockProfiles : [])).slice(0, 3);
+  const suggestions = (recommended.data?.profiles ?? []).slice(0, 3);
   const basedOnGoals = recommended.data?.matching?.recommendation_basis === 'learning_goals';
 
   return (
@@ -48,7 +45,7 @@ export function HomePage() {
         </Link>
       </header>
 
-      {dashboard.isError && !useMocks && (
+      {dashboard.isError && (
         <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           Some of your Home page couldn't load. <button type="button" className="font-semibold underline" onClick={() => void dashboard.refetch()}>Try again</button>
         </p>
@@ -60,7 +57,7 @@ export function HomePage() {
             <h2 id="attention-heading" className="text-lg font-semibold text-[#0F172A]">Needs your attention</h2>
             <Link to="/requests" className="text-sm font-medium text-[#13294B] hover:text-[#B83E00]">All requests</Link>
           </div>
-          {dashboard.isLoading && !useMocks ? (
+          {dashboard.isLoading ? (
             <p role="status" className="text-sm text-[#475569]">Loading…</p>
           ) : attention.length ? (
             <ul className="divide-y divide-[#E2E8F0]">
@@ -73,7 +70,7 @@ export function HomePage() {
                       <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#FFF3EA]"><Icon className="h-4 w-4 text-[#B83E00]" aria-hidden="true" /></span>
                       <p className="min-w-0 text-sm text-[#0F172A]">
                         <span className="font-semibold">{item.action === 'respond' ? item.peer.name : `“${item.topic}”`}</span>{' '}
-                        {item.action === 'respond' ? <>{copy.label} with <span className="font-medium">{item.skill || item.topic}</span></> : <>with {item.peer.name} {copy.label}</>}
+                        {item.action === 'respond' ? <>{item.kind === 'swap' ? 'proposed a swap for your' : 'asked for help with'} <span className="font-medium">{item.skill || item.topic}</span></> : <>with {item.peer.name} {copy.label}</>}
                       </p>
                     </div>
                     <Link to={item.href ?? `/requests/${item.request_id}`} aria-label={`${copy.verb}: ${item.topic}`} className="rounded-lg border border-[#13294B] px-3 py-1.5 text-center text-sm font-medium text-[#13294B] hover:bg-[#E8EEF7]">{copy.verb}</Link>
@@ -122,9 +119,9 @@ export function HomePage() {
           </div>
           <Link to="/discover" className="flex flex-shrink-0 items-center gap-1 text-sm font-medium text-[#13294B] hover:text-[#B83E00]">See all <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
         </div>
-        {recommended.isLoading && !useMocks ? (
+        {recommended.isLoading ? (
           <p role="status" className="text-sm text-[#475569]">Finding people…</p>
-        ) : recommended.isError && !useMocks ? (
+        ) : recommended.isError ? (
           <p className="text-sm text-[#475569]">Suggestions aren't available right now. <button type="button" className="font-medium underline" onClick={() => void recommended.refetch()}>Try again</button></p>
         ) : suggestions.length ? (
           <div className="grid gap-4 md:grid-cols-3">

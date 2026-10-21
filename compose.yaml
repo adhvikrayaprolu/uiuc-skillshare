@@ -22,6 +22,7 @@ x-application: &application
     AI_DAILY_CALL_LIMIT: ${AI_DAILY_CALL_LIMIT:-0}
     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     MEDIA_ROOT: /data/media
+    DEMO_MODE: ${DEMO_MODE:-true}
   init: true
 services:
   db:
@@ -66,7 +67,7 @@ services:
     environment:
       <<: *environment
       DATABASE_URL: postgresql://skillshare:${POSTGRES_PASSWORD:-local-skillshare-only}@db:5432/skillshare
-    command: [sh, -c, "python manage.py migrate --noinput && python manage.py seed_taxonomy"]
+    command: [sh, -c, "python manage.py migrate --noinput && python manage.py seed_taxonomy && python manage.py seed_demo --if-enabled"]
     depends_on:
       database-role: {condition: service_completed_successfully}
   app:

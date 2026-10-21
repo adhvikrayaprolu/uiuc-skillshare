@@ -1,8 +1,6 @@
 import axios from 'axios';
-import { isDemoSession } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 export const api = axios.create({baseURL: API_BASE_URL, withCredentials: true, xsrfCookieName: 'csrftoken', xsrfHeaderName: 'X-CSRFToken', headers: {'Content-Type': 'application/json'}});
 let csrfPromise: Promise<void> | null = null;
 export async function ensureCsrf() {
@@ -14,10 +12,9 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 api.interceptors.response.use((response) => response, (error) => {
-  if (error.response?.status === 401 && error.response?.data?.detail && !isDemoSession()) {
+  if (error.response?.status === 401 && error.response?.data?.detail) {
     window.dispatchEvent(new Event('skillshare:session-expired'));
   }
   return Promise.reject(error);
 });
-export function shouldUseMocks() {return USE_MOCKS || isDemoSession();}
 export { API_BASE_URL };

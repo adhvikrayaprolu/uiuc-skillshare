@@ -51,7 +51,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "common.spa.SpaWhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -143,14 +143,20 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ),
+    # Per-minute burst limits: daily caps locked out members who left the app open (notifications
+    # poll every 30 seconds) and visitors sharing a campus NAT. Sign-in flows keep stricter limits.
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/day",
-        "user": "1000/day",
+        "anon": "300/min",
+        "user": "600/min",
         "auth_google": "10/min",
         "client_errors": "30/hour",
     },
 }
 CLIENT_ERROR_REPORTING = os.getenv("CLIENT_ERROR_REPORTING", "true").lower() == "true"
+# Seeded demo members and one-click demo sign-in exist only for local development.
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+if DEMO_MODE and not LOCAL_DEVELOPMENT:
+    raise ImproperlyConfigured("DEMO_MODE is only allowed with ENVIRONMENT=local.")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

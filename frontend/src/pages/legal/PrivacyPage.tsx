@@ -47,7 +47,7 @@ export function PrivacyPage() {
         },
         {
           heading: 'Search and AI',
-          body: <p>Search and matching run on our own servers using the words in profiles. AI-assisted search is turned off. If it's ever turned on, only the published skill text of members who opted in through "Allow published skill text for semantic matching" in Settings would be used. We'll update this page before any profile text is sent to an outside provider.</p>,
+          body: <p>Search and matching run on our own servers using the words in profiles. AI-assisted search is turned off. If it's ever turned on, only the published skill text of members who opted in through "Allow published skill text for AI-assisted matching" in Settings would be used. We'll update this page before any profile text is sent to an outside provider.</p>,
         },
         {
           heading: 'Your choices',

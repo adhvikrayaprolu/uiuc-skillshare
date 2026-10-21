@@ -18,7 +18,7 @@ export function LegalPage({ title, intro, updated, sections }: { title: string; 
     <div className="min-h-screen bg-[#F8FAFC]">
       <header className="border-b border-[#E2E8F0] bg-white">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
-          <Link to="/" aria-label="Illini SkillShare home"><Logo /></Link>
+          <Link to="/" aria-label="Illini SkillShare home"><Logo showSubtitle={false} /></Link>
           <nav aria-label="Policies" className="flex flex-wrap gap-1 text-sm">
             {docs.map((doc) => (
               <NavLink key={doc.to} to={doc.to} className={({ isActive }) => `rounded-lg px-3 py-1.5 font-medium ${isActive ? 'bg-[#E8EEF7] text-[#13294B]' : 'text-[#475569] hover:text-[#0F172A]'}`}>

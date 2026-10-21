@@ -21,7 +21,7 @@ Last mapped: Oct 18, 2026, against `main` @ `72ecdff` (all ten stacked PRs #17â€
 - **Frontend:** React + TypeScript + Vite + Tailwind + React Router + TanStack Query in `frontend/src`.
 - **Backend:** Django REST in `backend/`, with apps `accounts`, `profiles`, `taxonomy`, `discovery`, `interactions` and `common`. The Django project module is `skillswap_backend` (an internal name; do **not** rename it).
 - **Data:** PostgreSQL 16 + pgvector (canonical), Redis for throttling and RQ jobs, Mailpit for local email.
-- **Run:** `cp .env.example .env && docker compose up --build --wait` serves the app at http://localhost:8080, with the local inbox at http://localhost:8025.
+- **Run:** `make setup` then `make dev` serves the app at http://localhost:8080 with a seeded fictional demo network (**Try the demo**), and the local inbox at http://localhost:8025.
 - **Validate:** `make check` runs backend tests, frontend tests/lint/types/build, the Playwright two-member journey with accessibility checks, production config checks, DB permission checks and a backup/restore rehearsal.
 
 ### Features that work end to end
@@ -102,7 +102,7 @@ These are concrete findings with file references, grouped by the journey stage w
 24. Discovery shows a "Use semantic matching" checkbox and "Matching mode: keyword_taxonomy" text. That's jargon, and semantic search is off anyway.
 25. The year filter is missing Graduate, Alumni and Other.
 26. Discovery pagination is unstyled plain buttons.
-27. Mock/demo branches (`shouldUseMocks()`, `data/mockData.ts`) are spread across about 29 files and complicate every page.
+27. ~~Mock/demo branches (`shouldUseMocks()`, `data/mockData.ts`) are spread across about 29 files and complicate every page.~~ Resolved: the client mock mode is gone; local development uses the server-seeded demo network (`DEMO_MODE`).
 
 ---
 
@@ -184,7 +184,7 @@ stateDiagram-v2
 | Route | Screen | Purpose / primary action |
 |---|---|---|
 | `/` | Landing | Hero ("Trade what you know for what you want to learn"), a 3-step "How a swap works" with anchor `#how-it-works`, popular skill categories from the taxonomy API, trust section, CTA **Get started**. Signed-in users are redirected to `/home`. |
-| `/login` | Sign in | Email step, then code step (resend, change email). Google button when configured. The demo button exists only in mock mode. |
+| `/login` | Sign in | Email step, then code step (resend, change email). Google button when configured. The demo buttons appear only when the server runs with `DEMO_MODE` (local development). |
 | `/guidelines` | Community guidelines | Short and human: be respectful, show up, no spam or selling, how reporting works. |
 | `/privacy`, `/terms` | Legal | Plain-language privacy (what's public, what's shared after acceptance, deletion/export) and terms. |
 | `*` | 404 | Link home. |

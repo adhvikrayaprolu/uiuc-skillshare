@@ -1,7 +1,6 @@
 import {submissionKey as createSubmissionKey} from '../lib/idempotency';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { MapPin, Clock, Star, Bookmark, Mail, Linkedin, Github, ExternalLink, ArrowLeft, ArrowLeftRight } from 'lucide-react';
-import { mockProfiles } from '../data/mockData';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
@@ -16,9 +15,10 @@ import { useCreateHelpRequest } from '../hooks/useHelpRequests';
 import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
-import { api, shouldUseMocks } from '../lib/api';
+import { api } from '../lib/api';
 import type { ContactMethodType, RequestKind } from '../types/api';
 import { getEndorsements, getReviews } from '../lib/interactionsApi';
+import { formatDate } from '../lib/requests';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 
 export function ProfileDetailPage() {
@@ -27,7 +27,6 @@ export function ProfileDetailPage() {
   const myProfileQuery = useCurrentProfile();
   const [submissionKey, setSubmissionKey] = useState(() => createSubmissionKey());
   const queryClient = useQueryClient();
-  const fallbackProfile = mockProfiles.find(p => p.id === Number(id)) || mockProfiles[0];
   const profileQuery = useProfile(id);
   const similarQuery = useSimilarProfiles(id);
   const taxonomy = useTaxonomy();
@@ -35,22 +34,20 @@ export function ProfileDetailPage() {
   const createHelpRequestMutation = useCreateHelpRequest();
   const savedActions = useSavedProfileActions();
   const toast = useToast();
-  const [isSaved, setIsSaved] = useState(false);
   const [requestKind, setRequestKind] = useState<RequestKind | null>(null);
   const [safetyDialog, setSafetyDialog] = useState<'block' | 'report' | null>(null);
-  const profile = profileQuery.data?.profile ?? fallbackProfile;
-  const profileId = Number(id || profile.id);
-  const isOwnProfile = !shouldUseMocks() && myProfileQuery.data?.id === profileId;
+  const profileId = Number(id);
+  const isOwnProfile = myProfileQuery.data?.id === profileId;
 
   const reviewsQuery = useQuery({
     queryKey: ['profile-reviews', profileId],
     queryFn: () => getReviews(profileId),
-    enabled: !shouldUseMocks() && Boolean(profileId),
+    enabled: Boolean(profileId),
   });
   const endorsementsQuery = useQuery({
     queryKey: ['profile-endorsements', profileId],
     queryFn: () => getEndorsements(profileId),
-    enabled: !shouldUseMocks() && Boolean(profileId),
+    enabled: Boolean(profileId),
   });
   useEffect(() => {
     if (location.hash !== '#contact') return;
@@ -58,9 +55,8 @@ export function ProfileDetailPage() {
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [location.hash]);
 
-  if (!shouldUseMocks() && (profileQuery.isLoading || !profileQuery.data && !profileQuery.isError)) return <p role="status" className="p-6">Loading profile…</p>;
-
-  if (!shouldUseMocks() && profileQuery.isError) {
+  // Check the error first: after a block the refetch fails while the old profile is still cached.
+  if (profileQuery.isError) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white p-10 text-center">
         <h1 className="mb-2 text-xl font-semibold text-[#0F172A]">Profile could not be loaded</h1>
@@ -71,18 +67,12 @@ export function ProfileDetailPage() {
       </div>
     );
   }
-  const similarProfiles =
-    !shouldUseMocks() && similarQuery.isError
-      ? []
-      : similarQuery.data?.profiles ?? (shouldUseMocks() ? mockProfiles.filter((p) => p.id !== profile.id).slice(0, 3) : []);
-  const isProfileSaved = profileQuery.data?.isMock ? isSaved : savedActions.savedProfileIds.has(profile.id);
+  if (!profileQuery.data) return <p role="status" className="p-6">Loading profile…</p>;
+  const profile = profileQuery.data.profile;
+  const similarProfiles = similarQuery.isError ? [] : similarQuery.data?.profiles ?? [];
+  const isProfileSaved = savedActions.savedProfileIds.has(profile.id);
 
   const handleToggleSave = async () => {
-    if (profileQuery.data?.isMock) {
-      setIsSaved(!isSaved);
-      toast.success(isSaved ? 'Profile unsaved.' : 'Profile saved.');
-      return;
-    }
     try {
       const saved = await savedActions.toggleSaved(profile.id);
       toast.success(saved ? 'Profile saved.' : 'Profile unsaved.');
@@ -106,7 +96,7 @@ export function ProfileDetailPage() {
   };
 
   const reviewRows =
-    shouldUseMocks() || !reviewsQuery.data
+    !reviewsQuery.data
       ? (profile.reviews || []).map((review) => ({
           id: review.id,
           reviewer_name: review.reviewer,
@@ -116,7 +106,7 @@ export function ProfileDetailPage() {
           created_at: review.date,
         }))
       : reviewsQuery.data;
-  const endorsementRows = shouldUseMocks() || !endorsementsQuery.data ? [] : endorsementsQuery.data;
+  const endorsementRows = endorsementsQuery.data ?? [];
   const swap = profileQuery.data?.raw?.swap ?? null;
   const wantsToLearn = profileQuery.data?.raw?.wants_to_learn ?? [];
   const mySkillNames = (myProfileQuery.data?.profile_skills ?? []).map((row) => row.skill_detail?.name).filter((name): name is string => Boolean(name));
@@ -266,7 +256,7 @@ export function ProfileDetailPage() {
               <h2 className="text-xl font-semibold text-[#0F172A]">Reviews & Endorsements</h2>
             </div>
 
-            {!shouldUseMocks() && <p className="mb-3 text-sm text-[#475569]">Feedback comes from completed requests and swaps, not independent verification of expertise. {!isOwnProfile && <>Worked with {profile.name.split(' ')[0]}? Leave feedback from the request in <Link to="/requests?tab=needs_action" className="font-medium text-[#13294B] underline">Requests</Link>.</>}</p>}
+            <p className="mb-3 text-sm text-[#475569]">Feedback comes from completed requests and swaps, not independent verification of expertise. {!isOwnProfile && <>Worked with {profile.name.split(' ')[0]}? Leave feedback from the request in <Link to="/requests?tab=needs_action" className="font-medium text-[#13294B] underline">Requests</Link>.</>}</p>
             <div className="space-y-4">
               {reviewRows.map((review) => (
                 <div key={review.id} className="pb-4 border-b border-[#E2E8F0] last:border-0">
@@ -288,7 +278,7 @@ export function ProfileDetailPage() {
                     ) : (
                       <span className="text-sm font-medium text-[#0F172A]">{review.reviewer_name || 'Student'}</span>
                     )}
-                    <span className="text-xs text-[#64748B]">· {review.created_at?.slice(0, 10)}</span>
+                    <span className="text-xs text-[#64748B]">· {formatDate(review.created_at)}</span>
                   </div>
                   <p className="text-sm text-[#64748B]">{review.comment}</p>
                 </div>

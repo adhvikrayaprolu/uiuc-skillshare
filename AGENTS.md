@@ -5,7 +5,7 @@ Illini SkillShare (repository: uiuc-skillshare) helps Illinois-email members swa
 React/TypeScript in frontend; Django REST accounts, profiles, taxonomy, discovery and interactions in backend. PostgreSQL/pgvector is canonical; Redis supports throttling and RQ jobs. Django sessions and CSRF protect browser requests. Django is the authorization boundary; Supabase is a future database/private-storage provider.
 
 # Local Development and Validation
-Use the root README: copy .env.example, then docker compose up --build --wait. Run make check for PostgreSQL, frontend, browser/accessibility, production configuration, permissions and backup/restore checks. Native editing instructions are in docs/development.md; native SQLite is not the complete validation baseline.
+Use the root README: make setup, then make dev (seeds the local demo network). Run make check for PostgreSQL, frontend, browser/accessibility, production configuration, permissions and backup/restore checks; with make dev running, make smoke and make a11y check the demo network. Native editing instructions are in docs/development.md; native SQLite is not the complete validation baseline.
 
 # Frontend Rules
 Reuse the existing design system and components. Use Figma MCP before substantial redesign. Preserve keyboard access and responsive layouts; test loading/error/empty states.

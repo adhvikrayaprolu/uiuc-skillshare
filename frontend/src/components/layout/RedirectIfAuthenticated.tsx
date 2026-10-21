@@ -11,7 +11,7 @@ export function RedirectIfAuthenticated() {
   }
 
   if (auth.isAuthenticated) {
-    if (auth.hasCompletedOnboarding === false && !auth.isDemo) return <Navigate to={SETUP_HOME} replace />;
+    if (auth.hasCompletedOnboarding === false) return <Navigate to={SETUP_HOME} replace />;
     const from = safeDestination((location.state as { from?: string } | null)?.from);
     return <Navigate to={from || APP_HOME} replace />;
   }

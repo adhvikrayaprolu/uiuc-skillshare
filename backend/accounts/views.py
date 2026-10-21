@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.contrib.auth import logout
+from django.contrib.auth import login, logout
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import JsonResponse
@@ -22,7 +22,22 @@ from .serializers import CurrentUserSerializer
 
 @ensure_csrf_cookie
 def csrf(request):
-    return JsonResponse({"csrfToken": get_token(request), "googleEnabled": bool(settings.GOOGLE_CLIENT_ID)})
+    return JsonResponse({"csrfToken": get_token(request), "googleEnabled": bool(settings.GOOGLE_CLIENT_ID), "demoEnabled": settings.DEMO_MODE, "authenticated": request.user.is_authenticated})
+
+
+def demo_login(request):
+    """One-click sign-in to a seeded demo account. Exists only when DEMO_MODE is on (local only)."""
+    if not settings.DEMO_MODE:
+        return JsonResponse({"detail": "Not found."}, status=404)
+    if request.method != "POST":
+        return JsonResponse({"detail": "Use POST."}, status=405)
+    from .demo import DEMO_EMAIL, STAFF_EMAIL
+    email = STAFF_EMAIL if request.GET.get("account") == "staff" else DEMO_EMAIL
+    user = User.objects.filter(email=email, is_active=True).first()
+    if user is None:
+        return JsonResponse({"detail": "Demo data is not seeded. Run: python manage.py seed_demo"}, status=503)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return JsonResponse({"user": CurrentUserSerializer(user).data})
 
 
 class EmailCodeRequestView(RequestLoginCodeView):

@@ -38,6 +38,18 @@ class ClientErrorTests(SwapFixture):
         self.assertNotIn("123456", scrubbed)
         self.assertIn("[email]", scrubbed)
 
+    def test_a_duplicate_arriving_concurrently_still_counts(self):
+        real = ClientError.objects.get_or_create
+
+        def racing_insert(**kwargs):
+            # Another request stores the same error between this request's lookup and insert.
+            ClientError.objects.create(fingerprint=kwargs["fingerprint"], message="TypeError: x is undefined")
+            return real(**kwargs)
+
+        with patch.object(ClientError.objects, "get_or_create", side_effect=racing_insert):
+            self.assertEqual(self.report().status_code, 204)
+        self.assertEqual(ClientError.objects.get().count, 2)
+
     def test_reporting_can_be_switched_off(self):
         with override_settings(CLIENT_ERROR_REPORTING=False):
             self.assertEqual(self.report().status_code, 204)
@@ -121,3 +133,13 @@ class SeoTests(SwapFixture):
         self.assertIn(b"https://skillshare.example/og-image.png", landing.content)
         self.assertNotIn("X-Robots-Tag", landing.headers)
         self.assertEqual(private["X-Robots-Tag"], "noindex")
+
+    def test_index_html_path_is_rendered_not_served_as_a_raw_template(self):
+        with tempfile.TemporaryDirectory() as dist:
+            (Path(dist) / "index.html").write_text('<meta property="og:url" content="__APP_PUBLIC_URL__/">')
+            with override_settings(APP_PUBLIC_URL="https://skillshare.example", WHITENOISE_ROOT=dist):
+                response = Client().get("/index.html")
+                body = b"".join(response.streaming_content) if response.streaming else response.content
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"https://skillshare.example/", body)
+        self.assertNotIn(b"__APP_PUBLIC_URL__", body)

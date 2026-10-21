@@ -3,6 +3,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.http import Http404, HttpResponse
+from whitenoise.middleware import WhiteNoiseMiddleware
 
 PUBLIC_PAGES = ("", "login", "guidelines", "privacy", "terms")
 
@@ -51,3 +52,12 @@ def sitemap(request):
     urls = "".join(f"<url><loc>{settings.APP_PUBLIC_URL}/{page}</loc></url>" for page in PUBLIC_PAGES)
     body = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>'
     return HttpResponse(body, content_type="application/xml")
+
+
+class SpaWhiteNoiseMiddleware(WhiteNoiseMiddleware):
+    """Serve built assets, but leave the index template to the view that fills in APP_PUBLIC_URL."""
+
+    def __call__(self, request):
+        if request.path_info == "/index.html":
+            return self.get_response(request)
+        return super().__call__(request)

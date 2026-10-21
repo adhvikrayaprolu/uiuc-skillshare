@@ -18,7 +18,7 @@ export function NotFoundPage() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            to="/home"
+            to="/"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#13294B] text-white font-medium rounded-xl hover:bg-[#1a3a6b] transition-colors"
           >
             <Home className="w-5 h-5" />

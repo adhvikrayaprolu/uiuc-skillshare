@@ -61,8 +61,9 @@ class ClientErrorView(APIView):
         message, source = scrub(data["message"], 300), scrub(data.get("source", ""), 200)
         path, release = clean_path(data.get("path")), scrub(data.get("release", ""), 40)
         fingerprint = hashlib.sha256(f"{message}|{source}|{release}".encode()).hexdigest()
-        updated = ClientError.objects.filter(fingerprint=fingerprint).update(count=F("count") + 1, last_seen=timezone.now(), path=path)
-        if not updated:
-            ClientError.objects.get_or_create(fingerprint=fingerprint, defaults={"message": message, "source": source, "path": path, "release": release})
+        # get_or_create absorbs a concurrent insert of the same fingerprint, so a duplicate is always counted.
+        row, created = ClientError.objects.get_or_create(fingerprint=fingerprint, defaults={"message": message, "source": source, "path": path, "release": release})
+        if not created:
+            ClientError.objects.filter(pk=row.pk).update(count=F("count") + 1, last_seen=timezone.now(), path=path)
         logger.warning("client_error fingerprint=%s path=%s", fingerprint[:12], path)
         return Response(status=status.HTTP_204_NO_CONTENT)

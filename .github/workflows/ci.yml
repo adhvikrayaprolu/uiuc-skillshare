@@ -14,17 +14,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  application:
+  backend:
+    name: Backend, browser journey and recovery
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
-      - uses: docker/setup-buildx-action@v3
+          python-version-file: .python-version
+      - uses: docker/setup-buildx-action@v4
       - name: Cache application image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -33,11 +34,15 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Validate Compose configuration
         run: docker compose config --quiet
-      - name: PostgreSQL, browser, accessibility and recovery checks
-        run: make check
+      - name: Django checks, API schema, migrations and PostgreSQL tests
+        run: make check-backend
+      - name: Two-member Chromium journey with accessibility checks
+        run: make browser-check
+      - name: Backup and restore rehearsal
+        run: make check-recovery
       - name: Browser evidence
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: browser-failure-evidence
           path: |
@@ -46,24 +51,92 @@ jobs:
           retention-days: 7
       - name: Service diagnostics
         if: failure()
+        run: COMPOSE_PROJECT_NAME=skillshare-check docker compose logs --tail 100
+      - name: Remove disposable services
+        if: always()
+        run: make check-down
+
+  frontend:
+    name: Frontend types, lint, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Strict type check
+        run: npx tsc -b
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: README quick start, smoke test and accessibility sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+      - uses: docker/setup-buildx-action@v4
+      - name: Cache application image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: skillshare-local-app:latest
+          cache-from: type=gha
+      - name: Quick start (make setup, then make dev)
+        run: |
+          test ! -e .env
+          make setup
+          make dev
+      - name: Setup is idempotent and keeps .env
+        run: |
+          before=$(sha256sum .env)
+          python3 scripts/setup.py --env-only
+          test "$before" = "$(sha256sum .env)"
+      - name: Smoke test through the public origin
+        run: make smoke
+      - name: Accessibility and console sweep of every screen
+        run: make a11y
+      - name: Sweep evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sweep-failure-evidence
+          path: frontend/test-results/
+          retention-days: 7
+      - name: Service diagnostics
+        if: failure()
         run: docker compose logs --tail 100
-      - name: Remove disposable CI services
+      - name: Stop services
         if: always()
         run: docker compose down --volumes --remove-orphans
 
-  dependencies:
+  audit:
+    name: Dependency audit (non-blocking)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version-file: .python-version
           cache: pip
           cache-dependency-path: backend/requirements.txt
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: "22.23.1"
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Audit locked Python dependencies
@@ -74,4 +147,4 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          npm audit --audit-level=high
+          npm audit

@@ -20,7 +20,6 @@ import { useAuth } from '../hooks/useAuth';
 import { useCurrentProfile, useProfileEditor } from '../hooks/useProfileEditor';
 import { useNotifications } from '../hooks/useNotifications';
 import { useToast } from '../components/ui/ToastProvider';
-import { shouldUseMocks } from '../lib/api';
 import { APP_HOME, MY_PROFILE } from '../lib/routes';
 import { useRequestBucket } from '../hooks/useHelpRequests';
 
@@ -50,7 +49,6 @@ export function AppLayout() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
-  const [demoAvailabilityStatus, setDemoAvailabilityStatus] = useState<AvailabilityUi>('open');
   const notifRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const statusMenuRef = useRef<HTMLDivElement>(null);
@@ -61,8 +59,7 @@ export function AppLayout() {
       ? `${auth.user.firstName} ${auth.user.lastName}`.trim()
       : auth.user?.email || 'Student');
   const myProfileId = currentProfile.data?.id ?? null;
-  const useMocks = shouldUseMocks();
-  const pendingIncoming = useMocks || !myProfileId ? 0 : needsAction.data?.count ?? 0;
+  const pendingIncoming = myProfileId ? needsAction.data?.count ?? 0 : 0;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -83,14 +80,14 @@ export function AppLayout() {
   }, []);
 
   const apiAvailabilityStatus = useMemo<AvailabilityUi>(() => {
-    if (useMocks || !currentProfile.data) return 'open';
+    if (!currentProfile.data) return 'open';
     const p = currentProfile.data;
     if (p.visibility === 'private') return 'invisible';
     if (!p.open_to_connect) return 'not-available';
     return 'open';
-  }, [currentProfile.data, useMocks]);
+  }, [currentProfile.data]);
 
-  const availabilityStatus = useMocks ? demoAvailabilityStatus : apiAvailabilityStatus;
+  const availabilityStatus = apiAvailabilityStatus;
   const handleLogout = async () => {
     try {
       await auth.logout();
@@ -100,11 +97,6 @@ export function AppLayout() {
   };
 
   const patchAvailability = async (status: AvailabilityUi) => {
-    if (useMocks || auth.isDemo) {
-      setDemoAvailabilityStatus(status);
-      toast.success('Demo mode: status is local only.');
-      return;
-    }
     const payload =
       status === 'invisible'
         ? { open_to_connect: false, visibility: 'private' as const }
@@ -226,7 +218,7 @@ export function AppLayout() {
                     <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#B83E00]" />
                   )}
                 </button>
-                {showNotifications && <NotificationDropdown onNavigate={()=>setShowNotifications(false)} showSamples={useMocks} items={useMocks ? undefined : notifications.items} loading={!useMocks && notifications.query.isLoading} error={!useMocks && notifications.query.isError}
+                {showNotifications && <NotificationDropdown onNavigate={()=>setShowNotifications(false)} items={notifications.items} loading={notifications.query.isLoading} error={notifications.query.isError}
                   unreadCount={notifications.query.data?.unread_count}
                   onRead={id => notifications.markRead.mutate(id, {onError: () => toast.error('Could not mark notification read.')})}
                   onReadAll={() => notifications.markAllRead.mutate(undefined, {onError: () => toast.error('Could not mark notifications read.')})}
@@ -238,11 +230,13 @@ export function AppLayout() {
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
-                  aria-label="Account menu" aria-expanded={showUserMenu}
+                  aria-expanded={showUserMenu}
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="transition-opacity hover:opacity-80"
                 >
-                  <InitialsAvatar name={displayName} size="sm" />
+                  {/* Named by text rather than aria-label so the visible initials never contradict the name. */}
+                  <span className="sr-only">Account menu</span>
+                  <span aria-hidden="true"><InitialsAvatar name={displayName} size="sm" /></span>
                 </button>
                 {showUserMenu && (
                   <UserMenuDropdown

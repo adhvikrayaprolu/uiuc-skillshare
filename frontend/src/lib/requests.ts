@@ -62,6 +62,8 @@ export function nextStep(row: HelpRequest, bucket?: RequestBucket) {
       return 'Completed';
     case 'declined':
       return 'Declined';
+    case 'expired':
+      return 'Expired without a reply';
     default:
       return 'Cancelled';
   }
@@ -73,4 +75,5 @@ export const statusLabels: Record<HelpRequest['status'], string> = {
   declined: 'Declined',
   completed: 'Completed',
   cancelled: 'Cancelled',
+  expired: 'Expired',
 };

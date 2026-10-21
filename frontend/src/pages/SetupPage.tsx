@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { isAxiosError } from 'axios';
@@ -334,6 +334,7 @@ export function SetupPage() {
                 </div>
               </div>
             </div>
+            <p className="text-xs text-[#64748B]">By going live you agree to follow the <Link to="/guidelines" className="font-medium text-[#13294B] underline">Community guidelines</Link>.</p>
           </div>
         )}
 

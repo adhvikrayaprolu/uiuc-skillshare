@@ -1,7 +1,7 @@
 export type StudentYear = 'freshman' | 'sophomore' | 'junior' | 'senior' | 'graduate' | 'alumni' | 'other';
 export type ContactMethodType = 'email' | 'phone' | 'instagram' | 'linkedin' | 'github' | 'portfolio' | 'website' | 'other';
 export type CredentialType = 'resume' | 'transcript' | 'linkedin' | 'github' | 'portfolio' | 'website' | 'certification' | 'project' | 'other';
-export type HelpRequestStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'cancelled';
+export type HelpRequestStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'cancelled' | 'expired';
 export type Urgency = 'low' | 'medium' | 'high';
 export type RequestKind = 'help' | 'swap';
 
@@ -195,6 +195,8 @@ export interface HelpRequest {
   declined_at?: string | null;
   completed_at?: string | null;
   cancelled_at?: string | null;
+  expires_at?: string | null;
+  expired_at?: string | null;
   created_at: string;
   updated_at?: string;
 }

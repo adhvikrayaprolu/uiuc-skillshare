@@ -23,15 +23,9 @@ class UserAdmin(DjangoUserAdmin):
 
     @admin.action(description="Suspend selected accounts and revoke sessions")
     def suspend_accounts(self, request, queryset):
-        from .lifecycle import revoke_sessions
-        from interactions.models import ModerationAudit
-        from discovery.models import ProfileSearchIndex
-        for user in queryset.exclude(is_superuser=True):
-            user.is_active = False
-            user.save(update_fields=["is_active"])
-            revoke_sessions(user.pk)
-            ProfileSearchIndex.objects.filter(profile__user=user).delete()
-            ModerationAudit.objects.create(actor=request.user, subject=user, action="suspended")
+        from .lifecycle import suspend_user
+        for user in queryset:
+            suspend_user(request.user, user)
 
     @admin.action(description="Restore selected accounts")
     def restore_accounts(self, request, queryset):

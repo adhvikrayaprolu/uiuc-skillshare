@@ -166,6 +166,11 @@ export function AppLayout() {
             <LogOut className="h-4 w-4" aria-hidden="true" />
             Sign out
           </button>
+          <nav aria-label="Policies" className="mt-3 flex flex-wrap gap-x-3 text-xs text-[#64748B]">
+            <Link to="/guidelines" className="hover:text-[#13294B]">Guidelines</Link>
+            <Link to="/privacy" className="hover:text-[#13294B]">Privacy</Link>
+            <Link to="/terms" className="hover:text-[#13294B]">Terms</Link>
+          </nav>
         </div>
       </aside>
 

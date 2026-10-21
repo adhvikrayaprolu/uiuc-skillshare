@@ -17,7 +17,14 @@ def notify_request(interaction, kind, actor_id):
     recipient_id = interaction.helper_profile.user_id if actor_id == interaction.seeker_id else interaction.seeker_id
     swap = getattr(interaction, "kind", "help") == "swap"
     created_title = "New swap proposal" if swap else "New help request"
-    title = created_title if kind == "created" else "New interaction feedback" if kind == "reviewed" or kind.startswith("endorsed-") else f"{'Swap' if swap else 'Help request'} {kind}"
+    if kind == "created":
+        title = created_title
+    elif kind == "reviewed" or kind.startswith("endorsed-"):
+        title = "New interaction feedback"
+    elif kind == "reminder":
+        title = f"A {'swap proposal' if swap else 'request'} is waiting for your reply"
+    else:
+        title = f"{'Swap' if swap else 'Help request'} {kind}"
     record, created = Notification.objects.get_or_create(
         recipient_id=recipient_id, event_key=f"request:{interaction.pk}:{kind}:{interaction.version}",
         defaults={"peer_id": actor_id, "help_request": interaction, "kind": kind, "title": title},

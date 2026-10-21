@@ -21,6 +21,8 @@ class Command(BaseCommand):
                 enqueue_due_embeddings()
                 from common.avatar_cleanup import enqueue_due_avatar_deletions
                 enqueue_due_avatar_deletions()
+                from interactions.expiry import process_pending_requests
+                process_pending_requests()
             except Exception as error:
                 self.stderr.write(f"Dispatcher retry: {type(error).__name__}")
             if not options["loop"] or stopped.wait(5):

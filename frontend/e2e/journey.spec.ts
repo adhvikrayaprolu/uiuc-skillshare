@@ -70,7 +70,7 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
   const stamp = Date.now(); const helperEmail=`e2e-helper-${stamp}@illinois.edu`, seekerEmail=`e2e-seeker-${stamp}@illinois.edu`;
   const helper = await browser.newContext({viewport:{width:390,height:844}}), seeker = await browser.newContext({viewport:{width:1440,height:1000}});
   const h=await helper.newPage(), s=await seeker.newPage();
-  h.on('dialog', dialog => dialog.accept()); s.on('dialog', dialog => dialog.accept('Local test report'));
+  const nativeDialogs: string[] = []; for (const p of [h, s]) p.on('dialog', dialog => { nativeDialogs.push(dialog.message()); void dialog.dismiss(); });
   try {
     await s.goto('/'); await audit(s,'landing');
     await s.screenshot({path:path.resolve('../docs/screenshots/landing-desktop.png'),fullPage:true});
@@ -78,6 +78,11 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
     await h.goto('/'); await audit(h,'mobile landing');
     await h.screenshot({path:path.resolve('../docs/screenshots/landing-mobile.png')});
     await s.goto('/login'); await audit(s,'login');
+    await s.getByRole('link',{name:'Community guidelines'}).click(); await expect(s.getByRole('heading',{name:'Community guidelines',level:1})).toBeVisible(); await audit(s,'guidelines');
+    await s.screenshot({path:path.resolve('../docs/screenshots/guidelines-desktop.png'),fullPage:true});
+    await s.getByRole('navigation',{name:'Policies'}).getByRole('link',{name:'Privacy'}).click(); await expect(s.getByRole('heading',{name:'Privacy',level:1})).toBeVisible(); await audit(s,'privacy');
+    await s.getByRole('navigation',{name:'Policies'}).getByRole('link',{name:'Terms'}).click(); await expect(s.getByRole('heading',{name:'Terms of use',level:1})).toBeVisible(); await audit(s,'terms');
+    await h.goto('/privacy'); await audit(h,'mobile privacy'); await h.screenshot({path:path.resolve('../docs/screenshots/privacy-mobile.png'),fullPage:true});
     await login(h,helperEmail); const helperId=await onboard(h,'Local test helper','React','GitHub','mobile');
     await h.goto('/welcome'); await expect(h).toHaveURL(/\/home$/);
     await login(s,seekerEmail); await onboard(s,'Local test seeker','GitHub','React','desktop');
@@ -170,8 +175,16 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
     await h.getByLabel('Published for eligible signed-in members').uncheck(); await expect(h.getByLabel('Published for eligible signed-in members')).not.toBeChecked();
     await s.reload(); await expect(s.getByRole('heading',{name:'Profile could not be loaded'})).toBeVisible();
     await h.getByLabel('Published for eligible signed-in members').check(); await expect(h.getByLabel('Published for eligible signed-in members')).toBeChecked();
-    await s.reload(); await s.getByRole('button',{name:'Report member',exact:true}).click(); await expect(s.getByText('Report sent to moderators.',{exact:true})).toBeVisible();
-    await s.getByRole('button',{name:'Block member',exact:true}).click(); await expect(s.getByRole('heading',{name:'Profile could not be loaded'})).toBeVisible();
+    await s.reload(); await s.getByRole('button',{name:'Report member',exact:true}).click();
+    const report=s.getByRole('dialog',{name:'Report Local test helper'}); await expect(report).toBeVisible(); await audit(s,'report dialog');
+    await report.getByRole('button',{name:'Send report',exact:true}).click(); await expect(report.getByRole('alert')).toHaveText('Choose the reason that fits best.');
+    await report.getByLabel(/^Spam or selling/).check(); await report.getByLabel('What happened?').fill('Local test report: offered paid tutoring.');
+    await s.screenshot({path:path.resolve('../docs/screenshots/report-dialog-mobile.png')});
+    await report.getByRole('button',{name:'Send report',exact:true}).click(); await expect(report).toHaveCount(0); await expect(s.getByText('Report sent to moderators.',{exact:true})).toBeVisible();
+    const block=s.getByRole('button',{name:'Block member',exact:true}); await block.click();
+    const confirmBlock=s.getByRole('alertdialog',{name:'Block Local test helper?'}); await expect(confirmBlock).toBeVisible(); await audit(s,'block confirm');
+    await s.keyboard.press('Escape'); await expect(confirmBlock).toHaveCount(0); await expect(block).toBeFocused();
+    await block.click(); await s.getByRole('alertdialog').getByRole('button',{name:'Block',exact:true}).click(); await expect(s.getByRole('heading',{name:'Profile could not be loaded'})).toBeVisible();
     await s.goto('/settings'); await s.getByRole('button',{name:/Unblock Local test helper/}).click(); await expect(s.getByText('No blocked users.',{exact:true})).toBeVisible();
     await h.goto('/home'); await h.getByRole('button',{name:'Notifications',exact:true}).click();
     await expect(h.locator(`a[href="${requestPath}"]`).first()).toBeVisible(); await h.getByRole('button',{name:'Mark all read',exact:true}).click();
@@ -187,6 +200,7 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
     // Exercise deletion through the real UI for the still-authenticated helper.
     await h.goto('/settings'); await h.getByLabel('Type your email to confirm permanent deletion').fill(helperEmail);
     await h.getByRole('button',{name:'Delete my account permanently'}).click(); await expect(h).toHaveURL(/\/login$/);
+    expect(nativeDialogs).toEqual([]);
   } finally {
     // Also attempt cleanup if an assertion fails before the UI deletion steps.
     await removeAccount(helper,helperEmail); await removeAccount(seeker,seekerEmail);

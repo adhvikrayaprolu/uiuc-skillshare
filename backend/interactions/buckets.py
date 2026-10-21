@@ -23,4 +23,5 @@ def filter_bucket(queryset, user, bucket):
         return queryset.filter(needs_action)
     if bucket == "active":
         return queryset.filter(Q(status=HelpRequest.Status.PENDING, seeker=user) | Q(status=HelpRequest.Status.ACCEPTED))
-    return queryset.filter(status__in=[HelpRequest.Status.DECLINED, HelpRequest.Status.CANCELLED, HelpRequest.Status.COMPLETED]).exclude(needs_action)
+    finished = [HelpRequest.Status.DECLINED, HelpRequest.Status.CANCELLED, HelpRequest.Status.COMPLETED, HelpRequest.Status.EXPIRED]
+    return queryset.filter(status__in=finished).exclude(needs_action)

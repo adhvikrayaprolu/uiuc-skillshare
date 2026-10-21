@@ -78,6 +78,13 @@ class InteractionTests(APITestCase):
     def test_block_user_and_report_creation(self):
         block = self.client.post(reverse("blocked-users-list"), {"blocked_user": self.helper_user.id}, format="json")
         self.assertEqual(block.status_code, 201)
+        too_short = self.client.post(
+            reverse("reports-list"),
+            {"reported_profile": self.helper_profile.id, "reason": "spam", "description": "   spam    "},
+            format="json",
+        )
+        self.assertEqual(too_short.status_code, 400)
+        self.assertIn("description", too_short.data)
         report = self.client.post(
             reverse("reports-list"),
             {"reported_profile": self.helper_profile.id, "reason": "spam", "description": "Suspicious profile."},

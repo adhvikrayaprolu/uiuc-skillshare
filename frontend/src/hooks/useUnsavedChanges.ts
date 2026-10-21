@@ -8,10 +8,9 @@ export function useUnsavedChanges(dirty: boolean) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      if (window.confirm('Discard your unsaved profile changes?')) blocker.proceed();
-      else blocker.reset();
-    }
-  }, [blocker]);
+  return {
+    leaving: blocker.state === 'blocked',
+    leave: () => blocker.proceed?.(),
+    stay: () => blocker.reset?.(),
+  };
 }

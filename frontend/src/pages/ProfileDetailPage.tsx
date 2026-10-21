@@ -9,6 +9,8 @@ import { SkillChip } from '../components/ui/SkillChip';
 import { InsightChips } from '../lib/profileInsightBadges';
 import { profileInsightLabels } from '../lib/profileInsightLabels';
 import { RequestModal } from '../components/modals/RequestModal';
+import { ReportDialog } from '../components/modals/ReportDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useContactClick, useProfile, useSimilarProfiles } from '../hooks/useProfile';
 import { useCreateHelpRequest } from '../hooks/useHelpRequests';
 import { useSavedProfileActions } from '../hooks/useSavedProfiles';
@@ -35,6 +37,7 @@ export function ProfileDetailPage() {
   const toast = useToast();
   const [isSaved, setIsSaved] = useState(false);
   const [requestKind, setRequestKind] = useState<RequestKind | null>(null);
+  const [safetyDialog, setSafetyDialog] = useState<'block' | 'report' | null>(null);
   const profile = profileQuery.data?.profile ?? fallbackProfile;
   const profileId = Number(id || profile.id);
   const isOwnProfile = !shouldUseMocks() && myProfileQuery.data?.id === profileId;
@@ -343,7 +346,12 @@ export function ProfileDetailPage() {
             <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Contact Information</h3>
 
             {!profile.contacts.length && <p className="mb-4 text-sm text-[#475569]">Selected contacts are shared after a request is accepted, when this member consents.</p>}
-            {!isOwnProfile && profileQuery.data?.raw?.user_id && <div className="mb-4 flex gap-4 text-sm"><button className="underline" onClick={async () => {if (!window.confirm("Block this member and cancel active requests?")) return; try {await api.post("/blocked-users/", {blocked_user: profileQuery.data?.raw?.user_id}); await queryClient.invalidateQueries(); toast.success("Member blocked.");} catch {toast.error("Could not block this member.");}}}>Block member</button><button className="underline" onClick={async () => {const description = window.prompt("Describe the concern for the moderation team:"); if (!description) return; try {await api.post("/reports/", {reported_profile: profileId, reason: "other", description}); toast.success("Report sent to moderators.");} catch {toast.error("Could not send the report.");}}}>Report member</button></div>}
+            {!isOwnProfile && profileQuery.data?.raw?.user_id && (
+              <div className="mb-4 flex gap-4 text-sm">
+                <button type="button" className="text-[#13294B] underline hover:text-[#B83E00]" onClick={() => setSafetyDialog('block')}>Block member</button>
+                <button type="button" className="text-[#13294B] underline hover:text-[#B83E00]" onClick={() => setSafetyDialog('report')}>Report member</button>
+              </div>
+            )}
 
             {/* Preferred Contact */}
             <div className="mb-4">
@@ -458,6 +466,37 @@ export function ProfileDetailPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={safetyDialog === 'block'}
+        tone="danger"
+        title={`Block ${profile.name}?`}
+        description={<>
+          <p className="mb-2">You won't see each other in Discover or on profiles, and neither of you can send the other a request.</p>
+          <p>Any open requests between you are cancelled. You can unblock them later in Settings.</p>
+        </>}
+        confirmLabel="Block"
+        onCancel={() => setSafetyDialog(null)}
+        onConfirm={async () => {
+          try {
+            await api.post('/blocked-users/', { blocked_user: profileQuery.data?.raw?.user_id });
+            setSafetyDialog(null);
+            await queryClient.invalidateQueries();
+            toast.success('Member blocked.');
+          } catch {
+            toast.error('Could not block this member.');
+          }
+        }}
+      />
+      <ReportDialog
+        open={safetyDialog === 'report'}
+        subjectName={profile.name}
+        onClose={() => setSafetyDialog(null)}
+        onSubmit={async ({ reason, description }) => {
+          await api.post('/reports/', { reported_profile: profileId, reason, description });
+          toast.success('Report sent to moderators.');
+        }}
+      />
 
       {/* Help Request Modal */}
       <RequestModal

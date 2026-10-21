@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -76,6 +78,11 @@ class HelpRequest(models.Model):
         DECLINED = "declined", "Declined"
         COMPLETED = "completed", "Completed"
         CANCELLED = "cancelled", "Cancelled"
+        EXPIRED = "expired", "Expired"
+
+    PENDING_LIFETIME = timedelta(days=14)
+    REMINDER_AFTER = timedelta(days=7)
+    MAX_PENDING_PER_SEEKER = 5
 
     class Kind(models.TextChoices):
         HELP = "help", "Help"
@@ -105,11 +112,15 @@ class HelpRequest(models.Model):
     declined_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    expired_at = models.DateTimeField(null=True, blank=True)
+    reminded_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["status", "expires_at"], name="request_status_expiry")]
         constraints = [
             models.UniqueConstraint(fields=["seeker", "idempotency_key"], condition=models.Q(idempotency_key__isnull=False), name="unique_request_submission"),
             models.UniqueConstraint(fields=["seeker", "helper_profile", "topic_key"], condition=models.Q(status__in=["pending", "accepted"]) & ~models.Q(topic_key=""), name="unique_active_help_topic"),
@@ -136,6 +147,12 @@ class HelpRequest(models.Model):
             self.completed_at = now
         elif self.status == self.Status.CANCELLED and not self.cancelled_at:
             self.cancelled_at = now
+        elif self.status == self.Status.EXPIRED and not self.expired_at:
+            self.expired_at = now
+
+    @property
+    def is_past_expiry(self):
+        return self.status == self.Status.PENDING and self.expires_at is not None and self.expires_at <= timezone.now()
 
 
 class Report(models.Model):

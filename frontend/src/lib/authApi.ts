@@ -22,7 +22,7 @@ export async function confirmEmailCode(code: string) {
   clearAuth();
   return getCurrentUser();
 }
-export interface AuthConfig {csrfToken: string; googleEnabled: boolean; demoEnabled: boolean; authenticated: boolean}
+export interface AuthConfig {csrfToken: string; googleEnabled: boolean; demoEnabled: boolean; localInboxUrl: string | null; authenticated: boolean}
 export async function getAuthConfig() {return (await api.get<AuthConfig>('/auth/csrf/')).data;}
 export async function startDemoSession(account?: 'staff') {
   await ensureCsrf();

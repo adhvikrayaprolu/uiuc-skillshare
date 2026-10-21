@@ -23,6 +23,7 @@ x-application: &application
     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     MEDIA_ROOT: /data/media
     DEMO_MODE: ${DEMO_MODE:-true}
+    LOCAL_INBOX_URL: http://localhost:${MAIL_PORT:-8025}
   init: true
 services:
   db:

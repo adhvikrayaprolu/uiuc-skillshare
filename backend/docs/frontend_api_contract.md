@@ -6,7 +6,7 @@ Django authorizes verified eligible members. Use same-origin requests with cooki
 
 | Endpoint | Behavior |
 |---|---|
-| GET `/api/auth/csrf/` | CSRF bootstrap plus `googleEnabled`, `demoEnabled` and `authenticated` (whether a session cookie exists, so signed-out clients skip `/me/`). Obtain before unsafe requests and again after login. |
+| GET `/api/auth/csrf/` | CSRF bootstrap plus `googleEnabled`, `demoEnabled`, `localInboxUrl` (the local test inbox in local development, otherwise `null`) and `authenticated` (whether a session cookie exists, so signed-out clients skip `/me/`). Obtain before unsafe requests and again after login. |
 | POST `/api/auth/demo/` | Local development only (`DEMO_MODE=true`, refused outside `ENVIRONMENT=local`; otherwise 404). CSRF required. Signs in to the seeded demo member, or the demo moderator with `?account=staff`; returns `{user}`. 503 when the demo network is not seeded. |
 | POST `/api/auth/email/request/` | `{email}` with exact Illinois domain; returns allauth 401/code-required response without authenticating. Local codes arrive in Mailpit. |
 | POST `/api/auth/email/confirm/` | `{code}`; success 200 creates a server-controlled session. Five-minute expiry, three failed attempts; replay/stale process fails. |

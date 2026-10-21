@@ -12,7 +12,61 @@
 
 ▶ **[Watch the demo video](docs/demo/tour.webm)** (30 seconds), or run it yourself with the two-command [quick start](#quick-start) and click **Try the demo**.
 
-![Home for the demo student: requests that need attention, a setup checklist and people who teach what they want to learn](docs/screenshots/home-desktop.png)
+![Home for a student: requests that need attention, two-way swap matches and a setup checklist](docs/screenshots/home-desktop.png)
+
+**Contents:** [How it works](#how-it-works) · [The rest of the app](#the-rest-of-the-app) · [Highlights](#highlights) · [Quick start](#quick-start) · [Optional integrations](#optional-integrations) · [Architecture](#architecture) · [Testing and CI](#testing-and-ci) · [API overview](#api-overview) · [Project structure](#project-structure)
+
+## How it works
+
+Follow Jamie, a design student who wants to learn Python, from first visit to a finished swap with Alex, a CS student who wants to learn Figma. These screenshots come from an automated tour of the real app.
+
+### 1. Land and sign in with an Illinois email
+
+The landing page explains swaps, lists the skills people share and shows how privacy works. **Get started** asks for an `@illinois.edu` address and emails a one-time code. Running locally, codes go to a test inbox (the highlighted note links to it), and **Try the demo** skips sign-up entirely.
+
+| ![Landing page](docs/screenshots/landing-desktop.png) | ![Sign in with an email code](docs/screenshots/signin-code-desktop.png) |
+|---|---|
+
+### 2. Set up a profile in four short steps
+
+New members get a focused, full-screen setup with no app navigation to wander into: about you, what you can teach, what you want to learn, and availability and contact. Each step checks its own fields, and a refresh doesn't lose the draft. Learning goals are shown on the profile by default, so other people can propose swaps.
+
+![Setup step 2: picking skills to teach](docs/screenshots/setup-teach-desktop.png)
+
+### 3. See who you could swap with right away
+
+As soon as the profile goes live, Jamie sees two-way matches first. Alex teaches Python and wants to learn Figma, and they're both free at the same two times. Below that are other people who teach what Jamie wants to learn. A brand-new network with nobody to match shows invite and "be the first to teach" prompts instead.
+
+![First matches: a two-way swap with Alex, then more helpers](docs/screenshots/first-matches-desktop.png)
+
+### 4. Propose a swap
+
+From Alex's profile, **Propose a swap** pre-fills the trade: Jamie learns Python and teaches Figma. Contact details stay hidden until Alex accepts. **Just ask for help** sends a one-way request instead.
+
+![Proposing a swap with a message](docs/screenshots/swap-proposal-desktop.png)
+
+### 5. Accept, meet, complete
+
+Alex gets a notification and sees the proposal under **Needs your attention**. Accepting reveals the contact details each person chose to share, and they meet off the platform. Unanswered requests expire after 14 days, with a reminder on day 7.
+
+| ![Incoming swap proposal](docs/screenshots/request-incoming-desktop.png) | ![Accepted swap with shared contacts](docs/screenshots/request-accepted-desktop.png) |
+|---|---|
+
+### 6. Leave feedback both ways
+
+After either person marks the swap complete, **both** of them can rate the other and endorse the skill they learned. Reviews appear on profiles; they confirm an interaction happened, not verified expertise.
+
+![Feedback form after a completed swap](docs/screenshots/feedback-desktop.png)
+
+## The rest of the app
+
+| | |
+|---|---|
+| ![Swap matches](docs/screenshots/swaps-desktop.png) **Discover: swap matches.** Every two-way match, each with its reason. | ![Discover search](docs/screenshots/discover-desktop.png) **Discover: all helpers.** Keyword and taxonomy search with filters and explainable ranking. |
+| ![Member profile](docs/screenshots/profile-desktop.png) **Profiles.** Why you matched, plus skills, goals, availability, reviews and endorsements. | ![Requests inbox](docs/screenshots/requests-desktop.png) **Requests.** Needs action, Active and Past, with the next step on every row. |
+| ![Launch metrics](docs/screenshots/launch-metrics-desktop.png) **Launch metrics (staff).** Setup completion, time to first match, acceptance, completion and feedback rates, computed from real records. | ![Mobile home](docs/screenshots/home-mobile.png) ![Mobile swaps](docs/screenshots/swaps-mobile.png) **Mobile.** The same four-item navigation on phones. |
+
+Everyone in the screenshots and the video is fictional: they come from the seeded demo network. `make screenshots` regenerates all of them with a headless browser.
 
 ## Highlights
 
@@ -23,17 +77,6 @@
 - **Trust and safety.** Reason-coded reports go to a staff moderation queue with an audit trail. Policy pages, account export and confirmed deletion are built in.
 - **Launch basics.** Per-screen titles, Open Graph cards, a sitemap, `noindex` on signed-in screens, a crash-recovery screen, scrubbed first-party error reports and staff launch metrics.
 - **Tested like a product.** PostgreSQL regression tests, frontend unit tests, a two-member Chromium journey, an axe accessibility sweep of every screen, a backup and restore rehearsal, and a smoke test of the quick start. All of it runs in CI.
-
-## Product tour
-
-| | |
-|---|---|
-| ![Landing page](docs/screenshots/landing-desktop.png) **Landing.** What a swap is, with a one-click demo in local development. | ![Swap matches](docs/screenshots/swaps-desktop.png) **Swap matches.** Two-way matches, each with its reason. |
-| ![Discover search](docs/screenshots/discover-desktop.png) **Discover.** Keyword and taxonomy search with filters and explainable ranking. | ![Member profile](docs/screenshots/profile-desktop.png) **Profile.** Why you matched, plus skills, goals, availability and feedback. |
-| ![Requests inbox](docs/screenshots/requests-desktop.png) **Requests.** Needs action, Active and Past, sorted on the server. | ![Request detail](docs/screenshots/request-detail-desktop.png) **Request detail.** Accept or decline, then contacts, completion and feedback. |
-| ![Launch metrics](docs/screenshots/launch-metrics-desktop.png) **Launch metrics.** Staff-only success measures computed from real records. | ![Mobile home](docs/screenshots/home-mobile.png) ![Mobile swaps](docs/screenshots/swaps-mobile.png) **Mobile.** The same four-item navigation on phones. |
-
-The screenshots and the video come from the seeded demo account, and everyone in it is fictional. `make screenshots` regenerates them with a headless browser.
 
 ## Quick start
 

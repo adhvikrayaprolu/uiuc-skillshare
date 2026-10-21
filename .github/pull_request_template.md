@@ -1,13 +1,14 @@
-## Problem and issue
+## What and why
+Closes #
 
-## Implementation and developer experience
+## Changes
+-
 
 ## Verification
-
-- Local checks and exact results:
-- GitHub CI:
-- Setup / migrations / recovery impact:
+- [ ] `make check` (backend, frontend, browser journey, recovery)
+- [ ] `make dev` then `make smoke`
+- [ ] Screens checked in a browser (desktop and mobile width) when UI changed
+- [ ] `make screenshots` re-run when README screens changed
 
 ## Remaining limits
-
-Include provider checks that could not run. Keep the PR draft until ready for human review; never enable auto-merge.
+Anything not verified locally (hosted services, real Google/SMTP, production data).

@@ -215,7 +215,7 @@ def swap_matches_for_user(user, queryset):
         profile.match_reasons = (
             [f"Can teach you {', '.join(s['name'] for s in summary['they_teach_you'][:2])}."]
             + [f"Wants to learn {', '.join(s['name'] for s in summary['you_can_teach'][:2])}, which you teach."]
-            + ([f'{shared} overlapping time slot(s).'] if shared else [])
+            + ([f"You're both free at {shared} time{'' if shared == 1 else 's'}."] if shared else [])
         )
         ranked.append(((len(summary['they_teach_you']) + len(summary['you_can_teach']), shared, -profile.pk), profile))
     ranked.sort(key=lambda row: row[0], reverse=True)

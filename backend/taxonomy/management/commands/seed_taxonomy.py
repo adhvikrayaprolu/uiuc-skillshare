@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 from taxonomy.models import SkillCategory, SkillTag
-from .seed_demo_data import CATEGORIES
+from taxonomy.catalog import CATEGORIES
 
 
 class Command(BaseCommand):

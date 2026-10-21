@@ -151,6 +151,10 @@ REST_FRAMEWORK = {
     },
 }
 CLIENT_ERROR_REPORTING = os.getenv("CLIENT_ERROR_REPORTING", "true").lower() == "true"
+# Seeded demo members and one-click demo sign-in exist only for local development.
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+if DEMO_MODE and not LOCAL_DEVELOPMENT:
+    raise ImproperlyConfigured("DEMO_MODE is only allowed with ENVIRONMENT=local.")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuthConfig } from '../../hooks/useAuthConfig';
 import { useToast } from '../ui/ToastProvider';
@@ -10,14 +10,18 @@ export function DemoSignInButton({ account, className, children }: { account?: '
   const config = useAuthConfig();
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const [pending, setPending] = useState(false);
   if (!config.data?.demoEnabled) return null;
   const start = async () => {
     setPending(true);
+    const destination = account === 'staff' ? '/analytics' : APP_HOME;
+    // The signed-in redirect on /login can unmount this button first; it follows state.from too.
+    navigate(location, { replace: true, state: { ...(location.state as object | null), from: destination } });
     try {
       await auth.loginDemo(account);
-      navigate(account === 'staff' ? '/analytics' : APP_HOME, { replace: true });
+      navigate(destination, { replace: true });
     } catch {
       toast.error('The demo account is not available. Run make dev to seed it.');
     } finally {

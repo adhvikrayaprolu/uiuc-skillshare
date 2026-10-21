@@ -101,10 +101,10 @@ def _skill(name):
     return SkillTag.objects.get(name=name, is_approved=True)
 
 
-def _member(spec, now):
+def _member(spec, now, joined):
     first, last, major, year, headline, bio, teaches, goals, goals_public, slots = spec
     user = User.objects.create_user(email=demo_email(first, last), first_name=first, last_name=last,
-                                    is_student_verified=True, has_completed_onboarding=True)
+                                    is_student_verified=True, has_completed_onboarding=True, date_joined=joined)
     profile = StudentProfile.objects.create(
         user=user, display_name=f"{first} {last}", major=major, year=year, headline=headline, bio=bio,
         location="Urbana-Champaign, IL", visibility="public", open_to_connect=True,
@@ -159,7 +159,8 @@ def seed_demo_network(reset=False):
     elif User.objects.filter(email=DEMO_EMAIL).exists():
         return False
     now = timezone.now().replace(microsecond=0)
-    people = {spec[0]: _member(spec, now) for spec in MEMBERS}
+    # Members joined over the past few weeks, so time-based launch metrics have data.
+    people = {spec[0]: _member(spec, now, now - timedelta(days=40 - 2 * index)) for index, spec in enumerate(MEMBERS)}
     alex, sam, priya, jordan = people["Alex"], people["Sam"], people["Priya"], people["Jordan"]
     swap, help_ = HelpRequest.Kind.SWAP, HelpRequest.Kind.HELP
     status = HelpRequest.Status

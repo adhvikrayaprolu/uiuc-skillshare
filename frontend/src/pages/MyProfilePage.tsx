@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Clock, Edit, ExternalLink, EyeOff, Lock } from 'lucide-react';
+import { Clock, Edit, ExternalLink, Eye, EyeOff, Lock } from 'lucide-react';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
@@ -70,7 +70,9 @@ export function MyProfilePage() {
       <section className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-lg font-semibold text-[#0F172A]">Wants to learn</h2>
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#F1F5F9] px-2 py-0.5 text-xs text-[#475569]"><Lock className="h-3 w-3" aria-hidden="true" />Only you</span>
+          {data.learning_goals_public
+            ? <span className="inline-flex items-center gap-1 rounded-full bg-[#E8EEF7] px-2 py-0.5 text-xs text-[#13294B]"><Eye className="h-3 w-3" aria-hidden="true" />Shown on your profile</span>
+            : <span className="inline-flex items-center gap-1 rounded-full bg-[#F1F5F9] px-2 py-0.5 text-xs text-[#475569]"><Lock className="h-3 w-3" aria-hidden="true" />Only you</span>}
         </div>
         <div className="flex flex-wrap gap-2">{goals.length ? goals.map((goal) => <SkillChip key={goal} skill={goal} />) : <p className="text-sm text-[#475569]">No learning goals yet.</p>}</div>
         {data.learning_goal_notes && <p className="mt-3 text-sm text-[#475569]">{data.learning_goal_notes}</p>}

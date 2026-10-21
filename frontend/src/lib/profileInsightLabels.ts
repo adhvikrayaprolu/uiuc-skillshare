@@ -1,4 +1,4 @@
-import type { Profile } from '../data/mockData';
+import type { Profile } from '../types/profile';
 
 /** Non-percentage labels for cards (replaces meaningless match scores in the UI). */
 export function profileInsightLabels(profile: Profile): string[] {

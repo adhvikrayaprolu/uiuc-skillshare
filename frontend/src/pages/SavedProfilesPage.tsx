@@ -7,13 +7,11 @@ import { InitialsAvatar } from '../components/ui/InitialsAvatar';
 import { SkillChip } from '../components/ui/SkillChip';
 import { useDeleteSavedProfileMutation, useSavedProfiles } from '../hooks/useSavedProfiles';
 import { useToast } from '../components/ui/ToastProvider';
-import { shouldUseMocks } from '../lib/api';
 
 export function SavedProfilesPanel({ onBrowse }: { onBrowse: () => void }) {
   const savedProfilesQuery = useSavedProfiles();
   const deleteSavedProfile = useDeleteSavedProfileMutation();
   const toast = useToast();
-  const isMock = shouldUseMocks();
   const [search, setSearch] = useState('');
   const savedProfiles = (savedProfilesQuery.data?.profiles ?? []).filter(profile => `${profile.name} ${profile.headline} ${profile.skills.map(skill => skill.name).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
   const pagination = useListPage(savedProfiles, search);
@@ -22,7 +20,7 @@ export function SavedProfilesPanel({ onBrowse }: { onBrowse: () => void }) {
     <div>
       <p className="mb-4 text-[#475569]">People you bookmarked to come back to.</p>
 
-      {savedProfilesQuery.isError && !isMock && (
+      {savedProfilesQuery.isError && (
         <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           Could not load saved profiles. Check your connection and try again.
         </div>
@@ -76,12 +74,7 @@ export function SavedProfilesPanel({ onBrowse }: { onBrowse: () => void }) {
                   const savedRecord = savedProfilesQuery.data?.saved.find(
                     (item) => item.saved_profile_detail.id === profile.id,
                   );
-                  if (!savedRecord) {
-                    if (isMock) {
-                      toast.info('Nothing to remove in this demo view.');
-                    }
-                    return;
-                  }
+                  if (!savedRecord) return;
                   try {
                     await deleteSavedProfile.mutateAsync(savedRecord.id);
                     toast.success('Profile removed.');
@@ -108,7 +101,7 @@ export function SavedProfilesPanel({ onBrowse }: { onBrowse: () => void }) {
           </div>
           <h3 className="mb-2 text-xl font-semibold text-[#0F172A]">No saved profiles yet</h3>
           <p className="mb-6 text-[#64748B]">
-            {isMock ? 'Save profiles from Discover to build your demo list.' : 'Save profiles from Discover to see them here.'}
+            Save profiles from Discover to see them here.
           </p>
           <button
             type="button"

@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { isAxiosError } from 'axios';
-import { shouldUseMocks } from '../lib/api';
 import {
   defaultProfileForm, formFromProfile, saveProfileForm, validateSetupStep,
   type FieldErrors, type ProfileFormState, type SetupStep,
@@ -18,7 +17,7 @@ import { AvailabilityGrid } from '../components/profile/AvailabilityGrid';
 import { SkillChip } from '../components/ui/SkillChip';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
 import { apiErrorMessage } from '../lib/errors';
-import { APP_HOME, SETUP_MATCHES } from '../lib/routes';
+import { SETUP_MATCHES } from '../lib/routes';
 import type { ContactMethodType, ProfileSkill, StudentYear } from '../types/api';
 
 const steps: { key: SetupStep; title: string; intro: string }[] = [
@@ -61,7 +60,7 @@ export function SetupPage() {
   const taxonomy = useTaxonomy();
   const currentProfile = useCurrentProfile();
   const noProfileYet = currentProfile.isError && isAxiosError(currentProfile.error) && currentProfile.error.response?.status === 404;
-  const profileReady = shouldUseMocks() || currentProfile.isSuccess || noProfileYet;
+  const profileReady = currentProfile.isSuccess || noProfileYet;
 
   const [state, setState] = useState<Draft | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -120,11 +119,6 @@ export function SetupPage() {
         focusFirstError(found);
         return;
       }
-    }
-    if (shouldUseMocks() || auth.isDemo) {
-      toast.success('Demo profile saved locally.');
-      navigate(APP_HOME);
-      return;
     }
     setSaving(true);
     setSaveError('');

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Bookmark } from 'lucide-react';
-import { Profile } from '../../data/mockData';
+import { Profile } from '../../types/profile';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { SkillChip } from '../ui/SkillChip';
 import { InsightChips } from '../../lib/profileInsightBadges';

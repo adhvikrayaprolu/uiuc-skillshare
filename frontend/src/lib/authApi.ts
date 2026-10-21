@@ -22,6 +22,14 @@ export async function confirmEmailCode(code: string) {
   clearAuth();
   return getCurrentUser();
 }
+export interface AuthConfig {csrfToken: string; googleEnabled: boolean; demoEnabled: boolean}
+export async function getAuthConfig() {return (await api.get<AuthConfig>('/auth/csrf/')).data;}
+export async function startDemoSession(account?: 'staff') {
+  await ensureCsrf();
+  await api.post('/auth/demo/', null, {params: account ? {account} : undefined});
+  clearAuth();
+  return getCurrentUser();
+}
 export async function resendEmailCode() {await api.post('/auth/email/resend/');}
 export async function logoutServer() {await api.post('/auth/logout/');}
 export async function getCurrentUser() {return (await api.get<User>('/auth/me/')).data;}

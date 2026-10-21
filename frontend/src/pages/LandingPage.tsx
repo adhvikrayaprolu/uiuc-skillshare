@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeftRight, ArrowRight, BookOpen, CheckCircle, Lock, MessageSquareHeart, Search, ShieldCheck, UserCheck } from 'lucide-react';
 import { Logo } from '../components/ui/Logo';
 import { useTaxonomy } from '../hooks/useTaxonomy';
+import { DemoSignInButton } from '../components/auth/DemoSignInButton';
 import type { SkillTag } from '../types/api';
 
 const fallbackCatalogue = [
@@ -38,7 +39,7 @@ function categoryName(skill: SkillTag) {
 
 function useCatalogue() {
   const taxonomy = useTaxonomy();
-  const rawSkills = taxonomy.data?.isMock ? [] : taxonomy.data?.rawSkills ?? [];
+  const rawSkills = taxonomy.data?.rawSkills ?? [];
   if (!rawSkills.length) return fallbackCatalogue;
   const groups = new Map<string, string[]>();
   for (const skill of rawSkills) {
@@ -80,6 +81,9 @@ export function LandingPage() {
                 <a href="#how-it-works" className="inline-flex items-center justify-center rounded-xl border border-white/40 px-8 py-4 font-semibold text-white transition-colors hover:bg-white/10">
                   See how it works
                 </a>
+                <DemoSignInButton className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 font-semibold text-[#13294B] transition-colors hover:bg-[#F1F5F9] disabled:opacity-70">
+                  Try the demo
+                </DemoSignInButton>
               </div>
             </div>
 

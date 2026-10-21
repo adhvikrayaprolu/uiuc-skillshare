@@ -13,43 +13,8 @@ export interface NotificationItem {
   read: boolean;
 }
 
-const sampleNotifications: NotificationItem[] = [
-  // TODO: Replace this local sample list with a backend-derived notification endpoint (e.g. GET /api/notifications/).
-  {
-    id: 'sample-1',
-    type: 'request',
-    title: 'New help request',
-    description: 'Maya Johnson sent a request for resume review',
-    href: '/requests',
-    timeLabel: '2h ago',
-    from: 'Maya Johnson',
-    read: false,
-  },
-  {
-    id: 'sample-2',
-    type: 'accepted',
-    title: 'Request accepted',
-    description: 'Daniel Kim accepted your Figma design review request',
-    href: '/requests?tab=active',
-    timeLabel: '5h ago',
-    from: 'Daniel Kim',
-    read: false,
-  },
-  {
-    id: 'sample-3',
-    type: 'profile',
-    title: 'Availability updated',
-    description: 'Sofia Garcia updated availability for this week',
-    href: '/me/edit',
-    timeLabel: '1d ago',
-    from: 'Sofia Garcia',
-    read: true,
-  },
-];
-
 interface NotificationDropdownProps {
   items?: NotificationItem[];
-  showSamples?: boolean;
   loading?: boolean;
   error?: boolean;
   onNavigate?: () => void;
@@ -61,8 +26,8 @@ interface NotificationDropdownProps {
   onNext?: () => void; onPrevious?: () => void;
 }
 
-export function NotificationDropdown({ items, showSamples = false, loading = false, error = false, onNavigate, onRead, onReadAll, unreadCount: totalUnread, isUpdating = false, hasNext, hasPrevious, onNext, onPrevious }: NotificationDropdownProps) {
-  const list = items !== undefined ? items : showSamples ? sampleNotifications : [];
+export function NotificationDropdown({ items = [], loading = false, error = false, onNavigate, onRead, onReadAll, unreadCount: totalUnread, isUpdating = false, hasNext, hasPrevious, onNext, onPrevious }: NotificationDropdownProps) {
+  const list = items;
   const unreadCount = totalUnread ?? list.filter((n) => !n.read).length;
 
   return (
@@ -82,7 +47,6 @@ export function NotificationDropdown({ items, showSamples = false, loading = fal
       <div className="max-h-96 overflow-y-auto">
         {loading && <p role="status" className="p-4">Loading activity…</p>}
         {error && <p role="alert" className="p-4">Could not load recent activity. Open Requests to retry.</p>}
-        {showSamples && <p className="px-4 text-xs text-[#64748B]">Sample activity for demo mode</p>}
         {list.length > 0 ? (
           list.map((notification) => (
             <Link

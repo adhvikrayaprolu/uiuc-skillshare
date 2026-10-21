@@ -11,7 +11,6 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { useDiscoverySearch } from '../hooks/useDiscoverySearch';
 import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useToast } from '../components/ui/ToastProvider';
-import { shouldUseMocks } from '../lib/api';
 import { PageControls } from '../components/ui/ListPagination';
 import { TabPanel, Tabs } from '../components/ui/Tabs';
 import { ColdStartPanel } from '../components/growth/ColdStartPanel';
@@ -113,7 +112,6 @@ function AllHelpersPanel() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState('All Years');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [savedProfiles, setSavedProfiles] = useState<number[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [openOnly, setOpenOnly] = useState(false);
   const [ordering, setOrdering] = useState('best_match');
@@ -137,15 +135,6 @@ function AllHelpersPanel() {
   });
 
   const toggleSave = async (profileId: number) => {
-    if (discoveryQuery.data?.isMock) {
-      setSavedProfiles(prev =>
-        prev.includes(profileId)
-          ? prev.filter(id => id !== profileId)
-          : [...prev, profileId]
-      );
-      toast.success(savedProfiles.includes(profileId) ? 'Profile unsaved.' : 'Profile saved.');
-      return;
-    }
     try {
       const saved = await savedActions.toggleSaved(profileId);
       toast.success(saved ? 'Profile saved.' : 'Profile unsaved.');
@@ -172,7 +161,7 @@ function AllHelpersPanel() {
 
   return (
     <div>
-      {discoveryQuery.isError && !shouldUseMocks() && (
+      {discoveryQuery.isError && (
         <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <span>We couldn't load matches right now.</span>
           <button type="button" onClick={() => void discoveryQuery.refetch()} className="rounded-lg border border-red-300 bg-white px-3 py-1 font-medium hover:bg-red-100">Try again</button>
@@ -373,7 +362,7 @@ function AllHelpersPanel() {
                 key={profile.id}
                 profile={profile}
                 reasonText={getReasonText(profile.matchReasons)}
-                isSaved={discoveryQuery.data?.isMock ? savedProfiles.includes(profile.id) : savedActions.savedProfileIds.has(profile.id)}
+                isSaved={savedActions.savedProfileIds.has(profile.id)}
                 onToggleSave={() => toggleSave(profile.id)}
               />
             ))}

@@ -9,7 +9,7 @@ vi.mock('../hooks/useDiscoverySearch', () => ({
   useDiscoverySearch: (params: { page?: number; q?: string }) => {
     state.pages.push(params.page);
     state.queries.push(params.q);
-    return { isLoading: false, isFetching: false, isError: false, refetch: vi.fn(), data: { count: 40, profiles: [], next: '/api/discovery/search/?page=9', isMock: false } };
+    return { isLoading: false, isFetching: false, isError: false, refetch: vi.fn(), data: { count: 40, profiles: [], next: '/api/discovery/search/?page=9' } };
   },
 }));
 vi.mock('../hooks/useTaxonomy', () => ({ useTaxonomy: () => ({ data: { categories: [], skills: [] } }) }));

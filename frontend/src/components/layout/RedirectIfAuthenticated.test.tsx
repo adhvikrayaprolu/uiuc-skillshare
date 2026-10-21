@@ -3,7 +3,7 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {RedirectIfAuthenticated} from './RedirectIfAuthenticated';
 
-const state = vi.hoisted(() => ({auth: {isLoading: false, isAuthenticated: false, isDemo: false, hasCompletedOnboarding: true as boolean | null}}));
+const state = vi.hoisted(() => ({auth: {isLoading: false, isAuthenticated: false, hasCompletedOnboarding: true as boolean | null}}));
 vi.mock('../../hooks/useAuth', () => ({useAuth: () => state.auth}));
 
 function view(entry: string | {pathname: string; state: unknown} = '/') {
@@ -22,7 +22,7 @@ function view(entry: string | {pathname: string; state: unknown} = '/') {
   );
 }
 
-beforeEach(() => {state.auth = {isLoading: false, isAuthenticated: false, isDemo: false, hasCompletedOnboarding: true};});
+beforeEach(() => {state.auth = {isLoading: false, isAuthenticated: false, hasCompletedOnboarding: true};});
 afterEach(cleanup);
 
 it('shows the landing page to signed-out visitors', () => {view(); expect(screen.getByText('Marketing page')).toBeTruthy();});

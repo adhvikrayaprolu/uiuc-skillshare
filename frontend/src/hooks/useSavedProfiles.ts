@@ -1,6 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { mockProfiles } from '../data/mockData';
-import { shouldUseMocks } from '../lib/api';
 import { deleteSavedProfile, getSavedProfiles, saveProfile } from '../lib/interactionsApi';
 import { mapBackendProfileListItemToProfileCard } from '../lib/mappers';
 
@@ -8,12 +6,10 @@ export function useSavedProfiles() {
   return useQuery({
     queryKey: ['saved-profiles'],
     queryFn: async () => {
-      if (shouldUseMocks()) return { profiles: mockProfiles.slice(0, 4), saved: [], isMock: true };
       const saved = await getSavedProfiles();
       return {
         saved,
         profiles: saved.map((item) => mapBackendProfileListItemToProfileCard(item.saved_profile_detail)),
-        isMock: false,
       };
     },
     retry: 1,
@@ -23,10 +19,7 @@ export function useSavedProfiles() {
 export function useSaveProfileMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ profileId, note }: { profileId: number; note?: string }) => {
-      if (shouldUseMocks()) return Promise.resolve(null);
-      return saveProfile(profileId, note);
-    },
+    mutationFn: ({ profileId, note }: { profileId: number; note?: string }) => saveProfile(profileId, note),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['saved-profiles'] }),
   });
 }
@@ -34,10 +27,7 @@ export function useSaveProfileMutation() {
 export function useDeleteSavedProfileMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (savedProfileId: number) => {
-      if (shouldUseMocks()) return Promise.resolve();
-      return deleteSavedProfile(savedProfileId);
-    },
+    mutationFn: (savedProfileId: number) => deleteSavedProfile(savedProfileId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['saved-profiles'] }),
   });
 }

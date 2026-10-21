@@ -5,7 +5,8 @@ import { Logo } from '../components/ui/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/ui/ToastProvider';
 import { requestEmailCode, resendEmailCode } from '../lib/authApi';
-import { shouldUseMocks } from '../lib/api';
+import { DemoSignInButton } from '../components/auth/DemoSignInButton';
+import { useAuthConfig } from '../hooks/useAuthConfig';
 import { APP_HOME, SETUP_HOME, safeDestination } from '../lib/routes';
 
 declare global {
@@ -28,14 +29,15 @@ export function LoginPage() {
   const toast = useToast();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [googleReady, setGoogleReady] = useState(false);
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  const authConfig = useAuthConfig();
+  // Google needs both a client ID built into the bundle and a server that accepts it.
+  const googleClientId = authConfig.data?.googleEnabled ? import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined : undefined;
   const from = safeDestination((location.state as { from?: string } | null)?.from) || APP_HOME;
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [challenge, setChallenge] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
-  const useMocks = shouldUseMocks();
 
   useEffect(() => {
     if (!googleClientId) return;
@@ -78,12 +80,6 @@ export function LoginPage() {
     });
   }, [auth, from, googleClientId, googleReady, navigate, toast]);
 
-  const handleMockDemoLogin = () => {
-    auth.loginDemo();
-    toast.success('Mock demo session started (local data only).');
-    navigate(APP_HOME);
-  };
-
   const submitCode = async (event: React.FormEvent) => {
     event.preventDefault(); setPending(true); setError('');
     try {
@@ -105,7 +101,7 @@ export function LoginPage() {
             <h2 className="text-2xl font-bold text-[#0F172A]">Sign in to Illini SkillShare</h2>
             <p className="mt-2 text-[#64748B]">Find peers who can help, and share what you know.</p>
           </div>
-          {googleClientId ? <div className="mb-6"><div ref={googleButtonRef} className="flex justify-center" /></div> : <p className="mb-4 text-center text-sm text-[#64748B]">Google sign-in is unavailable here. Use an Illinois email code.</p>}
+          {googleClientId ? <div className="mb-6"><div ref={googleButtonRef} className="flex justify-center" /></div> : null}
           <form onSubmit={submitCode} className="mb-6 space-y-3">
             <label className="block text-sm font-medium" htmlFor="login-email">Illinois email</label>
             <input id="login-email" type="email" autoComplete="email" required disabled={challenge || pending} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@illinois.edu" className="w-full rounded-lg border border-[#CBD5E1] p-3" />
@@ -115,7 +111,12 @@ export function LoginPage() {
             {challenge && <div className="flex justify-between text-sm"><button type="button" disabled={pending} onClick={async () => {setPending(true); try {await resendEmailCode(); toast.success('A new code was sent.');} catch {setError('Please wait before resending, or start again.');} finally {setPending(false);}}}>Resend code</button><button type="button" onClick={() => {setChallenge(false); setCode(''); setError('');}}>Use another email</button></div>}
           </form>
           <p className="mb-6 text-center text-xs text-[#64748B]">By continuing you agree to the <Link to="/terms" className="font-medium text-[#13294B] underline">Terms</Link>, <Link to="/guidelines" className="font-medium text-[#13294B] underline">Community guidelines</Link> and <Link to="/privacy" className="font-medium text-[#13294B] underline">Privacy</Link> page.</p>
-          {useMocks && <button type="button" onClick={handleMockDemoLogin} className="mb-4 w-full rounded-lg border p-3">Explore synthetic demo data</button>}
+          <DemoSignInButton className="mb-2 w-full rounded-xl border-2 border-[#B83E00] p-3 font-semibold text-[#B83E00] transition-colors hover:bg-[#FFF3EA] disabled:opacity-60">
+            Try the demo as a sample student
+          </DemoSignInButton>
+          <DemoSignInButton account="staff" className="mb-6 w-full text-center text-sm font-medium text-[#13294B] underline disabled:opacity-60">
+            Or view the demo moderator screens
+          </DemoSignInButton>
 
           <div className="space-y-4 border-t border-[#E2E8F0] pt-6">
             <div className="flex items-start gap-3">

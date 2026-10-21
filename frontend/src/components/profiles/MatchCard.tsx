@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeftRight } from 'lucide-react';
-import type { Profile } from '../../data/mockData';
+import type { Profile } from '../../types/profile';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 
 const names = (rows: { name: string }[]) => rows.map((row) => row.name).join(', ');

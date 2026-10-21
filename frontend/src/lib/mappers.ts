@@ -1,5 +1,5 @@
 import type { HelpRequest as ApiHelpRequest, ProfileDetail, ProfileListItem } from '../types/api';
-import type { Availability, Contact, Credential, HelpRequest, Profile, Review, Skill } from '../data/mockData';
+import type { Availability, Contact, Credential, HelpRequest, Profile, Review, Skill } from '../types/profile';
 
 const titleCase = (value: string) => value.replace(/(^|[_\s-])\w/g, (match) => match.toUpperCase()).replace(/_/g, ' ');
 

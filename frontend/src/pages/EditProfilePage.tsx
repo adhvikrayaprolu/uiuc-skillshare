@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Save, Trash2 } from 'lucide-react';
-import { api, shouldUseMocks } from '../lib/api';
+import { api } from '../lib/api';
 import { defaultProfileForm, formFromProfile, saveProfileForm, validateProfileForm, type ProfileFormState } from '../lib/profilePersistence';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
@@ -74,7 +74,7 @@ export function EditProfilePage() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (currentProfile.data && !shouldUseMocks()) {
+    if (currentProfile.data) {
       setForm(formFromProfile(currentProfile.data));
       setSkillsDraft(
         currentProfile.data.profile_skills.map((skill) => ({
@@ -108,7 +108,6 @@ export function EditProfilePage() {
   const dirty = Boolean(currentProfile.data && (JSON.stringify(form) !== JSON.stringify(formFromProfile(currentProfile.data)) || JSON.stringify(skillsDraft) !== JSON.stringify(currentProfile.data.profile_skills.map(skill => ({id: skill.id, skill: skill.skill, confidence_level: skill.confidence_level, description: skill.description || '', is_featured: skill.is_featured})))));
   const unsaved = useUnsavedChanges(dirty && !isSaving);
   const handleSave = async () => {
-    if (shouldUseMocks()) {toast.info('Synthetic demo edits are not persisted.'); return;}
     const next = {...form, selectedSkillIds: skillsDraft.map(row => row.skill), skillDetails: Object.fromEntries(skillsDraft.map(row => [row.skill, {confidence_level: row.confidence_level, description: row.description, is_featured: row.is_featured}]))};
     const problems = validateProfileForm(next);
     if (problems.length) {setSaveError(problems[0]); return;}
@@ -121,11 +120,11 @@ export function EditProfilePage() {
     finally {setIsSaving(false);}
   };
 
-  if (currentProfile.isLoading && !shouldUseMocks()) {
+  if (currentProfile.isLoading) {
     return <div className="mx-auto max-w-5xl rounded-2xl border border-[#E2E8F0] bg-white p-6 text-[#64748B]">Loading your profile...</div>;
   }
 
-  if (!shouldUseMocks() && currentProfile.isError) return <div role="alert">Could not load your profile. <button onClick={() => void currentProfile.refetch()}>Try again</button></div>;
+  if (currentProfile.isError) return <div role="alert">Could not load your profile. <button onClick={() => void currentProfile.refetch()}>Try again</button></div>;
   return (
     <div className="mx-auto max-w-5xl">
       <ConfirmDialog
@@ -179,7 +178,7 @@ export function EditProfilePage() {
                 <Input label="Headline" value={form.headline} onChange={(value) => update('headline', value)} />
                 <Textarea label="Bio" value={form.bio} onChange={(value) => update('bio', value)} />
                 <Input label="Interests" value={form.interests} onChange={(value) => update('interests', value)} placeholder="Comma-separated interests" />
-                <label className="block text-sm">Optional avatar (image up to 2 MB)<input type="file" accept="image/*" disabled={avatarPending || shouldUseMocks() || dirty} onChange={async event => {const file = event.target.files?.[0]; if (!file) return; const payload = new FormData(); payload.append('avatar', file); setAvatarPending(true); try {await api.post('/profiles/me/avatar/', payload, {headers: {'Content-Type': 'multipart/form-data'}}); await currentProfile.refetch(); toast.success('Avatar saved.');} catch (error) {setSaveError(apiErrorMessage(error));} finally {setAvatarPending(false);}}}/></label>
+                <label className="block text-sm">Optional avatar (image up to 2 MB)<input type="file" accept="image/*" disabled={avatarPending || dirty} onChange={async event => {const file = event.target.files?.[0]; if (!file) return; const payload = new FormData(); payload.append('avatar', file); setAvatarPending(true); try {await api.post('/profiles/me/avatar/', payload, {headers: {'Content-Type': 'multipart/form-data'}}); await currentProfile.refetch(); toast.success('Avatar saved.');} catch (error) {setSaveError(apiErrorMessage(error));} finally {setAvatarPending(false);}}}/></label>
               </div>
             )}
 

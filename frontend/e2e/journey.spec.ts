@@ -73,6 +73,16 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
   const nativeDialogs: string[] = []; for (const p of [h, s]) p.on('dialog', dialog => { nativeDialogs.push(dialog.message()); void dialog.dismiss(); });
   try {
     await s.goto('/'); await audit(s,'landing');
+    await expect(s).toHaveTitle('Illini SkillShare: swap skills with Illinois students');
+    const ogImage = await s.locator('meta[property="og:image"]').getAttribute('content');
+    expect(ogImage).toMatch(/^https?:\/\/[^/]+\/og-image\.png$/);
+    expect((await s.request.get(`${app}/og-image.png`)).headers()['content-type']).toBe('image/png');
+    expect((await s.request.get(`${app}/favicon.svg`)).status()).toBe(200);
+    const robots = await s.request.get(`${app}/robots.txt`); expect(await robots.text()).toContain('Disallow: /api/');
+    expect(await (await s.request.get(`${app}/sitemap.xml`)).text()).toContain('/guidelines</loc>');
+    expect((await s.request.get(`${app}/`)).headers()['x-robots-tag']).toBeUndefined();
+    expect((await s.request.get(`${app}/home`)).headers()['x-robots-tag']).toBe('noindex');
+    await s.goto('/no-such-page'); await expect(s).toHaveTitle('Page not found · Illini SkillShare'); await s.goto('/');
     await s.screenshot({path:path.resolve('../docs/screenshots/landing-desktop.png'),fullPage:true});
     await s.getByRole('link',{name:'See how it works'}).click(); await expect(s).toHaveURL(/#how-it-works$/);
     await h.goto('/'); await audit(h,'mobile landing');
@@ -121,6 +131,7 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
       await expect(next).toBeEnabled(); await next.click(); await expect(s.getByText('Page 2',{exact:true})).toBeVisible();
       await s.getByRole('button',{name:'Previous page',exact:true}).click(); await expect(s.getByText('Page 1',{exact:true})).toBeVisible();
     }
+    await expect(s).toHaveTitle('Discover · Illini SkillShare');
     await s.getByRole('textbox',{name:'Search helpers'}).fill('React');
     await expect(s.getByText('Local test helper',{exact:true})).toBeVisible(); await audit(s,'discovery');
     await s.screenshot({path:path.resolve('../docs/screenshots/discovery-desktop.png'),fullPage:true});
@@ -208,7 +219,9 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
     await expect(h.locator(`a[href="${requestPath}"]`).first()).toBeVisible(); await h.getByRole('button',{name:'Mark all read',exact:true}).click();
     await expect(h.getByRole('button',{name:'Mark all read',exact:true})).toHaveCount(0);
     await h.reload(); await h.getByRole('button',{name:'Notifications',exact:true}).click(); await expect(h.getByRole('button',{name:'Mark all read',exact:true})).toHaveCount(0);
-    await s.goto('/analytics'); await audit(s,'personal analytics');
+    await s.goto('/analytics'); await audit(s,'personal analytics'); await expect(s).toHaveTitle('Analytics · Illini SkillShare');
+    await expect(s.getByRole('heading',{name:'Launch metrics'})).toHaveCount(0);
+    expect((await s.request.post(`${app}/api/client-errors/`,{data:{message:'Local e2e probe for alice@illinois.edu',path:'/requests/12',release:'e2e'}})).status()).toBe(204);
     await s.goto('/settings'); await s.getByRole('button',{name:'Sign out',exact:true}).click(); await expect(s).toHaveURL(/\/login$/);
     expect((await s.request.get(`${app}/api/auth/me/`)).status()).toBe(401);
     await s.goto('/home'); await expect(s).toHaveURL(/\/login$/);

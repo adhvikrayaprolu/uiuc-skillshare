@@ -13,6 +13,7 @@ from profiles.policy import visible_profiles, visible_feedback
 from profiles.serializers import PublicStudentProfileListSerializer, StudentProfileSerializer
 from taxonomy.models import SkillCategory, SkillTag
 from taxonomy.serializers import SkillCategorySerializer, SkillTagSerializer
+from .metrics import launch_metrics
 from .models import AnalyticsEvent
 
 
@@ -221,6 +222,7 @@ def analytics_payload(request):
     connections_count = HelpRequest.objects.filter(status__in=[HelpRequest.Status.ACCEPTED, HelpRequest.Status.COMPLETED]).count()
     return {
             "user_summary": personal,
+            "launch_metrics": launch_metrics(),
             "network_summary": {
                 "total_users": User.objects.count(),
                 "total_profiles": StudentProfile.objects.count(),

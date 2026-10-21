@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
-from common.spa import index
+from common.spa import index, robots, sitemap
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 
@@ -21,4 +21,8 @@ urlpatterns = [
 
 
 
-urlpatterns += [re_path(r"^(?P<path>.*)$", index, name="frontend")]
+urlpatterns += [
+    path("robots.txt", robots, name="robots"),
+    path("sitemap.xml", sitemap, name="sitemap"),
+    re_path(r"^(?P<path>.*)$", index, name="frontend"),
+]

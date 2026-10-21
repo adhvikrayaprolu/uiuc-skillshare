@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getAnalyticsSummary } from '../lib/analyticsApi';
+import { LaunchMetricsPanel } from '../components/analytics/LaunchMetricsPanel';
 
 export function AnalyticsPage() {
   const analyticsQuery = useQuery({
@@ -9,13 +10,14 @@ export function AnalyticsPage() {
   });
 
   if (analyticsQuery.isLoading) {
-    return <div className="text-[#64748B]">Loading analytics...</div>;
+    return <p role="status" className="text-[#64748B]">Loading analytics…</p>;
   }
 
   if (analyticsQuery.isError || !analyticsQuery.data) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-        Could not load analytics summary.
+      <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <span>Could not load analytics summary.</span>
+        <button type="button" onClick={() => void analyticsQuery.refetch()} className="rounded-lg border border-red-300 bg-white px-3 py-1 font-medium hover:bg-red-100">Try again</button>
       </div>
     );
   }
@@ -37,7 +39,7 @@ export function AnalyticsPage() {
     { label: 'Total Help Requests', value: network.total_help_requests },
     { label: 'Total Connections', value: network.connections_count },
   ];
-  const statusOrder = ['pending', 'accepted', 'completed', 'declined', 'cancelled'];
+  const statusOrder = ['pending', 'accepted', 'completed', 'declined', 'cancelled', 'expired'];
   const statusCounts = statusOrder.map((status) => ({
     status,
     count: network.request_status_counts[status] || 0,
@@ -68,6 +70,7 @@ export function AnalyticsPage() {
         </div>
       </section>
 
+      {data.launch_metrics && <LaunchMetricsPanel metrics={data.launch_metrics} />}
       {data.network_summary && <>
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-[#0F172A]">Peer Network Insights</h2>

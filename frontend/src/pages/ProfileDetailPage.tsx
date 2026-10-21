@@ -55,9 +55,8 @@ export function ProfileDetailPage() {
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [location.hash]);
 
-  if (!profileQuery.data && !profileQuery.isError) return <p role="status" className="p-6">Loading profile…</p>;
-
-  if (!profileQuery.data) {
+  // Check the error first: after a block the refetch fails while the old profile is still cached.
+  if (profileQuery.isError) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white p-10 text-center">
         <h1 className="mb-2 text-xl font-semibold text-[#0F172A]">Profile could not be loaded</h1>
@@ -68,6 +67,7 @@ export function ProfileDetailPage() {
       </div>
     );
   }
+  if (!profileQuery.data) return <p role="status" className="p-6">Loading profile…</p>;
   const profile = profileQuery.data.profile;
   const similarProfiles = similarQuery.isError ? [] : similarQuery.data?.profiles ?? [];
   const isProfileSaved = savedActions.savedProfileIds.has(profile.id);

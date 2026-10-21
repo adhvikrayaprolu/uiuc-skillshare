@@ -73,15 +73,15 @@ export function LandingPage() {
               <p className="mb-8 text-lg text-white sm:text-xl">
                 Find another student to swap skills with, or ask someone for a hand. Teach Python, learn Figma. Review a resume, get help with SQL.
               </p>
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <Link to="/login" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#B83E00] px-8 py-4 font-semibold text-white transition-colors hover:bg-[#9A3400]">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Link to="/login" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#B83E00] px-6 py-4 font-semibold text-white transition-colors hover:bg-[#9A3400]">
                   Get started
                   <ArrowRight className="h-5 w-5" aria-hidden="true" />
                 </Link>
-                <a href="#how-it-works" className="inline-flex items-center justify-center rounded-xl border border-white/40 px-8 py-4 font-semibold text-white transition-colors hover:bg-white/10">
+                <a href="#how-it-works" className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-white/40 px-6 py-4 font-semibold text-white transition-colors hover:bg-white/10">
                   See how it works
                 </a>
-                <DemoSignInButton className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 font-semibold text-[#13294B] transition-colors hover:bg-[#F1F5F9] disabled:opacity-70">
+                <DemoSignInButton className="inline-flex items-center justify-center whitespace-nowrap rounded-xl bg-white px-6 py-4 font-semibold text-[#13294B] transition-colors hover:bg-[#F1F5F9] disabled:opacity-70">
                   Try the demo
                 </DemoSignInButton>
               </div>

@@ -18,6 +18,7 @@ import { useToast } from '../components/ui/ToastProvider';
 import { api } from '../lib/api';
 import type { ContactMethodType, RequestKind } from '../types/api';
 import { getEndorsements, getReviews } from '../lib/interactionsApi';
+import { formatDate } from '../lib/requests';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 
 export function ProfileDetailPage() {
@@ -277,7 +278,7 @@ export function ProfileDetailPage() {
                     ) : (
                       <span className="text-sm font-medium text-[#0F172A]">{review.reviewer_name || 'Student'}</span>
                     )}
-                    <span className="text-xs text-[#64748B]">· {review.created_at?.slice(0, 10)}</span>
+                    <span className="text-xs text-[#64748B]">· {formatDate(review.created_at)}</span>
                   </div>
                   <p className="text-sm text-[#64748B]">{review.comment}</p>
                 </div>

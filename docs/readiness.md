@@ -1,10 +1,11 @@
 # Readiness evidence
 
-Verified locally on 2026-10-18 on `codex/42-launch-readiness`, the top of the stacked roadmap PRs ([#31](https://github.com/adhvikrayaprolu/uiuc-skillshare/pull/31) through the launch-readiness PR). None of it is merged; main is not this branch. See [tracker #5](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/5) for GitHub CI and PR status.
+Verified locally on 2026-10-21 on `codex/46-demo-ready`, which builds on the stacked roadmap PRs ([#31](https://github.com/adhvikrayaprolu/uiuc-skillshare/pull/31) through [#43](https://github.com/adhvikrayaprolu/uiuc-skillshare/pull/43)). None of it is merged into main yet. See [tracker #5](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/5) for PR status.
 
 | Status | Evidence / remaining gate |
 |---|---|
-| Local application readiness | `make check` passed: 158 PostgreSQL regressions, 71 frontend tests, lint, types/production build, generated API validation, migrations and offline production settings. The real Chromium two-member journey (setup, discovery, swap request, completion, feedback, report, block, alerts by email, policy pages, titles, robots/sitemap, share image) passed with keyboard, mobile overflow and automated WCAG checks. |
+| Local application readiness | `make check` passed in its isolated Compose project: 169 PostgreSQL tests, 83 frontend tests, lint, strict types and the production build, OpenAPI validation, migrations, production settings (including refusing `DEMO_MODE`), runtime-role permissions and the backup/restore rehearsal. The Chromium two-member journey (setup, discovery, swap request, completion, feedback, report, block, email alerts, policy pages, titles, robots/sitemap, share image) passed with keyboard, mobile overflow and axe WCAG checks. |
+| Demo network | `make dev` seeds the fictional demo network. `make smoke` passed 8 checks through the public origin, and `make a11y` found no axe violations, console errors or failed requests on any screen at 1440px and 390px. `npm audit` and `pip-audit` report 0 known vulnerabilities. |
 | Launch basics | Per-screen titles, canonical/Open Graph/Twitter tags filled from `APP_PUBLIC_URL`, a 1200×630 share image, favicon, `robots.txt`, sitemap and `X-Robots-Tag: noindex` on signed-in screens. Crashes show a recovery screen instead of a blank page. |
 | Error monitoring | First-party: the browser posts scrubbed, deduplicated reports to `/api/client-errors/` (throttled, no session), and staff read them in the Django admin. No third-party service is configured. Sentry or similar needs an account and approval. |
 | Launch metrics | Staff see the product-plan success measures on `/analytics`, computed from existing records: setup completion, time to first match, sent a request within 7 days, acceptance, response time, completion and feedback. Values are `—` until there is data. No real-user numbers exist yet. |
@@ -15,20 +16,16 @@ Verified locally on 2026-10-18 on `codex/42-launch-readiness`, the top of the st
 
 These steps can't be done or verified from this repository without decisions and access that only the owner can grant:
 
-- Hosting, a domain and HTTPS: choose a host, set `APP_PUBLIC_URL`/`ALLOWED_HOSTS`, and deploy from the reviewed stack.
-- A Google OAuth client for the production origin (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, built into the frontend too).
-- An SMTP provider with a verified sender, plus SPF/DKIM so codes and alerts land in inboxes.
+- Hosting, a domain and HTTPS: choose a host, set `APP_PUBLIC_URL`/`ALLOWED_HOSTS`, and deploy from the reviewed stack ([#47](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/47)).
+- A Google OAuth client for the production origin (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, built into the frontend too) ([#48](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/48)).
+- An SMTP provider with a verified sender, plus SPF/DKIM so codes and alerts land in inboxes ([#48](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/48)).
 - A Supabase project (database role setup and private avatar bucket) following the [operations runbook](operations.md).
-- A staging environment for a pilot cohort before public launch.
+- A staging environment for a pilot cohort before public launch ([#49](https://github.com/adhvikrayaprolu/uiuc-skillshare/issues/49)).
 - Optional third-party error monitoring (for example Sentry) if the first-party reports aren't enough.
 - A scheduled `dispatch_jobs --loop` process on the host for email retries, request expiry, skill alerts and the weekly digest.
 
-## Earlier evidence
+## Matching benchmark
 
-A separate disposable Compose project started on fresh volumes with **zero seeded accounts and 35 approved skills**. Its synthetic fixture persisted across app/database/Redis restart. With database or Redis stopped, liveness remained 200 and readiness returned 503. Only its disposable volumes were removed; the running application's data was preserved.
-
-Keyword ranking: 30/30 covered tasks placed a suitable helper in the top three on 225 synthetic peers. The documented five-sample benchmark measured a median of about 29 ms locally. It is a bounded fixture benchmark, not a campus-scale SLA or semantic-quality claim. Detailed matching and browser methodology are linked in [matching](matching.md) and [browser verification](browser-verification.md).
-
-Python locked-dependency and frontend audits found no known vulnerabilities at the time of that verification. A filename-only scan found no obvious credential patterns or tracked build/cache/database/environment artifacts; this is not proof that secrets have never existed in history. No credentials were revoked and history was not rewritten.
+Keyword ranking placed a suitable helper in the top three for 30 of 30 covered tasks across 225 synthetic peers, with a median of about 29 ms over five local runs. It's a bounded fixture benchmark, not a campus-scale SLA or a measure of semantic quality. See [matching](matching.md) and [browser verification](browser-verification.md).
 
 Remaining release gates: review and merge the stack, complete the blocked items above, exercise HTTPS/Google/SMTP/Supabase/storage recovery on that host, and validate real-user relevance with a pilot. There is no deployment or production-data migration in this implementation. Infrastructure is awaiting review, not STABLE on main.

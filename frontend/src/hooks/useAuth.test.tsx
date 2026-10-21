@@ -39,6 +39,13 @@ it('treats a refused session as signed out without retrying', async () => {
   await screen.findByText('Anonymous');
   expect(api.getCurrentUser).toHaveBeenCalledOnce();
 });
+it('stops restoring when the session expires mid-restore', async () => {
+  api.getCurrentUser.mockReturnValue(new Promise(() => {}));
+  view(new QueryClient());
+  await waitFor(() => expect(api.getCurrentUser).toHaveBeenCalled());
+  window.dispatchEvent(new Event('skillshare:session-expired'));
+  await screen.findByText('Anonymous');
+});
 it('revokes the server session and clears account-specific cached data', async () => {
   const client = new QueryClient(); view(client); await screen.findByText(alice.email);
   client.setQueryData(['private-profile'], {secret: 'Alice data'});

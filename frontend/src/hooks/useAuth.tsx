@@ -48,13 +48,15 @@ export function AuthProvider({children}: {children: ReactNode}) {
     let active = true;
     clearAuth();
     // Ask for the member only when a session cookie exists, so signed-out visits log no 401.
-    queryClient.fetchQuery({queryKey: ['auth-config'], queryFn: getAuthConfig, staleTime: Infinity})
+    // Called directly rather than through the query cache, which an expiry clears and cancels.
+    getAuthConfig()
       .then((config) => (config.authenticated ? restoreMember().then(mapUser) : null))
       .then((next) => {if (active) setUser(next);}).catch(() => {if (active) setUser(null);}).finally(() => {if (active) setIsLoading(false);});
-    const expire = () => {clearAuth(); void replaceUser(null);};
+    // An expiry ends any restore still in flight, so the app never waits on it forever.
+    const expire = () => {active = false; clearAuth(); setIsLoading(false); void replaceUser(null);};
     window.addEventListener('skillshare:session-expired', expire);
     return () => {active = false; window.removeEventListener('skillshare:session-expired', expire);};
-  }, [queryClient, replaceUser]);
+  }, [replaceUser]);
   const value = useMemo<AuthContextValue>(() => ({
     user, isAuthenticated: Boolean(user), isLoading, hasCompletedOnboarding: user?.hasCompletedOnboarding ?? null,
     loginDemo: async (account) => {const next = mapUser(await startDemoSession(account)); await replaceUser(next); return next;},

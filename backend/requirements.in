@@ -11,8 +11,8 @@ requests>=2.31,<3.0
 Pillow>=10.0
 gunicorn>=22.0,<24.0
 whitenoise==6.12.0
-django-allauth[socialaccount]==65.19.7
+django-allauth[socialaccount]==65.20.0
 django-rq==4.2.0
 django-redis==7.0.0
 pgvector==0.5.1
-openai==3.31.0
+openai==3.35.1

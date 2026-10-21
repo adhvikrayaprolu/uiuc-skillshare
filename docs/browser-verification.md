@@ -6,7 +6,9 @@ The two-member journey covers email-code sign-in, useful onboarding, learning go
 
 Automated axe checks apply WCAG 2 A/AA and 2.1 A/AA rules to the landing/login pages, onboarding, dashboard, discovery, filters, profiles, request modal, requests, connections, review form, saved profiles, editor, settings and personal analytics. Keyboard assertions check modal focus trapping, Escape dismissal and focus restoration. The suite checks horizontal overflow at desktop and 390px mobile widths. This is regression evidence, not a claim of full WCAG conformance or validation on every browser or assistive technology.
 
-`frontend/test-results/` contains failure traces/screenshots; `frontend/playwright-report/` contains the HTML report. Both are ignored. Intentional portfolio screenshots live in `docs/screenshots/` and depict labeled synthetic local fixtures, never real members.
+`frontend/test-results/` holds the journey's step screenshots and failure traces, and `frontend/playwright-report/` holds the HTML report. Both are ignored by git.
+
+With `make dev` running, `make a11y` repeats the axe, overflow and console checks on every screen of the demo network at 1440px and 390px, signed out, as the demo student and as the demo moderator. `make screenshots` regenerates the README screenshots in `docs/screenshots/` and the video in `docs/demo/` from the demo account; every person shown is fictional.
 
 For native frontend iteration against the running Compose API:
 

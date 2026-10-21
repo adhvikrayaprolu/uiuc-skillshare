@@ -1,74 +1,34 @@
 # Frontend
 
-React + Vite web app for Illini SkillShare.
-
-## Structure
+React 18 + TypeScript (strict) + Vite single-page app for Illini SkillShare. It always talks to the real API, and in local development the API's seeded demo network supplies the data.
 
 ```text
-frontend/
-├── src/
-│   ├── app/          # App entry and route definitions
-│   ├── components/   # Shared UI, layout controls, cards, modals
-│   ├── data/         # Mock/demo data
-│   ├── hooks/        # Auth, API queries, profile editor state
-│   ├── layouts/      # Public and authenticated layouts
-│   ├── lib/          # API clients, mappers, auth helpers
-│   ├── pages/        # Main route screens
-│   ├── styles/       # Global CSS and theme styles
-│   └── types/        # Shared TypeScript API types
-├── index.html
-├── package.json
-└── vite.config.ts
+src/
+  app/          routes
+  layouts/      public, setup and app shells
+  pages/        one component per screen, with tests alongside
+  components/   shared UI, cards, dialogs, layout controls
+  hooks/        TanStack Query hooks and auth state
+  lib/          API clients, mappers and helpers
+  types/        API and view-model types
+e2e/            two-member Playwright journey (run by make check)
+e2e-tour/       demo-account screenshot tour and accessibility sweep
 ```
-
-## Environment
-
-Copy local env file:
-
-```bash
-cp frontend/.env.example frontend/.env
-```
-
-Main variables:
-
-- `VITE_API_BASE_URL`: backend API base URL. Use `/api` in local dev so Vite proxies to Django on port 8000.
-- `VITE_USE_MOCKS`: `false` uses Django API; `true` uses local mock data.
-- `VITE_GOOGLE_CLIENT_ID`: Google OAuth client ID when real OAuth is wired.
-
-Real `.env` files are local only and gitignored. Do not commit secrets.
 
 ## Run
 
-```bash
-npm --prefix frontend install
-npm --prefix frontend run dev
-```
-
-Open `http://localhost:5173`.
-
-Backend API should run at `http://127.0.0.1:8000/api` when `VITE_USE_MOCKS=false`.
-
-## Validation
+The Docker quick start in the [root README](../README.md#quick-start) serves the built app at http://localhost:8080. For hot reload against that running API:
 
 ```bash
-npm --prefix frontend run lint
-npm --prefix frontend run build
+DEV_API_URL=http://127.0.0.1:8080 npm run dev
 ```
 
-## Main Routes
+Vite proxies `/api` to Django, so cookies and CSRF work on any localhost name and no `.env` file is needed. Set `VITE_GOOGLE_CLIENT_ID` only to show Google sign-in.
 
-- `/`: landing page.
-- `/login`: Illinois email-code sign-in.
-- `/welcome`: four-step first-run setup (required before the app).
-- `/welcome/matches`: first suggestions right after setup.
-- `/home`: signed-in home with items needing attention, suggestions and a profile checklist.
-- `/discover`: discovery with tabs `?tab=all` (search all helpers), `?tab=swaps` (two-way swap matches) and `?tab=saved`.
-- `/profiles/:id`: full student profile, swap summary and the help/swap request dialog.
-- `/me`: your own profile preview.
-- `/me/edit`: edit own profile (`?tab=basic|teaching|learning|availability|contact|evidence|privacy`).
-- `/dashboard`, `/onboarding`, `/profile/edit`, `/saved`: redirects kept for old links.
-- `/requests`: inbox with `?tab=needs_action|active|past`.
-- `/requests/:id`: one request or swap with its timeline, actions, shared contacts and feedback.
-- `/connections`: redirects to `/requests?tab=active`.
-- `/analytics`: activity and network analytics.
-- `/settings`: settings.
+## Check
+
+```bash
+npx tsc -b && npm run lint && npm test && npm run build
+```
+
+Browser checks run in a version-matched Playwright container from the repo root: `make browser-check`, `make a11y` and `make screenshots`.

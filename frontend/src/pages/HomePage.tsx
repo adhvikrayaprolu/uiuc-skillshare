@@ -70,7 +70,7 @@ export function HomePage() {
                       <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#FFF3EA]"><Icon className="h-4 w-4 text-[#B83E00]" aria-hidden="true" /></span>
                       <p className="min-w-0 text-sm text-[#0F172A]">
                         <span className="font-semibold">{item.action === 'respond' ? item.peer.name : `“${item.topic}”`}</span>{' '}
-                        {item.action === 'respond' ? <>{copy.label} with <span className="font-medium">{item.skill || item.topic}</span></> : <>with {item.peer.name} {copy.label}</>}
+                        {item.action === 'respond' ? <>{item.kind === 'swap' ? 'proposed a swap for your' : 'asked for help with'} <span className="font-medium">{item.skill || item.topic}</span></> : <>with {item.peer.name} {copy.label}</>}
                       </p>
                     </div>
                     <Link to={item.href ?? `/requests/${item.request_id}`} aria-label={`${copy.verb}: ${item.topic}`} className="rounded-lg border border-[#13294B] px-3 py-1.5 text-center text-sm font-medium text-[#13294B] hover:bg-[#E8EEF7]">{copy.verb}</Link>

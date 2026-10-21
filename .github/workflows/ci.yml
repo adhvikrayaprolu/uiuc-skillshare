@@ -78,7 +78,7 @@ jobs:
       - run: npm run build
 
   e2e:
-    name: README quick start and smoke test
+    name: README quick start, smoke test and accessibility sweep
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -106,6 +106,15 @@ jobs:
           test "$before" = "$(sha256sum .env)"
       - name: Smoke test through the public origin
         run: make smoke
+      - name: Accessibility and console sweep of every screen
+        run: make a11y
+      - name: Sweep evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sweep-failure-evidence
+          path: frontend/test-results/
+          retention-days: 7
       - name: Service diagnostics
         if: failure()
         run: docker compose logs --tail 100

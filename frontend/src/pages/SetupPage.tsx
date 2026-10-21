@@ -262,7 +262,12 @@ export function SetupPage() {
               Anything specific? <span className="font-normal text-[#475569]">(optional)</span>
               <textarea rows={3} maxLength={500} className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" value={form.learningGoalNotes} onChange={(event) => update('learningGoalNotes', event.target.value)} placeholder="e.g. Preparing for a product design internship interview" />
             </label>
-            <p className="text-xs text-[#475569]">Your learning goals stay private. They only shape who we suggest to you.</p>
+            <Toggle
+              checked={form.learningGoalsPublic}
+              onChange={(checked) => update('learningGoalsPublic', checked)}
+              label="Show these on my profile so people can propose swaps"
+              hint={form.learningGoalsPublic ? 'Members who teach these can offer a swap. Your notes stay private.' : 'Hidden. They only shape who we suggest to you.'}
+            />
           </div>
         )}
 

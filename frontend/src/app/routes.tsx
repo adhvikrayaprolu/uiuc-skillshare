@@ -15,7 +15,6 @@ import { SetupPage } from '../pages/SetupPage';
 import { WelcomeMatchesPage } from '../pages/WelcomeMatchesPage';
 import { MyProfilePage } from '../pages/MyProfilePage';
 import { ProfileDetailPage } from '../pages/ProfileDetailPage';
-import { SavedProfilesPage } from '../pages/SavedProfilesPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { ConnectionsPage } from '../pages/ConnectionsPage';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
@@ -57,7 +56,6 @@ export const router = createBrowserRouter([
           { path: "profiles/:id", Component: ProfileDetailPage },
           { path: "me", Component: MyProfilePage },
           { path: "me/edit", Component: EditProfilePage },
-          { path: "saved", Component: SavedProfilesPage },
           { path: "connections", Component: ConnectionsPage },
           { path: "requests", Component: HelpRequestsPage },
           { path: "settings", Component: SettingsPage },
@@ -69,6 +67,7 @@ export const router = createBrowserRouter([
   { path: "/dashboard", element: <Redirect to={APP_HOME} /> },
   { path: "/onboarding", element: <Redirect to={SETUP_HOME} /> },
   { path: "/profile/edit", element: <Redirect to={EDIT_PROFILE} /> },
+  { path: "/saved", element: <Navigate to="/discover?tab=saved" replace /> },
   { path: "/app/*", element: <Navigate to={APP_HOME} replace /> },
   { path: "/404", Component: NotFoundPage },
   { path: "*", Component: NotFoundPage },

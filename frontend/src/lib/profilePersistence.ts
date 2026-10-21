@@ -4,6 +4,7 @@ import type { ContactMethodType, CredentialType, ProfileDetail, SkillTag, Studen
 export interface ProfileFormState {
   learningGoalIds: number[];
   learningGoalNotes: string;
+  learningGoalsPublic: boolean;
   shareContacts: boolean;
   embeddingConsent: boolean;
   skillDetails: Record<number, {confidence_level: "beginner" | "intermediate" | "advanced" | "expert"; description: string; is_featured?: boolean}>;
@@ -26,7 +27,7 @@ export interface ProfileFormState {
 
 export function defaultProfileForm(email = ''): ProfileFormState {
   return {
-    learningGoalIds: [], learningGoalNotes: '', shareContacts: true, embeddingConsent: false, skillDetails: {},
+    learningGoalIds: [], learningGoalNotes: '', learningGoalsPublic: true, shareContacts: true, embeddingConsent: false, skillDetails: {},
     displayName: '',
     major: '',
     year: '',
@@ -47,7 +48,7 @@ export function defaultProfileForm(email = ''): ProfileFormState {
 
 export function formFromProfile(profile: ProfileDetail): ProfileFormState {
   return {
-    learningGoalIds: profile.learning_goals || [], learningGoalNotes: profile.learning_goal_notes || "", shareContacts: profile.share_contacts || false, embeddingConsent: profile.embedding_consent || false,
+    learningGoalIds: profile.learning_goals || [], learningGoalNotes: profile.learning_goal_notes || "", learningGoalsPublic: profile.learning_goals_public ?? false, shareContacts: profile.share_contacts || false, embeddingConsent: profile.embedding_consent || false,
     skillDetails: Object.fromEntries(profile.profile_skills.map(skill => [skill.skill, {confidence_level: skill.confidence_level, description: skill.description || "", is_featured: skill.is_featured}])),
     displayName: profile.display_name,
     major: profile.major,
@@ -122,7 +123,7 @@ export function validateProfileForm(form: ProfileFormState) {
 export async function saveProfileForm(form: ProfileFormState, rawSkills: SkillTag[] = []) {
   if (rawSkills.length && form.selectedSkillIds.some(id => !rawSkills.some(skill => skill.id === id))) throw new Error("Choose approved skills from the current list.");
   const profilePayload = {
-    learning_goals: form.learningGoalIds, learning_goal_notes: form.learningGoalNotes.trim(), share_contacts: form.shareContacts, embedding_consent: form.embeddingConsent,
+    learning_goals: form.learningGoalIds, learning_goal_notes: form.learningGoalNotes.trim(), learning_goals_public: form.learningGoalsPublic, share_contacts: form.shareContacts, embedding_consent: form.embeddingConsent,
     display_name: form.displayName.trim(),
     major: form.major.trim(),
     year: form.year,

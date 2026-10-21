@@ -76,7 +76,13 @@ class HelpRequest(models.Model):
         COMPLETED = "completed", "Completed"
         CANCELLED = "cancelled", "Cancelled"
 
+    class Kind(models.TextChoices):
+        HELP = "help", "Help"
+        SWAP = "swap", "Swap"
+
     seeker = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="sent_help_requests", on_delete=models.CASCADE)
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.HELP)
+    offered_skill = models.ForeignKey("taxonomy.SkillTag", null=True, blank=True, on_delete=models.SET_NULL, related_name="offered_in_swaps")
     helper_profile = models.ForeignKey("profiles.StudentProfile", related_name="received_help_requests", on_delete=models.CASCADE)
     topic = models.CharField(max_length=180)
     message = models.TextField()

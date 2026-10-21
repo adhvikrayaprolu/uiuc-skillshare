@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from common.analytics import track_event
 from profiles.models import StudentProfile
 from profiles.serializers import PublicStudentProfileListSerializer
-from .services import apply_discovery_filters, recommend_profiles_for_user, rank_profiles, semantic_rank_profiles
+from .services import apply_discovery_filters, recommend_profiles_for_user, rank_profiles, semantic_rank_profiles, swap_matches_for_user
 
 
 class DiscoverySearchView(APIView):
@@ -34,6 +34,21 @@ class DiscoverySearchView(APIView):
         response.data["matching"]["requested_mode"] = mode or "keyword"
         if not is_semantic:
             response.data["matching"]["fallback_reason"] = None
+        return response
+
+
+class SwapMatchesView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PublicStudentProfileListSerializer
+
+    def get(self, request):
+        queryset = apply_discovery_filters(StudentProfile.objects.all(), {}, user=request.user)
+        ranked = swap_matches_for_user(request.user, queryset)
+        paginator = PageNumberPagination()
+        page = paginator.paginate_queryset([profile for _, profile in ranked], request)
+        serializer = PublicStudentProfileListSerializer(page, many=True, context={"request": request})
+        response = paginator.get_paginated_response(serializer.data)
+        response.data["matching"] = ranked.metadata
         return response
 
 

@@ -143,7 +143,16 @@ export function HelpRequestsPage() {
 
                   <div className="mb-3">
                     <h4 className="mb-1 font-medium text-[#0F172A]">{request.topic}</h4>
-                    <SkillChip skill={request.relatedSkill} />
+                    {request.kind === 'swap' && request.offeredSkill ? (
+                      <p className="flex flex-wrap items-center gap-2 text-sm text-[#475569]">
+                        <span className="rounded-full bg-[#FFF3EA] px-2 py-0.5 text-xs font-semibold text-[#9A3400]">Swap</span>
+                        {activeTab === 'outgoing'
+                          ? <>You learn <SkillChip skill={request.relatedSkill} /> and teach <SkillChip skill={request.offeredSkill} /></>
+                          : <>You teach <SkillChip skill={request.relatedSkill} /> and learn <SkillChip skill={request.offeredSkill} /></>}
+                      </p>
+                    ) : (
+                      <SkillChip skill={request.relatedSkill} />
+                    )}
                   </div>
 
                   <div className="mb-3 rounded-lg bg-[#F8FAFC] p-3">

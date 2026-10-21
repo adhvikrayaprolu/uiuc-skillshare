@@ -26,7 +26,7 @@ import { useHelpRequests } from '../hooks/useHelpRequests';
 
 const navItems = [
   { path: APP_HOME, label: 'Home', icon: Home, matches: [APP_HOME] },
-  { path: '/discover', label: 'Discover', icon: Compass, matches: ['/discover', '/profiles', '/saved'] },
+  { path: '/discover', label: 'Discover', icon: Compass, matches: ['/discover', '/profiles'] },
   { path: '/requests', label: 'Requests', icon: MessageCircle, matches: ['/requests', '/connections'] },
   { path: MY_PROFILE, label: 'Profile', icon: User, matches: [MY_PROFILE] },
 ];

@@ -86,6 +86,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             "interests",
             "learning_goals",
             "learning_goal_notes",
+            "learning_goals_public",
             "share_contacts",
             "embedding_consent", "notification_email_enabled",
             "availability_confirmed_at",
@@ -121,6 +122,7 @@ class StudentProfileCreateUpdateSerializer(serializers.ModelSerializer):
             "interests",
             "learning_goals",
             "learning_goal_notes",
+            "learning_goals_public",
             "share_contacts",
             "embedding_consent", "notification_email_enabled",
             "availability_confirmed_at",
@@ -184,6 +186,7 @@ class PublicStudentProfileListSerializer(FeedbackPolicyMixin, serializers.ModelS
     semantic_reasons = serializers.SerializerMethodField()
     has_resume = serializers.SerializerMethodField()
     availability_summary = serializers.SerializerMethodField()
+    swap = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
@@ -194,6 +197,7 @@ class PublicStudentProfileListSerializer(FeedbackPolicyMixin, serializers.ModelS
             "year",
             "headline",
             "profile_picture",
+            "swap",
             "top_skills",
             "top_categories",
             "open_to_connect",
@@ -234,6 +238,9 @@ class PublicStudentProfileListSerializer(FeedbackPolicyMixin, serializers.ModelS
     def get_review_count(self, obj) -> int:
         value = getattr(obj, "review_count", None)
         return value if value is not None else self._reviews(obj).count()
+
+    def get_swap(self, obj) -> dict | None:
+        return getattr(obj, "swap_match", None)
 
     def get_match_score(self, obj) -> float | None:
         return getattr(obj, "match_score", None)
@@ -278,6 +285,8 @@ class PublicStudentProfileDetailSerializer(FeedbackPolicyMixin, serializers.Mode
     reviews_preview = serializers.SerializerMethodField()
     endorsement_count = serializers.SerializerMethodField()
     top_endorsed_skills = serializers.SerializerMethodField()
+    wants_to_learn = serializers.SerializerMethodField()
+    swap = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
@@ -306,7 +315,18 @@ class PublicStudentProfileDetailSerializer(FeedbackPolicyMixin, serializers.Mode
             "reviews_preview",
             "endorsement_count",
             "top_endorsed_skills",
+            "wants_to_learn",
+            "swap",
         ]
+
+    def get_wants_to_learn(self, obj) -> list[dict]:
+        if not obj.learning_goals_public:
+            return []
+        return [{"id": skill.id, "name": skill.name} for skill in obj.learning_goals.filter(is_approved=True).order_by("name")]
+
+    def get_swap(self, obj) -> dict | None:
+        from .swaps import swap_summary
+        return swap_summary(self.context["request"].user, obj)
 
     def get_contact_methods(self, obj) -> list[dict]:
         from .policy import can_share_contacts

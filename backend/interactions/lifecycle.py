@@ -38,6 +38,17 @@ def create_request(serializer, data):
     skill = data.get("related_skill")
     if skill and not helper.profile_skills.filter(skill=skill, skill__is_approved=True).exists():
         raise serializers.ValidationError({"related_skill": "Choose a skill this helper offers."})
+    offered = data.get("offered_skill")
+    if data.get("kind", HelpRequest.Kind.HELP) == HelpRequest.Kind.SWAP:
+        if not skill:
+            raise serializers.ValidationError({"related_skill": "Choose the skill you want to learn in this swap."})
+        own = getattr(user, "profile", None)
+        if not offered or not own or not own.profile_skills.filter(skill=offered, skill__is_approved=True).exists():
+            raise serializers.ValidationError({"offered_skill": "Choose one of your own skills to offer in return."})
+        if offered.pk == skill.pk:
+            raise serializers.ValidationError({"offered_skill": "Offer a different skill from the one you want to learn."})
+    elif offered:
+        raise serializers.ValidationError({"offered_skill": "Only swap proposals offer a skill in return."})
     digest = hashlib.sha256(json.dumps({key: str(value.pk if hasattr(value, "pk") else value) for key, value in data.items() if key not in {"idempotency_key", "seeker"}}, sort_keys=True).encode()).hexdigest()
     key = data.get("idempotency_key")
     if key:
@@ -53,7 +64,7 @@ def create_request(serializer, data):
         raise Conflict("An active request for this topic already exists.")
     data.update(seeker=user, status="pending", version=1, content_hash=digest, topic_key=normalized)
     obj = HelpRequest.objects.create(**data)
-    track_event(user, "help_request_created", {"help_request_id": obj.pk, "helper_profile_id": helper.pk}, serializer.context["request"])
+    track_event(user, "help_request_created", {"help_request_id": obj.pk, "helper_profile_id": helper.pk, "kind": obj.kind}, serializer.context["request"])
     from common.notifications import notify_request
     notify_request(obj, "created", user.pk)
     return obj

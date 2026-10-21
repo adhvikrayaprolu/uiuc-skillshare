@@ -15,6 +15,7 @@ export interface Profile {
   contacts: Contact[];
   interests: string[];
   reviews?: Review[];
+  swap?: import('../types/api').SwapSummary | null;
 }
 
 export interface Skill {
@@ -60,6 +61,8 @@ export interface HelpRequest {
   helper: Profile;
   topic: string;
   relatedSkill: string;
+  kind?: 'help' | 'swap';
+  offeredSkill?: string | null;
   message: string;
   urgency: 'Low' | 'Medium' | 'High';
   status: 'Pending' | 'Accepted' | 'Declined' | 'Completed' | 'Cancelled';

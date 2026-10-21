@@ -62,13 +62,12 @@ npm --prefix frontend run build
 - `/welcome`: four-step first-run setup (required before the app).
 - `/welcome/matches`: first suggestions right after setup.
 - `/home`: signed-in home with items needing attention, suggestions and a profile checklist.
-- `/discover`: profile search and discovery.
-- `/profiles/:id`: full student profile.
+- `/discover`: discovery with tabs `?tab=all` (search all helpers), `?tab=swaps` (two-way swap matches) and `?tab=saved`.
+- `/profiles/:id`: full student profile, swap summary and the help/swap request dialog.
 - `/me`: your own profile preview.
 - `/me/edit`: edit own profile (`?tab=basic|teaching|learning|availability|contact|evidence|privacy`).
-- `/dashboard`, `/onboarding`, `/profile/edit`: redirects kept for old links.
-- `/saved`: saved profiles.
-- `/requests`: help requests.
+- `/dashboard`, `/onboarding`, `/profile/edit`, `/saved`: redirects kept for old links.
+- `/requests`: help requests and swap proposals.
 - `/connections`: accepted help requests.
 - `/analytics`: activity and network analytics.
 - `/settings`: settings.

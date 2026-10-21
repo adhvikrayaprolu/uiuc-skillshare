@@ -1,6 +1,6 @@
 import {submissionKey as createSubmissionKey} from '../lib/idempotency';
 import { useParams, Link, useLocation } from 'react-router-dom';
-import { MapPin, Clock, Star, Bookmark, Mail, Linkedin, Github, ExternalLink, ArrowLeft } from 'lucide-react';
+import { MapPin, Clock, Star, Bookmark, Mail, Linkedin, Github, ExternalLink, ArrowLeft, ArrowLeftRight } from 'lucide-react';
 import { mockProfiles } from '../data/mockData';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -8,14 +8,14 @@ import { InitialsAvatar } from '../components/ui/InitialsAvatar';
 import { SkillChip } from '../components/ui/SkillChip';
 import { InsightChips } from '../lib/profileInsightBadges';
 import { profileInsightLabels } from '../lib/profileInsightLabels';
-import { HelpRequestModal } from '../components/modals/HelpRequestModal';
+import { RequestModal } from '../components/modals/RequestModal';
 import { useContactClick, useProfile, useSimilarProfiles } from '../hooks/useProfile';
 import { useHelpRequests, useCreateHelpRequest } from '../hooks/useHelpRequests';
 import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { useToast } from '../components/ui/ToastProvider';
 import { api, shouldUseMocks } from '../lib/api';
-import type { ContactMethodType } from '../types/api';
+import type { ContactMethodType, RequestKind } from '../types/api';
 import { createEndorsement, createReview, getEndorsements, getReviews } from '../lib/interactionsApi';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 
@@ -36,7 +36,7 @@ export function ProfileDetailPage() {
   const savedActions = useSavedProfileActions();
   const toast = useToast();
   const [isSaved, setIsSaved] = useState(false);
-  const [showHelpRequest, setShowHelpRequest] = useState(false);
+  const [requestKind, setRequestKind] = useState<RequestKind | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [showEndorseForm, setShowEndorseForm] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
@@ -147,6 +147,10 @@ export function ProfileDetailPage() {
         }))
       : reviewsQuery.data;
   const endorsementRows = shouldUseMocks() || !endorsementsQuery.data ? [] : endorsementsQuery.data;
+  const swap = profileQuery.data?.raw?.swap ?? null;
+  const wantsToLearn = profileQuery.data?.raw?.wants_to_learn ?? [];
+  const mySkillNames = (myProfileQuery.data?.profile_skills ?? []).map((row) => row.skill_detail?.name).filter((name): name is string => Boolean(name));
+  const canRequest = !isOwnProfile && profile.openToConnect;
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -200,6 +204,15 @@ export function ProfileDetailPage() {
               </div>
             </div>
 
+            {swap?.is_mutual && (
+              <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#FF5F05]/30 bg-[#FFF3EA] p-4">
+                <ArrowLeftRight className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#B83E00]" aria-hidden="true" />
+                <p className="text-sm text-[#0F172A]">
+                  <span className="font-semibold">Swap match.</span> {profile.name.split(' ')[0]} can teach you {swap.they_teach_you.map((s) => s.name).join(', ')}, and wants to learn {swap.you_can_teach.map((s) => s.name).join(', ')}, which you teach.
+                </p>
+              </div>
+            )}
+
             {/* Match Reasons */}
             {profile.matchReasons && profile.matchReasons.length > 0 && (
               <div className="pt-4 border-t border-[#E2E8F0]">
@@ -251,6 +264,18 @@ export function ProfileDetailPage() {
               ))}
             </div>
           </div>
+
+          {wantsToLearn.length > 0 && (
+            <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
+              <h2 className="text-xl font-semibold text-[#0F172A] mb-4">Wants to learn</h2>
+              <div className="flex flex-wrap gap-2">
+                {wantsToLearn.map((skill) => (
+                  <SkillChip key={skill.id} skill={skill.name} variant={swap?.you_can_teach.some((row) => row.id === skill.id) ? 'featured' : 'default'} />
+                ))}
+              </div>
+              {swap && swap.you_can_teach.length > 0 && <p className="mt-3 text-sm text-[#475569]">Highlighted skills are ones you teach.</p>}
+            </div>
+          )}
 
           {/* Availability */}
           <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0]">
@@ -522,14 +547,21 @@ export function ProfileDetailPage() {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              <button
-                onClick={() => setShowHelpRequest(true)}
-                className="w-full px-4 py-3 bg-[#B83E00] text-white font-medium rounded-xl hover:bg-[#e55505] transition-colors"
-              >
-                Send Help Request
-              </button>
-              <button
-                disabled={!profile.contacts.some(contact => contact.type === 'email')}
+              {canRequest && (swap?.is_mutual ? (
+                <>
+                  <button type="button" onClick={() => setRequestKind('swap')} className="w-full rounded-xl bg-[#B83E00] px-4 py-3 font-medium text-white transition-colors hover:bg-[#9A3412]">Propose a swap</button>
+                  <button type="button" onClick={() => setRequestKind('help')} className="w-full rounded-xl border-2 border-[#13294B] px-4 py-3 font-medium text-[#13294B] transition-colors hover:bg-[#E8EEF7]">Just ask for help</button>
+                </>
+              ) : (
+                <>
+                  <button type="button" onClick={() => setRequestKind('help')} className="w-full rounded-xl bg-[#B83E00] px-4 py-3 font-medium text-white transition-colors hover:bg-[#9A3412]">Ask for help</button>
+                  {mySkillNames.length > 0 && <button type="button" onClick={() => setRequestKind('swap')} className="w-full text-sm font-medium text-[#13294B] underline hover:text-[#B83E00]">Offer a swap instead</button>}
+                </>
+              ))}
+              {!isOwnProfile && !profile.openToConnect && <p className="rounded-xl bg-[#F8FAFC] p-3 text-sm text-[#475569]">{profile.name.split(' ')[0]} isn't taking new requests right now.</p>}
+              {isOwnProfile && <Link to="/me/edit" className="block w-full rounded-xl border-2 border-[#13294B] px-4 py-3 text-center font-medium text-[#13294B] hover:bg-[#E8EEF7]">Edit your profile</Link>}
+              {profile.contacts.some(contact => contact.type === 'email') && <button
+                type="button"
                 onClick={async () => {
                   const email = profile.contacts.find((contact) => contact.type === 'email')?.value;
                   if (!email) {
@@ -542,7 +574,7 @@ export function ProfileDetailPage() {
                 className="w-full px-4 py-3 border-2 border-[#13294B] text-[#13294B] font-medium rounded-xl hover:bg-[#E8EEF7] transition-colors"
               >
                 Copy Email
-              </button>
+              </button>}
             </div>
 
             {/* Privacy Note */}
@@ -556,32 +588,38 @@ export function ProfileDetailPage() {
       </div>
 
       {/* Help Request Modal */}
-      <HelpRequestModal
-        isOpen={showHelpRequest}
-        onClose={() => setShowHelpRequest(false)}
+      <RequestModal
+        isOpen={requestKind !== null}
+        initialKind={requestKind ?? 'help'}
+        onClose={() => setRequestKind(null)}
         recipientName={profile.name}
         recipientSkills={profile.skills.map(s => s.name)}
+        offerSkills={mySkillNames}
+        suggestedLearn={requestKind === 'swap' ? swap?.they_teach_you[0]?.name : undefined}
+        suggestedOffer={swap?.you_can_teach[0]?.name}
         isSubmitting={createHelpRequestMutation.isPending}
         onSubmitRequest={async (payload) => {
+          const rawSkills = taxonomy.data?.rawSkills ?? [];
+          const idFor = (name: string) => (name ? rawSkills.find((s) => s.name === name)?.id : undefined);
+          const relatedSkill = idFor(payload.relatedSkill);
+          const offeredSkill = payload.kind === 'swap' ? idFor(payload.offeredSkill) : undefined;
           try {
-            const rawSkills = taxonomy.data?.rawSkills ?? [];
-            const skillMatch = payload.relatedSkill
-              ? rawSkills.find((s) => s.name === payload.relatedSkill)
-              : undefined;
             await createHelpRequestMutation.mutateAsync({
               helper_profile: profile.id,
               idempotency_key: submissionKey,
+              kind: payload.kind,
               topic: payload.topic,
               message: payload.message,
               urgency: payload.urgency,
               preferred_contact_method: payload.preferredContactMethod as ContactMethodType,
-              ...(skillMatch ? { related_skill: skillMatch.id } : {}),
+              ...(relatedSkill ? { related_skill: relatedSkill } : {}),
+              ...(offeredSkill ? { offered_skill: offeredSkill } : {}),
             });
             setSubmissionKey(createSubmissionKey());
-            toast.success('Help request sent.');
-          } catch {
-            toast.error('Could not send help request.');
-            throw new Error('help request failed');
+            toast.success(payload.kind === 'swap' ? 'Swap proposal sent.' : 'Help request sent.');
+          } catch (error) {
+            toast.error(payload.kind === 'swap' ? 'Could not send the swap proposal.' : 'Could not send help request.');
+            throw error;
           }
         }}
       />

@@ -35,6 +35,7 @@ class StudentProfile(models.Model):
     interests = models.TextField(blank=True)
     learning_goals = models.ManyToManyField("taxonomy.SkillTag", blank=True, related_name="learners")
     learning_goal_notes = models.CharField(max_length=500, blank=True)
+    learning_goals_public = models.BooleanField(default=False)
     share_contacts = models.BooleanField(default=False)
     notification_email_enabled = models.BooleanField(default=False)
     embedding_consent = models.BooleanField(default=False)

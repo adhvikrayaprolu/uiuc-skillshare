@@ -114,7 +114,7 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
     expect(alertBody!.Text).toContain(`/profiles/${seekerId}`); expect(alertBody!.HTML).toContain('View profile'); expect(alertBody!.Text).toContain('Turn off skill alerts');
     await h.goto('/home'); await h.getByRole('button',{name:'Notifications',exact:true}).click();
     await expect(h.locator(`a[href="/profiles/${seekerId}"]`).first()).toBeVisible(); await h.keyboard.press('Escape');
-    await expect(s.getByRole('link',{name:"View Local test helper's profile"})).toBeVisible(); await audit(s,'first matches');
+    await expect(s.getByRole('link',{name:'View profile: Local test helper'})).toBeVisible(); await audit(s,'first matches');
     await s.screenshot({path:path.resolve('test-results/journey/welcome-matches-desktop.png'),fullPage:true});
     await s.getByRole('link',{name:'Go to Home',exact:true}).click(); await expect(s).toHaveURL(/\/home$/);
     await expect(s.getByRole('heading',{name:'Hi, Local',level:1})).toBeVisible(); await audit(s,'home');
@@ -136,8 +136,8 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
     await expect(s.getByText('Local test helper',{exact:true})).toBeVisible(); await audit(s,'discovery');
     await s.screenshot({path:path.resolve('test-results/journey/discovery-desktop.png'),fullPage:true});
     await s.setViewportSize({width:390,height:844}); await audit(s,'mobile discovery');
-    await s.getByRole('button',{name:'Toggle filters'}).click(); await expect(s.getByLabel('Filter by year')).toBeVisible(); await audit(s,'mobile filters');
-    await s.getByRole('button',{name:'Toggle filters'}).click();
+    await s.getByRole('button',{name:/^(Show|Hide) filters$/}).click(); await expect(s.getByLabel('Filter by year')).toBeVisible(); await audit(s,'mobile filters');
+    await s.getByRole('button',{name:/^(Show|Hide) filters$/}).click();
     await s.screenshot({path:path.resolve('test-results/journey/discovery-mobile.png'),fullPage:true});
     await s.goto('/discover?tab=swaps'); await expect(s.getByRole('tab',{name:'Swap matches'})).toHaveAttribute('aria-selected','true');
     const swapCard=s.getByRole('link',{name:'See swap with Local test helper'}); await expect(swapCard).toBeVisible(); await audit(s,'mobile swap matches');

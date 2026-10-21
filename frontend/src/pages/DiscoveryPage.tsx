@@ -205,7 +205,6 @@ function AllHelpersPanel() {
           onClick={() => setShowFilters(!showFilters)}
           className="md:hidden rounded border p-2"
           aria-expanded={showFilters}
-          aria-label="Toggle filters"
         >{showFilters ? 'Hide filters' : 'Show filters'}</button>
         {/* Filter Sidebar */}
         <aside className={`${showFilters ? "block" : "hidden md:block"} w-full md:w-64 lg:w-72 flex-shrink-0`}>

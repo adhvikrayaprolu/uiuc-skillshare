@@ -83,7 +83,7 @@ export function SavedProfilesPanel({ onBrowse }: { onBrowse: () => void }) {
                   }
                 }}
                 className="inline-flex items-center gap-2 rounded-xl border-2 border-[#DC2626] px-4 py-2 text-sm font-medium text-[#DC2626] transition-colors hover:bg-[#DC2626] hover:text-white"
-                aria-label={`Remove ${profile.name} from saved profiles`}
+                aria-label={`Unsave ${profile.name}`}
               >
                 <Trash2 className="h-4 w-4" />
                 Unsave

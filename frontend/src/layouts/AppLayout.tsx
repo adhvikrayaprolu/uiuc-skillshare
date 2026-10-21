@@ -230,11 +230,13 @@ export function AppLayout() {
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
-                  aria-label="Account menu" aria-expanded={showUserMenu}
+                  aria-expanded={showUserMenu}
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="transition-opacity hover:opacity-80"
                 >
-                  <InitialsAvatar name={displayName} size="sm" />
+                  {/* Named by text rather than aria-label so the visible initials never contradict the name. */}
+                  <span className="sr-only">Account menu</span>
+                  <span aria-hidden="true"><InitialsAvatar name={displayName} size="sm" /></span>
                 </button>
                 {showUserMenu && (
                   <UserMenuDropdown

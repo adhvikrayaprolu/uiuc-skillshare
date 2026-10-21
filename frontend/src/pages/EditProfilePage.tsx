@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Save, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
@@ -15,7 +15,7 @@ import {useUnsavedChanges} from '../hooks/useUnsavedChanges';
 import {ConfirmDialog} from '../components/ui/ConfirmDialog';
 import {apiErrorMessage} from '../lib/errors';
 import {useQueryClient} from '@tanstack/react-query';
-import type { ContactMethodType, CredentialType, ProfileSkill, StudentYear } from '../types/api';
+import type { ContactMethodType, CredentialType, ProfileDetail, ProfileSkill, StudentYear } from '../types/api';
 
 const tabs = ['Basics', 'Teaching', 'Learning', 'Availability', 'Contact', 'Links', 'Privacy'];
 const tabParamMap: Record<string, number> = {
@@ -44,7 +44,9 @@ interface SkillDraft {
 
 export function EditProfilePage() {
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(() => tabParamMap[(searchParams.get('tab') || '').toLowerCase()] ?? 0);
+  const [syncedParams, setSyncedParams] = useState(searchParams);
+  const [syncedProfile, setSyncedProfile] = useState<ProfileDetail | undefined>(undefined);
   const auth = useAuth();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -67,15 +69,15 @@ export function EditProfilePage() {
   const [saveError, setSaveError] = useState("");
   const [avatarPending, setAvatarPending] = useState(false);
 
-  useEffect(() => {
-    const key = (searchParams.get('tab') || '').toLowerCase();
-    const idx = tabParamMap[key];
+  // Follow ?tab= links and freshly loaded profiles by adjusting state during render, not in effects.
+  if (syncedParams !== searchParams) {
+    setSyncedParams(searchParams);
+    const idx = tabParamMap[(searchParams.get('tab') || '').toLowerCase()];
     if (idx !== undefined) setActiveTab(idx);
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (currentProfile.data) {
-      setForm(formFromProfile(currentProfile.data));
+  }
+  if (currentProfile.data && currentProfile.data !== syncedProfile) {
+    setSyncedProfile(currentProfile.data);
+    setForm(formFromProfile(currentProfile.data));
       setSkillsDraft(
         currentProfile.data.profile_skills.map((skill) => ({
           id: skill.id,
@@ -84,9 +86,8 @@ export function EditProfilePage() {
           description: skill.description || '',
           is_featured: skill.is_featured,
         })),
-      );
-    }
-  }, [currentProfile.data]);
+    );
+  }
 
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((current) => ({ ...current, [key]: value }));
 

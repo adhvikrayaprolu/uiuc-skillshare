@@ -3,7 +3,7 @@ import { createContext, useContext, useCallback, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { clearAuth, type SessionUser } from '../lib/auth';
-import { confirmEmailCode, getCurrentUser, loginWithGoogleIdToken, logoutServer, startDemoSession } from '../lib/authApi';
+import { confirmEmailCode, getAuthConfig, getCurrentUser, loginWithGoogleIdToken, logoutServer, startDemoSession } from '../lib/authApi';
 import type { User } from '../types/api';
 
 interface AuthContextValue {
@@ -36,11 +36,14 @@ export function AuthProvider({children}: {children: ReactNode}) {
   useEffect(() => {
     let active = true;
     clearAuth();
-    getCurrentUser().then((next) => {if (active) setUser(mapUser(next));}).catch(() => {if (active) setUser(null);}).finally(() => {if (active) setIsLoading(false);});
+    // Ask for the member only when a session cookie exists, so signed-out visits log no 401.
+    queryClient.fetchQuery({queryKey: ['auth-config'], queryFn: getAuthConfig, staleTime: Infinity})
+      .then((config) => (config.authenticated ? getCurrentUser().then(mapUser) : null))
+      .then((next) => {if (active) setUser(next);}).catch(() => {if (active) setUser(null);}).finally(() => {if (active) setIsLoading(false);});
     const expire = () => {clearAuth(); void replaceUser(null);};
     window.addEventListener('skillshare:session-expired', expire);
     return () => {active = false; window.removeEventListener('skillshare:session-expired', expire);};
-  }, [replaceUser]);
+  }, [queryClient, replaceUser]);
   const value = useMemo<AuthContextValue>(() => ({
     user, isAuthenticated: Boolean(user), isLoading, hasCompletedOnboarding: user?.hasCompletedOnboarding ?? null,
     loginDemo: async (account) => {const next = mapUser(await startDemoSession(account)); await replaceUser(next); return next;},

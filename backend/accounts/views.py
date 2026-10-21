@@ -22,7 +22,7 @@ from .serializers import CurrentUserSerializer
 
 @ensure_csrf_cookie
 def csrf(request):
-    return JsonResponse({"csrfToken": get_token(request), "googleEnabled": bool(settings.GOOGLE_CLIENT_ID), "demoEnabled": settings.DEMO_MODE})
+    return JsonResponse({"csrfToken": get_token(request), "googleEnabled": bool(settings.GOOGLE_CLIENT_ID), "demoEnabled": settings.DEMO_MODE, "authenticated": request.user.is_authenticated})
 
 
 def demo_login(request):

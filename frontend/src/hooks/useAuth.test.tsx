@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {AuthProvider, useAuth} from './useAuth';
 
-const api = vi.hoisted(() => ({getCurrentUser: vi.fn(), logoutServer: vi.fn(), confirmEmailCode: vi.fn(), loginWithGoogleIdToken: vi.fn()}));
+const api = vi.hoisted(() => ({getAuthConfig: vi.fn(), startDemoSession: vi.fn(), getCurrentUser: vi.fn(), logoutServer: vi.fn(), confirmEmailCode: vi.fn(), loginWithGoogleIdToken: vi.fn()}));
 vi.mock('../lib/authApi', () => api);
 const alice = {id: 1, email: 'alice@illinois.edu', first_name: 'Alice', last_name: '', is_student_verified: true, has_completed_onboarding: true};
 function Probe() {
@@ -12,7 +12,7 @@ function Probe() {
   return <><p>{auth.isLoading ? 'Restoring' : auth.user?.email || 'Anonymous'}</p><button onClick={() => void auth.logout()}>Sign out</button><button onClick={() => void auth.confirmEmailCode('fixture')}>Switch account</button></>;
 }
 function view(client: QueryClient) {render(<QueryClientProvider client={client}><AuthProvider><Probe /></AuthProvider></QueryClientProvider>);}
-beforeEach(() => {localStorage.clear(); vi.resetAllMocks(); api.getCurrentUser.mockResolvedValue(alice); api.logoutServer.mockResolvedValue(undefined);});
+beforeEach(() => {localStorage.clear(); vi.resetAllMocks(); api.getAuthConfig.mockResolvedValue({authenticated: true}); api.getCurrentUser.mockResolvedValue(alice); api.logoutServer.mockResolvedValue(undefined);});
 afterEach(cleanup);
 it('restores only the server session and removes legacy browser tokens', async () => {
   localStorage.setItem('illini_skillswap_access_token', 'stale');
@@ -20,6 +20,12 @@ it('restores only the server session and removes legacy browser tokens', async (
   view(new QueryClient());
   await screen.findByText('Anonymous');
   expect(localStorage.length).toBe(0);
+});
+it('does not ask for the member when no session exists', async () => {
+  api.getAuthConfig.mockResolvedValue({authenticated: false});
+  view(new QueryClient());
+  await screen.findByText('Anonymous');
+  expect(api.getCurrentUser).not.toHaveBeenCalled();
 });
 it('revokes the server session and clears account-specific cached data', async () => {
   const client = new QueryClient(); view(client); await screen.findByText(alice.email);

@@ -1,6 +1,6 @@
 import {submissionKey as createSubmissionKey} from '../lib/idempotency';
 import { useParams, Link, useLocation } from 'react-router-dom';
-import { MapPin, Clock, Star, Bookmark, Mail, Linkedin, Github, ExternalLink, ArrowLeft, ArrowLeftRight } from 'lucide-react';
+import { MapPin, Clock, Star, Bookmark, Mail, BriefcaseBusiness, Code, ExternalLink, ArrowLeft, ArrowLeftRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
@@ -367,8 +367,8 @@ export function ProfileDetailPage() {
                 >
                   <div className="flex items-center gap-2">
                     {contact.type === 'email' && <Mail className="w-4 h-4 text-[#64748B]" />}
-                    {contact.type === 'linkedin' && <Linkedin className="w-4 h-4 text-[#64748B]" />}
-                    {contact.type === 'github' && <Github className="w-4 h-4 text-[#64748B]" />}
+                    {contact.type === 'linkedin' && <BriefcaseBusiness className="w-4 h-4 text-[#64748B]" aria-hidden="true" />}
+                    {contact.type === 'github' && <Code className="w-4 h-4 text-[#64748B]" aria-hidden="true" />}
                     <span className="text-sm text-[#0F172A]">
                       {contact.type.charAt(0).toUpperCase() + contact.type.slice(1)}
                     </span>

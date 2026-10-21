@@ -1,6 +1,6 @@
 # Frontend
 
-React 18 + TypeScript (strict) + Vite single-page app for Illini SkillShare. It always talks to the real API, and in local development the API's seeded demo network supplies the data.
+React 19 + TypeScript (strict) + Vite 8 single-page app for Illini SkillShare. It always talks to the real API, and in local development the API's seeded demo network supplies the data.
 
 ```text
 src/

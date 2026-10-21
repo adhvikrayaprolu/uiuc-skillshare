@@ -16,7 +16,7 @@ beforeEach(() => {localStorage.clear(); vi.resetAllMocks(); api.getAuthConfig.mo
 afterEach(cleanup);
 it('restores only the server session and removes legacy browser tokens', async () => {
   localStorage.setItem('illini_skillswap_access_token', 'stale');
-  api.getCurrentUser.mockRejectedValue(new Error('expired'));
+  api.getCurrentUser.mockRejectedValue({response: {status: 401}});
   view(new QueryClient());
   await screen.findByText('Anonymous');
   expect(localStorage.length).toBe(0);
@@ -26,6 +26,18 @@ it('does not ask for the member when no session exists', async () => {
   view(new QueryClient());
   await screen.findByText('Anonymous');
   expect(api.getCurrentUser).not.toHaveBeenCalled();
+});
+it('keeps the session when the member lookup is briefly throttled', async () => {
+  api.getCurrentUser.mockRejectedValueOnce({response: {status: 429}}).mockResolvedValue(alice);
+  view(new QueryClient());
+  await screen.findByText(alice.email, undefined, {timeout: 4000});
+  expect(api.getCurrentUser).toHaveBeenCalledTimes(2);
+});
+it('treats a refused session as signed out without retrying', async () => {
+  api.getCurrentUser.mockRejectedValue({response: {status: 401}});
+  view(new QueryClient());
+  await screen.findByText('Anonymous');
+  expect(api.getCurrentUser).toHaveBeenCalledOnce();
 });
 it('revokes the server session and clears account-specific cached data', async () => {
   const client = new QueryClient(); view(client); await screen.findByText(alice.email);

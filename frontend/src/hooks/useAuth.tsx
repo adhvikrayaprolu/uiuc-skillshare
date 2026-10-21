@@ -18,6 +18,17 @@ interface AuthContextValue {
   logout: () => Promise<void>;
 }
 const AuthContext = createContext<AuthContextValue | null>(null);
+// Only 401/403 mean there is no session; a throttle, network or server error is retried twice.
+async function restoreMember() {
+  for (let attempt = 0; ; attempt += 1) {
+    try {return await getCurrentUser();}
+    catch (error) {
+      const status = (error as {response?: {status?: number}}).response?.status;
+      if (status === 401 || status === 403 || attempt >= 2) throw error;
+      await new Promise((resolve) => window.setTimeout(resolve, 1000 * 2 ** attempt));
+    }
+  }
+}
 const mapUser = (user: User): SessionUser => ({id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name, hasCompletedOnboarding: user.has_completed_onboarding, isStudentVerified: user.is_student_verified, isStaff: Boolean(user.is_staff)});
 export function AuthProvider({children}: {children: ReactNode}) {
   const queryClient = useQueryClient();
@@ -38,7 +49,7 @@ export function AuthProvider({children}: {children: ReactNode}) {
     clearAuth();
     // Ask for the member only when a session cookie exists, so signed-out visits log no 401.
     queryClient.fetchQuery({queryKey: ['auth-config'], queryFn: getAuthConfig, staleTime: Infinity})
-      .then((config) => (config.authenticated ? getCurrentUser().then(mapUser) : null))
+      .then((config) => (config.authenticated ? restoreMember().then(mapUser) : null))
       .then((next) => {if (active) setUser(next);}).catch(() => {if (active) setUser(null);}).finally(() => {if (active) setIsLoading(false);});
     const expire = () => {clearAuth(); void replaceUser(null);};
     window.addEventListener('skillshare:session-expired', expire);

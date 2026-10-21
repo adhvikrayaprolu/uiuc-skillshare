@@ -146,8 +146,8 @@ REST_FRAMEWORK = {
     # Per-minute burst limits: daily caps locked out members who left the app open (notifications
     # poll every 30 seconds) and visitors sharing a campus NAT. Sign-in flows keep stricter limits.
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "60/min",
-        "user": "240/min",
+        "anon": "300/min",
+        "user": "600/min",
         "auth_google": "10/min",
         "client_errors": "30/hour",
     },

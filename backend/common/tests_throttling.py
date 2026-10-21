@@ -25,7 +25,7 @@ class ThrottleTests(SwapFixture):
         self.assertEqual(set(self.poll(1200, 30)), {200})
 
     def test_a_burst_from_one_member_is_still_throttled(self):
-        self.assertIn(429, self.poll(400, 0))
+        self.assertIn(429, self.poll(700, 0))
 
     def test_visitors_sharing_a_campus_address_can_load_public_pages(self):
         self.client.force_authenticate(None)

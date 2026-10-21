@@ -16,7 +16,7 @@ import { WelcomeMatchesPage } from '../pages/WelcomeMatchesPage';
 import { MyProfilePage } from '../pages/MyProfilePage';
 import { ProfileDetailPage } from '../pages/ProfileDetailPage';
 import { SettingsPage } from '../pages/SettingsPage';
-import { ConnectionsPage } from '../pages/ConnectionsPage';
+import { RequestDetailPage } from '../pages/RequestDetailPage';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { LegacyRedirect as Redirect } from '../components/layout/LegacyRedirect';
 import { APP_HOME, EDIT_PROFILE, SETUP_HOME } from '../lib/routes';
@@ -56,8 +56,8 @@ export const router = createBrowserRouter([
           { path: "profiles/:id", Component: ProfileDetailPage },
           { path: "me", Component: MyProfilePage },
           { path: "me/edit", Component: EditProfilePage },
-          { path: "connections", Component: ConnectionsPage },
           { path: "requests", Component: HelpRequestsPage },
+          { path: "requests/:id", Component: RequestDetailPage },
           { path: "settings", Component: SettingsPage },
           { path: "analytics", Component: AnalyticsPage },
         ],
@@ -68,6 +68,7 @@ export const router = createBrowserRouter([
   { path: "/onboarding", element: <Redirect to={SETUP_HOME} /> },
   { path: "/profile/edit", element: <Redirect to={EDIT_PROFILE} /> },
   { path: "/saved", element: <Navigate to="/discover?tab=saved" replace /> },
+  { path: "/connections", element: <Navigate to="/requests?tab=active" replace /> },
   { path: "/app/*", element: <Navigate to={APP_HOME} replace /> },
   { path: "/404", Component: NotFoundPage },
   { path: "*", Component: NotFoundPage },

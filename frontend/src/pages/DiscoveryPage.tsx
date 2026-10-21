@@ -13,6 +13,7 @@ import { useSavedProfileActions } from '../hooks/useSavedProfiles';
 import { useToast } from '../components/ui/ToastProvider';
 import { shouldUseMocks } from '../lib/api';
 import { PageControls } from '../components/ui/ListPagination';
+import { TabPanel, Tabs } from '../components/ui/Tabs';
 
 type DiscoverTab = 'helpers' | 'swaps' | 'saved';
 const tabs: { key: DiscoverTab; label: string }[] = [
@@ -26,13 +27,6 @@ export function DiscoveryPage() {
   const requested = searchParams.get('tab') as DiscoverTab | null;
   const active: DiscoverTab = requested && tabs.some((tab) => tab.key === requested) ? requested : 'helpers';
   const select = (tab: DiscoverTab) => setSearchParams(tab === 'helpers' ? {} : { tab }, { replace: true });
-  const focusTab = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const offset = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-    if (!offset) return;
-    const next = tabs[(index + offset + tabs.length) % tabs.length];
-    select(next.key);
-    document.getElementById(`discover-tab-${next.key}`)?.focus();
-  };
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -40,29 +34,12 @@ export function DiscoveryPage() {
         <h1 className="text-3xl sm:text-4xl font-bold text-[#0F172A] mb-2">Discover</h1>
         <p className="text-[#475569]">Find people who teach what you want to learn, or trade skills with someone.</p>
       </div>
-      <div role="tablist" aria-label="Discover views" className="mb-6 flex gap-1 overflow-x-auto border-b border-[#E2E8F0]">
-        {tabs.map((tab, index) => (
-          <button
-            key={tab.key}
-            id={`discover-tab-${tab.key}`}
-            role="tab"
-            type="button"
-            aria-selected={active === tab.key}
-            aria-controls={`discover-panel-${tab.key}`}
-            tabIndex={active === tab.key ? 0 : -1}
-            onClick={() => select(tab.key)}
-            onKeyDown={(event) => focusTab(event, index)}
-            className={`-mb-px flex-shrink-0 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${active === tab.key ? 'border-[#B83E00] text-[#13294B]' : 'border-transparent text-[#475569] hover:text-[#0F172A]'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`discover-panel-${active}`} aria-labelledby={`discover-tab-${active}`}>
+      <Tabs label="Discover views" idPrefix="discover" tabs={tabs} active={active} onSelect={select} />
+      <TabPanel idPrefix="discover" active={active}>
         {active === 'helpers' && <AllHelpersPanel />}
         {active === 'swaps' && <SwapMatchesPanel onBrowse={() => select('helpers')} />}
         {active === 'saved' && <SavedProfilesPanel onBrowse={() => select('helpers')} />}
-      </div>
+      </TabPanel>
     </div>
   );
 }

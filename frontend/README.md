@@ -67,7 +67,8 @@ npm --prefix frontend run build
 - `/me`: your own profile preview.
 - `/me/edit`: edit own profile (`?tab=basic|teaching|learning|availability|contact|evidence|privacy`).
 - `/dashboard`, `/onboarding`, `/profile/edit`, `/saved`: redirects kept for old links.
-- `/requests`: help requests and swap proposals.
-- `/connections`: accepted help requests.
+- `/requests`: inbox with `?tab=needs_action|active|past`.
+- `/requests/:id`: one request or swap with its timeline, actions, shared contacts and feedback.
+- `/connections`: redirects to `/requests?tab=active`.
 - `/analytics`: activity and network analytics.
 - `/settings`: settings.

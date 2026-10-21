@@ -1,6 +1,6 @@
 import { getAllPages } from './pagination';
 import { api } from './api';
-import type { Endorsement, HelpRequest, HelpRequestPayload, Review, SavedProfile } from '../types/api';
+import type { Endorsement, HelpRequest, HelpRequestPayload, PaginatedResponse, RequestBucket, Review, SavedProfile } from '../types/api';
 
 export async function getSavedProfiles() {
   return getAllPages<SavedProfile>('/saved-profiles/');
@@ -19,12 +19,24 @@ export async function getHelpRequests() {
   return getAllPages<HelpRequest>('/help-requests/');
 }
 
+export async function getRequestBucket(bucket: RequestBucket, page = 1) {
+  const { data } = await api.get<PaginatedResponse<HelpRequest>>('/help-requests/', { params: { bucket, page } });
+  return data;
+}
+
+export async function getHelpRequest(id: number) {
+  const { data } = await api.get<HelpRequest>(`/help-requests/${id}/`);
+  return data;
+}
+
 export async function createHelpRequest(payload: HelpRequestPayload) {
   const { data } = await api.post<HelpRequest>('/help-requests/', payload);
   return data;
 }
 
-export async function updateHelpRequest(id: number, payload: Partial<HelpRequest>) {
+export type HelpRequestUpdate = Pick<HelpRequest, 'version'> & Partial<Pick<HelpRequest, 'status' | 'response_message' | 'cancel_reason'>>;
+
+export async function updateHelpRequest(id: number, payload: HelpRequestUpdate) {
   const { data } = await api.patch<HelpRequest>(`/help-requests/${id}/`, payload);
   return data;
 }

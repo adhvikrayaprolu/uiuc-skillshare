@@ -185,6 +185,9 @@ export interface HelpRequest {
   preferred_contact_method?: ContactMethodType;
   status: HelpRequestStatus;
   response_message?: string;
+  cancel_reason?: string;
+  my_role?: 'seeker' | 'helper';
+  feedback?: RequestFeedback | null;
   helper_contact_methods?: ContactMethod[];
   seeker_contact_methods?: ContactMethod[];
   next_step?: string;
@@ -194,6 +197,17 @@ export interface HelpRequest {
   cancelled_at?: string | null;
   created_at: string;
   updated_at?: string;
+}
+
+export type RequestBucket = 'needs_action' | 'active' | 'past';
+
+export interface RequestFeedback {
+  target_profile_id: number | null;
+  skill: NamedSkill | null;
+  can_review: boolean;
+  can_endorse: boolean;
+  my_review: { rating: number; comment: string } | null;
+  endorsed: boolean;
 }
 
 export interface DashboardResponse {
@@ -215,6 +229,8 @@ export interface DashboardResponse {
 export interface AttentionItem {
   action: 'respond' | 'complete' | 'feedback';
   request_id: number;
+  href?: string;
+  kind?: RequestKind;
   topic: string;
   skill: string | null;
   peer: { name: string; profile_id: number | null };

@@ -17,6 +17,6 @@ export function useNotifications() {
   });
   const markRead = useMutation({ mutationFn: async (id: string) => api.post(`/notifications/${id}/read/`), onSuccess: () => client.invalidateQueries({ queryKey: ['notifications'] }) });
   const markAllRead = useMutation({ mutationFn: async () => api.post('/notifications/read-all/'), onSuccess: () => client.invalidateQueries({ queryKey: ['notifications'] }) });
-  const items: NotificationItem[] = (query.data?.results || []).map(row => ({ id: String(row.id), type: row.kind === 'created' ? 'request' : 'accepted', title: row.title, description: 'Open Requests for details.', href: row.href, read: row.read, timeLabel: new Date(row.created_at).toLocaleString() }));
+  const items: NotificationItem[] = (query.data?.results || []).map(row => ({ id: String(row.id), type: row.kind === 'created' ? 'request' : 'accepted', title: row.title, description: 'Open the request for details.', href: row.href, read: row.read, timeLabel: new Date(row.created_at).toLocaleString() }));
   return { query, items, markRead, markAllRead, page, setPage };
 }

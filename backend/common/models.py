@@ -32,12 +32,20 @@ class AnalyticsEvent(models.Model):
 class Notification(models.Model):
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
     peer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="peer_notifications")
-    help_request = models.ForeignKey("interactions.HelpRequest", on_delete=models.CASCADE, related_name="notifications")
+    help_request = models.ForeignKey("interactions.HelpRequest", null=True, blank=True, on_delete=models.CASCADE, related_name="notifications")
+    profile = models.ForeignKey("profiles.StudentProfile", null=True, blank=True, on_delete=models.CASCADE, related_name="alert_notifications")
     event_key = models.CharField(max_length=180)
     kind = models.CharField(max_length=24)
     title = models.CharField(max_length=120)
     read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def href(self):
+        if self.help_request_id:
+            return f"/requests/{self.help_request_id}"
+        return f"/profiles/{self.profile_id}" if self.profile_id else "/home"
+
     class Meta:
         ordering = ["-created_at", "-id"]
         constraints = [models.UniqueConstraint(fields=["recipient", "event_key"], name="unique_notification_event")]

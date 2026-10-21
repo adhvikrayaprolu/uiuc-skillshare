@@ -29,7 +29,7 @@ class EmailDeliveryAdmin(admin.ModelAdmin):
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     list_display = ("id", "kind", "created_at", "read_at")
-    readonly_fields = ("recipient", "peer", "help_request", "event_key", "kind", "title", "read_at", "created_at")
+    readonly_fields = ("recipient", "peer", "help_request", "profile", "event_key", "kind", "title", "read_at", "created_at")
     def has_add_permission(self, request):
         return False
 

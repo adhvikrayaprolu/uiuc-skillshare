@@ -129,6 +129,13 @@ export interface ProfileListItem {
 
 export interface NamedSkill { id: number; name: string }
 
+export interface CommunityHints {
+  member_count: number;
+  popular: (NamedSkill & { teachers: number })[];
+  unmet: (NamedSkill & { learners: number })[];
+  my_untaught_goals: NamedSkill[];
+}
+
 export interface SwapSummary {
   they_teach_you: NamedSkill[];
   you_can_teach: NamedSkill[];
@@ -144,6 +151,8 @@ export interface ProfileDetail extends ProfileListItem {
   share_contacts?: boolean;
   embedding_consent?: boolean;
   notification_email_enabled?: boolean;
+  skill_alerts_enabled?: boolean;
+  digest_email_enabled?: boolean;
   interests?: string;
   availability_notes?: string;
   profile_skills: ProfileSkill[];

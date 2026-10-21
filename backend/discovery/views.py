@@ -1,10 +1,12 @@
+from django.db.models import Count
+from drf_spectacular.utils import extend_schema
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.analytics import track_event
-from profiles.models import StudentProfile
+from profiles.models import ProfileSkill, StudentProfile
 from profiles.serializers import PublicStudentProfileListSerializer
 from .services import apply_discovery_filters, recommend_profiles_for_user, rank_profiles, semantic_rank_profiles, swap_matches_for_user
 
@@ -50,6 +52,36 @@ class SwapMatchesView(APIView):
         response = paginator.get_paginated_response(serializer.data)
         response.data["matching"] = ranked.metadata
         return response
+
+
+class CommunityView(APIView):
+    """Cold-start hints. Learner counts only include members who made their learning goals public."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=dict)
+    def get(self, request):
+        peers = apply_discovery_filters(StudentProfile.objects.all(), {}, user=request.user)
+        popular = list(
+            ProfileSkill.objects.filter(profile__in=peers, skill__is_approved=True)
+            .values("skill_id", "skill__name").annotate(teachers=Count("profile", distinct=True))
+            .order_by("-teachers", "skill__name")[:8]
+        )
+        taught = set(ProfileSkill.objects.filter(profile__in=peers).values_list("skill_id", flat=True))
+        goals = StudentProfile.learning_goals.through.objects
+        wanted = (
+            goals.filter(studentprofile__in=peers.filter(learning_goals_public=True), skilltag__is_approved=True)
+            .exclude(skilltag_id__in=taught)
+            .values("skilltag_id", "skilltag__name").annotate(learners=Count("studentprofile_id", distinct=True))
+            .order_by("-learners", "skilltag__name")[:5]
+        )
+        mine = getattr(request.user, "profile", None)
+        untaught = list(mine.learning_goals.exclude(pk__in=taught).order_by("name").values("id", "name")[:5]) if mine else []
+        return Response({
+            "member_count": peers.count(),
+            "popular": [{"id": row["skill_id"], "name": row["skill__name"], "teachers": row["teachers"]} for row in popular],
+            "unmet": [{"id": row["skilltag_id"], "name": row["skilltag__name"], "learners": row["learners"]} for row in wanted],
+            "my_untaught_goals": untaught,
+        })
 
 
 class RecommendedProfilesView(APIView):

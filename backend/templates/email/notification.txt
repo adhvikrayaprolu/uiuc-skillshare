@@ -1,0 +1,10 @@
+{% autoescape off %}{{ title }}
+
+{{ line }}
+
+{{ action }}: {{ action_url }}
+
+--
+{% if is_alert %}Turn off skill alerts{% else %}Change email settings{% endif %}: {{ settings_url }}
+Illini SkillShare is an independent student project, not affiliated with or endorsed by the University of Illinois.
+{% endautoescape %}

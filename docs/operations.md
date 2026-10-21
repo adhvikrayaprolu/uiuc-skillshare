@@ -70,6 +70,12 @@ Policy pages are `/guidelines`, `/privacy` and `/terms`. Their text describes cu
 
 A pending request gets `expires_at = created_at + 14 days`. If no one has replied after 7 days, the `dispatch_jobs` loop sends the receiver one reminder notification. At expiry, the loop marks the request `expired`, bumps its version so a racing accept gets a 409, and notifies both sides. Each pass processes up to 100 rows with `SELECT … FOR UPDATE SKIP LOCKED`, so multiple dispatchers are safe. Migration `0008_request_expiry` backfills existing pending rows with at least 7 more days. A sender can have at most 5 pending requests at once.
 
+## Skill alerts, digest and email
+
+`dispatch_jobs --loop` runs each job independently every 5 seconds: the email outbox, embeddings, avatar cleanup, request expiry, skill alerts and weekly digests. One failing job does not stop the others. Skill alerts lock up to 20 newly live profiles per pass with `SKIP LOCKED`, write one notification per recipient (unique on `skill-alert:<profile>`, capped at 200 recipients) and mark the profile announced. Migration `profiles.0006` marks all existing profiles as announced so a deploy doesn't send a burst of alerts. Digests claim `last_digest_at` before sending, so each member gets at most one per week even if SMTP fails. Members can turn alerts and digests off in Settings, and every email links there.
+
+Email templates live in `backend/templates/email/` (branded HTML and plain text). The sign-in code email overrides allauth in `backend/templates/account/email/`. Keep the code on its own line in the text version, because the browser journey reads it from Mailpit. Real SMTP delivery, sender reputation (SPF/DKIM) and unsubscribe headers are not verified locally.
+
 ## Future release gates
 
 Run `make check` and require green PR CI before human review/merge. Build the frontend with the same Google client ID as Django. Rehearse HTTPS proxy/TLS, configured Google audience/domain, actual SMTP delivery/retry, Supabase certificates/connections/grants, private bucket access, backup recovery and startup on the intended host. Validate process restart/persistence and resource budgets. Restrict Django admin to operators and use strong admin credentials; normal members use verified Google/email flows.

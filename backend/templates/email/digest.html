@@ -1,0 +1,16 @@
+{% extends "email/base.html" %}
+{% block title %}Your week on Illini SkillShare{% endblock %}
+{% block content %}
+<h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;color:#0F172A;">Hi {{ name }}, here's your week</h1>
+{% if waiting_count %}
+<h2 style="margin:0 0 6px;font-size:15px;color:#B83E00;">{{ waiting_count }} waiting on you</h2>
+<ul style="margin:0 0 18px;padding-left:20px;color:#475569;">{% for topic in waiting %}<li>{{ topic }}</li>{% endfor %}</ul>
+<p style="margin:0 0 22px;"><a href="{{ app_url }}/requests" style="display:inline-block;background:#13294B;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:12px;">Open requests</a></p>
+{% endif %}
+{% if new_teacher_count %}
+<h2 style="margin:0 0 6px;font-size:15px;color:#13294B;">New people who teach what you want to learn</h2>
+<ul style="margin:0 0 18px;padding-left:20px;color:#475569;">{% for line in new_teachers %}<li>{{ line }}</li>{% endfor %}</ul>
+<p style="margin:0;"><a href="{{ app_url }}/discover?tab=swaps" style="color:#13294B;font-weight:600;">See your matches</a></p>
+{% endif %}
+{% endblock %}
+{% block footer %}You turned on the weekly digest. <a href="{{ settings_url }}" style="color:#13294B;">Turn it off</a>.{% endblock %}

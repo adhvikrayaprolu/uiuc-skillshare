@@ -48,3 +48,16 @@ it('shows a pending privacy choice immediately and restores it when saving fails
   await screen.findByRole('alert');
   expect(publish.checked).toBe(true);
 });
+
+it('defaults skill alerts on and the digest off, and saves each choice', async () => {
+  state.update.mockResolvedValue({});
+  view();
+  const alerts = screen.getByLabelText('Alert me when someone new teaches what I want to learn') as HTMLInputElement;
+  const digest = screen.getByLabelText('Send me a weekly digest email') as HTMLInputElement;
+  expect(alerts.checked).toBe(true);
+  expect(digest.checked).toBe(false);
+  await userEvent.click(alerts);
+  expect(state.update).toHaveBeenCalledWith({skill_alerts_enabled: false});
+  await userEvent.click(digest);
+  expect(state.update).toHaveBeenLastCalledWith({digest_email_enabled: true});
+});

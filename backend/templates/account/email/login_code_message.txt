@@ -1,0 +1,11 @@
+{% autoescape off %}Your Illini SkillShare sign-in code:
+
+{{ code }}
+
+Enter it in the browser window where you asked for it. It expires in 5 minutes.
+
+If you didn't try to sign in, you can ignore this email. Nobody can sign in without the code.
+
+--
+Illini SkillShare is an independent student project, not affiliated with or endorsed by the University of Illinois.
+{% endautoescape %}

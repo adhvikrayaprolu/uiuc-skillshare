@@ -17,7 +17,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     def get_read(self, obj) -> bool:
         return obj.read_at is not None
     def get_href(self, obj) -> str:
-        return f"/requests/{obj.help_request_id}"
+        return obj.href
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

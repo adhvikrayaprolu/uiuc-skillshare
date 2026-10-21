@@ -5,6 +5,7 @@ import { useCurrentProfile } from '../hooks/useProfileEditor';
 import { useTaxonomy } from '../hooks/useTaxonomy';
 import { ProfileCard } from '../components/profiles/ProfileCard';
 import { APP_HOME } from '../lib/routes';
+import { ColdStartPanel } from '../components/growth/ColdStartPanel';
 
 export function WelcomeMatchesPage() {
   const profile = useCurrentProfile();
@@ -41,10 +42,11 @@ export function WelcomeMatchesPage() {
           <Search className="mx-auto mb-3 h-8 w-8 text-[#64748B]" aria-hidden="true" />
           <h2 className="text-lg font-semibold text-[#0F172A]">You're early</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-[#475569]">
-            Nobody who teaches {goals.length ? goals.slice(0, 2).join(' or ') : 'your goals'} has joined yet. We'll suggest people on your Home page as they sign up. Know someone? Invite them to Illini SkillShare.
+            Nobody who teaches {goals.length ? goals.slice(0, 2).join(' or ') : 'your goals'} has joined yet. We'll suggest people on your Home page as they sign up.
           </p>
         </div>
       )}
+      {!recommended.isLoading && !recommended.isError && matches.length === 0 && <div className="mt-4"><ColdStartPanel /></div>}
 
       {matches.length > 0 && (
         <>

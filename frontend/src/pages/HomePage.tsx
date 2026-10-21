@@ -11,6 +11,8 @@ import { profileInsightLabels } from '../lib/profileInsightLabels';
 import { shouldUseMocks } from '../lib/api';
 import { mockProfiles } from '../data/mockData';
 import type { AttentionItem } from '../types/api';
+import { ColdStartPanel } from '../components/growth/ColdStartPanel';
+import { InviteCard } from '../components/growth/InviteCard';
 
 const actionCopy: Record<AttentionItem['action'], { label: string; verb: string; icon: typeof Inbox }> = {
   respond: { label: 'sent you a request', verb: 'Reply', icon: Inbox },
@@ -141,9 +143,13 @@ export function HomePage() {
             ))}
           </div>
         ) : (
-          <p className="rounded-xl bg-[#F8FAFC] p-4 text-sm text-[#475569]">No suggestions yet. You're one of the first people here. Check back soon, or <Link to="/discover" className="font-medium text-[#13294B] underline">browse everyone</Link>.</p>
+          <div className="space-y-4">
+            <p className="rounded-xl bg-[#F8FAFC] p-4 text-sm text-[#475569]">No suggestions yet. You're one of the first people here. <Link to="/discover" className="font-medium text-[#13294B] underline">Browse everyone</Link>, or help it grow.</p>
+            <ColdStartPanel />
+          </div>
         )}
       </section>
+      {suggestions.length > 0 && <InviteCard compact />}
     </div>
   );
 }

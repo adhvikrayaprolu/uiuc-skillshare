@@ -2,19 +2,19 @@
 
 [![CI](https://github.com/adhvikrayaprolu/uiuc-skillshare/actions/workflows/ci.yml/badge.svg)](https://github.com/adhvikrayaprolu/uiuc-skillshare/actions/workflows/ci.yml)
 ![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
-![Django 5.2](https://img.shields.io/badge/Django-5.2-092E20?logo=django&logoColor=white)
-![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Django 6.1](https://img.shields.io/badge/Django-6.1-092E20?logo=django&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-4169E1?logo=postgresql&logoColor=white)
 ![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
 **Trade what you know for what you want to learn.** Illini SkillShare matches University of Illinois students who can teach each other: you teach Python, they teach you Figma. When nobody is a two-way match, you can still ask someone for help. Contact details are shared only after a request is accepted, and both people leave feedback when it's done.
 
-▶ **[Watch the demo video](docs/demo/tour.webm)** (30 seconds), or run it yourself with the two-command [quick start](#quick-start) and click **Try the demo**.
+▶ **[Watch the demo video](docs/demo/tour.webm)** (30 seconds), or run it yourself with the two-command [setup](#getting-started) and click **Try the demo**.
 
 ![Home for a student: requests that need attention, two-way swap matches and a setup checklist](docs/screenshots/home-desktop.png)
 
-**Contents:** [How it works](#how-it-works) · [The rest of the app](#the-rest-of-the-app) · [Highlights](#highlights) · [Quick start](#quick-start) · [Optional integrations](#optional-integrations) · [Architecture](#architecture) · [Testing and CI](#testing-and-ci) · [API overview](#api-overview) · [Project structure](#project-structure)
+**Contents:** [How it works](#how-it-works) · [The rest of the app](#the-rest-of-the-app) · [Highlights](#highlights) · [Getting started](#getting-started) · [Optional integrations](#optional-integrations) · [Architecture](#architecture) · [Testing and CI](#testing-and-ci) · [API overview](#api-overview) · [Project structure](#project-structure)
 
 ## How it works
 
@@ -76,28 +76,48 @@ Everyone in the screenshots and the video is fictional: they come from the seede
 - **Retention without dark patterns.** Cold-start hints, an invite link, skill alerts when someone new teaches your goals, and an opt-in weekly digest sent through a retrying email outbox.
 - **Trust and safety.** Reason-coded reports go to a staff moderation queue with an audit trail. Policy pages, account export and confirmed deletion are built in.
 - **Launch basics.** Per-screen titles, Open Graph cards, a sitemap, `noindex` on signed-in screens, a crash-recovery screen, scrubbed first-party error reports and staff launch metrics.
-- **Tested like a product.** PostgreSQL regression tests, frontend unit tests, a two-member Chromium journey, an axe accessibility sweep of every screen, a backup and restore rehearsal, and a smoke test of the quick start. All of it runs in CI.
+- **Tested like a product.**
+  - 264 automated tests: 172 backend tests on PostgreSQL and 92 frontend tests.
+  - A two-member Chromium journey, plus an axe accessibility sweep of every screen at desktop and phone widths.
+  - A smoke test of the quick start on a clean machine and a backup and restore rehearsal, all in CI on every pull request.
 
-## Quick start
+## Getting started
 
-Requirements: Docker with Compose v2 (give Docker about 4 GB of memory), Make and Python 3.
+Requirements: **Docker** with Compose v2 (give Docker about 4 GB of memory), **Make** and **Python 3**. No accounts or API keys are needed.
 
 ```bash
-make setup
+git clone https://github.com/adhvikrayaprolu/uiuc-skillshare.git
+cd uiuc-skillshare
+make setup   # checks Docker, creates .env once (never overwritten), builds the images
+make dev     # starts every service, seeds the demo network, waits until healthy
 ```
 
-```bash
-make dev
-```
+Then open **http://localhost:8080** and click **Try the demo**. You're signed in as Alex, a sample student who already has swaps, requests and feedback. On the sign-in page, **Or view the demo moderator screens** opens the staff launch metrics.
 
-Open **http://localhost:8080** and click **Try the demo** to sign in as Alex, a sample student who already has swaps, requests and feedback. On the sign-in page, **Or view the demo moderator screens** opens the staff launch metrics.
-
-- `make setup` checks that Docker is running, creates `.env` from `.env.example` with a fresh local secret key (an existing `.env` is never overwritten), and builds the images.
-- `make dev` starts PostgreSQL, Redis, a local mail inbox, the app, the worker and the job dispatcher. It migrates the database, seeds the skill taxonomy and the demo network, and waits until every service is healthy.
-- You can also sign in with any `@illinois.edu` address: the code arrives in the local inbox at **http://localhost:8025**.
+- `make dev` runs PostgreSQL, Redis, a local mail inbox, the app, the worker and the job dispatcher. It migrates the database and seeds the skill taxonomy and the fictional demo network.
+- You can also sign up with any `@illinois.edu` address. The code arrives in the local test inbox at **http://localhost:8025**, and the sign-in page links to it.
 - `make stop` stops everything and keeps your data, `make reset-demo` rebuilds the demo network, and `make logs` follows the app and workers.
+- Without Make, `docker compose up --build --wait` works with no configuration at all.
 
-Without Make, `docker compose up --build --wait` works with no configuration at all.
+<details>
+<summary><strong>Native setup for frontend or backend editing</strong></summary>
+
+Requires Python 3.13 and Node 22 (pinned in `.python-version` and `.nvmrc`). The native backend uses SQLite, so use `make check` for the full PostgreSQL baseline.
+
+```bash
+make native-setup   # backend virtualenv, frontend packages, backend/.env if missing
+make native-dev     # Django on 127.0.0.1:8000 and Vite on 127.0.0.1:5173; Ctrl+C stops both
+```
+
+To run only the frontend against the Docker API with hot reload:
+
+```bash
+cd frontend && DEV_API_URL=http://127.0.0.1:8080 npm run dev
+```
+
+Vite proxies `/api` to Django, so sessions and CSRF work without a frontend `.env`. See [development](docs/development.md) for details.
+
+</details>
 
 ## Optional integrations
 
@@ -129,19 +149,22 @@ flowchart LR
 
 ### Key design decisions
 
-- **The server is the authority.** Every rule (membership, privacy, blocking, contact consent, request transitions, feedback eligibility) is enforced in Django. The React app only reflects the rules, so a modified client can't skip one.
-- **Sessions, not tokens.** It uses allauth browser sessions with CSRF, served from one origin, so no tokens sit in `localStorage`. In development, Vite proxies `/api` to Django so cookies and CSRF behave the same way.
-- **Durable side effects.** Request and feedback transactions write notification and email-outbox rows in the same database transaction. A dispatcher leases due rows to RQ with retries and backoff, so a Redis or SMTP outage delays email without losing it.
-- **Explainable, bounded matching.** Keyword and taxonomy ranking gives a reason for every result and caps candidates at 200. Paid embeddings sit behind consent, a kill switch and a daily allowance that defaults to zero ([matching design](docs/matching.md)).
-- **Least-privilege database roles.** The app connects with a runtime role that can't change the schema, and only the one-shot migration service uses the owner role. A disposable rehearsal proves backup and restore work.
-- **Demo data that can't reach production.** `DEMO_MODE` seeds a fictional network for local use only. Settings refuse it outside `ENVIRONMENT=local`, and the production check verifies that.
+| Design decision | Why |
+|---|---|
+| **Django is the authority** for membership, privacy, blocking, contact consent, request transitions and feedback eligibility | The React app only reflects the rules, so a modified client can't skip one |
+| **Same-origin sessions with CSRF** (allauth), not tokens in the browser | Nothing sensitive in `localStorage`; Vite proxies `/api` in development so cookies behave the same |
+| **Transactional outbox** for notifications and email, leased to RQ with retries and backoff | A Redis or SMTP outage delays email without losing it, and no duplicate notifications |
+| **Explainable, bounded matching:** keyword and taxonomy ranking, capped at 200 candidates | Every result says why it matched; paid embeddings stay behind consent, a kill switch and a $0 default allowance ([matching design](docs/matching.md)) |
+| **Least-privilege database roles:** the app's runtime role can't change the schema | Only the one-shot migration service uses the owner role, and a disposable rehearsal proves backup and restore |
+| **Demo data that can't reach production:** `DEMO_MODE` is refused outside `ENVIRONMENT=local` | The one-click demo and seeded network exist only locally, and the production check verifies it |
+| **Screens load on demand** (React Router lazy routes) | A first visit downloads only the screen it shows: a 352 kB entry script instead of one 639 kB bundle |
 
 ### Tech stack
 
 | Layer | Tools |
 |---|---|
-| Frontend | React 18, TypeScript (strict), Vite, Tailwind CSS 4, React Router 7, TanStack Query, Vitest, Testing Library |
-| Backend | Python 3.13, Django 5.2, Django REST Framework, drf-spectacular (OpenAPI), django-allauth, django-rq, Gunicorn, WhiteNoise |
+| Frontend | React 19, TypeScript 6 (strict), Vite 8, Tailwind CSS 4, React Router 7, TanStack Query 5, Vitest 5, Testing Library |
+| Backend | Python 3.13, Django 6.1, Django REST Framework, drf-spectacular (OpenAPI), django-allauth, django-rq, Gunicorn 26, WhiteNoise |
 | Data | PostgreSQL 16 with pgvector, Redis 7 |
 | Testing | Django tests on PostgreSQL, Playwright with axe-core, a standard-library smoke test |
 | Delivery | Docker Compose, GitHub Actions, Dependabot |
@@ -192,10 +215,23 @@ Interactive docs are at **http://localhost:8080/api/docs/** (OpenAPI at `/api/sc
 ## Project structure
 
 ```text
-backend/    Django apps: accounts, profiles, taxonomy, discovery, interactions, common
-frontend/   React app (src/pages, components, hooks, lib), browser journey (e2e), tour and sweep (e2e-tour)
-scripts/    setup, smoke test, native dev helpers, database roles and recovery rehearsal
-docs/       matching, operations, readiness, development, screenshots and the demo video
+uiuc-skillshare/
+├── frontend/                React + TypeScript SPA (served by Django in production)
+│   ├── src/pages/           one component per screen, with tests alongside
+│   ├── src/components/      shared UI, cards, dialogs, layout and navigation
+│   ├── src/hooks/ · src/lib/  TanStack Query hooks, API clients (cookies + CSRF), mappers
+│   ├── e2e/                 two-member Playwright journey with accessibility checks
+│   └── e2e-tour/            demo screenshot tour, demo video and accessibility sweep
+├── backend/                 Django REST API
+│   ├── accounts/            sessions, email codes, Google, export and deletion, demo network
+│   ├── profiles/ · taxonomy/  profiles, skills, goals, availability, contacts, skill catalog
+│   ├── discovery/           search, swap matches, recommendations, optional embeddings
+│   ├── interactions/        requests and swaps, expiry, reviews, endorsements, blocks, reports
+│   ├── common/              notifications, email outbox, Home, health, metrics, SEO, error reports
+│   └── skillswap_backend/   settings with production safety checks
+├── scripts/                 setup, smoke test, native dev helpers, database roles, recovery rehearsal
+├── docs/                    matching, operations, readiness, development, screenshots, demo video
+└── .github/                 CI, manual release workflow, Dependabot, issue and PR templates
 ```
 
 More: [development](docs/development.md) · [operations and hosting](docs/operations.md) · [launch readiness](docs/readiness.md) · [product direction](CONTEXT.md) · [backend](backend/README.md) · [frontend](frontend/README.md).

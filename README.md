@@ -116,6 +116,7 @@ Then open **http://localhost:8080** and click **Try the demo**. You're signed in
 - `make dev` runs PostgreSQL, Redis, a local mail inbox, the app, the worker and the job dispatcher. It migrates the database and seeds the skill taxonomy and the fictional demo network.
 - You can also sign up with any `@illinois.edu` address. The code arrives in the local test inbox at **http://localhost:8025**, and the sign-in page links to it.
 - `make stop` stops everything and keeps your data, `make reset-demo` rebuilds the demo network, and `make logs` follows the app and workers.
+- Ports 8080 and 8025 already in use? `make dev` says which program holds them; run `APP_PORT=8081 MAIL_PORT=8026 make dev` or set those in `.env`.
 - Without Make, `docker compose up --build --wait` works with no configuration at all.
 
 <details>

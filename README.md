@@ -60,11 +60,30 @@ After either person marks the swap complete, **both** of them can rate the other
 
 ## The rest of the app
 
-| | |
+| Discover: swap matches | Discover: all helpers |
 |---|---|
-| ![Swap matches](docs/screenshots/swaps-desktop.png) **Discover: swap matches.** Every two-way match, each with its reason. | ![Discover search](docs/screenshots/discover-desktop.png) **Discover: all helpers.** Keyword and taxonomy search with filters and explainable ranking. |
-| ![Member profile](docs/screenshots/profile-desktop.png) **Profiles.** Why you matched, plus skills, goals, availability, reviews and endorsements. | ![Requests inbox](docs/screenshots/requests-desktop.png) **Requests.** Needs action, Active and Past, with the next step on every row. |
-| ![Launch metrics](docs/screenshots/launch-metrics-desktop.png) **Launch metrics (staff).** Setup completion, time to first match, acceptance, completion and feedback rates, computed from real records. | ![Mobile home](docs/screenshots/home-mobile.png) ![Mobile swaps](docs/screenshots/swaps-mobile.png) **Mobile.** The same four-item navigation on phones. |
+| ![Swap matches](docs/screenshots/swaps-desktop.png) | ![Discover search](docs/screenshots/discover-desktop.png) |
+| Every two-way match, each with its reason. | Keyword and taxonomy search with filters and explainable ranking. |
+
+| Profiles | Requests |
+|---|---|
+| ![Member profile](docs/screenshots/profile-desktop.png) | ![Requests inbox](docs/screenshots/requests-desktop.png) |
+| Why you matched, plus skills, goals, availability, reviews and endorsements. | Needs action, Active and Past, with the next step on every row. |
+
+| Notifications | Launch metrics (staff) |
+|---|---|
+| ![Notifications](docs/screenshots/notifications-desktop.png) | ![Launch metrics](docs/screenshots/launch-metrics-desktop.png) |
+| Who sent each update, what it's about, and when. | Setup completion, time to first match, acceptance, completion and feedback rates from real records. |
+
+**On a phone**, the same four-item navigation sits at the bottom of the screen:
+
+<p align="center">
+  <img src="docs/screenshots/home-mobile.png" alt="Home on a phone" width="240">
+  &nbsp;
+  <img src="docs/screenshots/swaps-mobile.png" alt="Swap matches on a phone" width="240">
+  &nbsp;
+  <img src="docs/screenshots/requests-mobile.png" alt="Requests on a phone" width="240">
+</p>
 
 Everyone in the screenshots and the video is fictional: they come from the seeded demo network. `make screenshots` regenerates all of them with a headless browser.
 

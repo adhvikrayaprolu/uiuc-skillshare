@@ -18,7 +18,9 @@ async function settle(page: Page) {
 }
 async function shot(page: Page, name: string, fullPage = false) {
   await settle(page);
-  for (const close of await page.getByRole('button', {name: 'Dismiss notification'}).all()) await close.click();
+  // Toasts can close on their own, so dismiss whichever one is still showing until none are left.
+  const toasts = page.getByRole('button', {name: 'Dismiss notification'});
+  while (await toasts.count()) await toasts.first().click({timeout: 2_000}).catch(() => undefined);
   await expect(page.getByRole('button', {name: 'Dismiss notification'})).toHaveCount(0);
   await page.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => undefined))));
   await page.screenshot({path: path.join(out, `${name}.png`), fullPage});
@@ -129,12 +131,20 @@ test('product tour', async ({browser}) => {
   await shot(page, 'profile-desktop');
   await page.goto('/requests');
   await shot(page, 'requests-desktop');
+  await page.goto('/home');
+  await settle(page);
+  await page.getByRole('button', {name: 'Notifications', exact: true}).click();
+  await expect(page.getByRole('link', {name: /New swap proposal/})).toBeVisible();
+  await page.screenshot({path: path.join(out, 'notifications-desktop.png')});
   await page.context().close();
 
+  // Phone screens share one README row, so all three use the same viewport.
   const phone = await signIn(browser, mobile);
   await shot(phone, 'home-mobile');
   await phone.goto('/discover?tab=swaps');
   await shot(phone, 'swaps-mobile');
+  await phone.goto('/requests');
+  await shot(phone, 'requests-mobile');
   await phone.context().close();
 
   const staff = await signIn(browser, desktop, 'staff');

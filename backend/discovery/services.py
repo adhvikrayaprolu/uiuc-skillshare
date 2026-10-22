@@ -1,17 +1,62 @@
 """Privacy-first, bounded retrieval and deterministic evidence-based ranking."""
 import re
+from difflib import get_close_matches
 from datetime import timedelta
 from django.db import connection
-from django.db.models import F, Prefetch, Q
+from django.db.models import Count, F, Prefetch, Q
 from django.utils import timezone
-from interactions.models import Endorsement, Review
-from profiles.models import ProfileSkill, StudentProfile
+from interactions.models import Endorsement, HelpRequest, Review
+from profiles.models import Availability, ProfileSkill, StudentProfile
 from profiles.policy import visible_feedback, visible_profiles
 from taxonomy.models import SkillTag
 from .models import ProfileSearchIndex
 
 CANDIDATE_LIMIT = 200
 STOPWORDS = {'i', 'a', 'an', 'the', 'to', 'for', 'with', 'my', 'me', 'help', 'need', 'want', 'someone', 'can', 'you', 'and', 'on', 'in', 'of', 'how', 'who', 'should', 'get', 'please', 'looking'}
+
+LEVEL_WEIGHT = {'advanced': 1.0, 'intermediate': .6, 'beginner': .3}
+HISTORY_WINDOW = timedelta(days=180)
+BUSY_WAITING = 3  # Requests already waiting on a helper before new ones are steered elsewhere.
+
+
+def plural(count, word):
+    return f"{count} {word}{'' if count == 1 else 's'}"
+
+
+def reliability_score(ratings_by_reviewer):
+    """Average rating with a neutral prior of five 3-star reviews; each reviewer counts once."""
+    means = [sum(rows)/len(rows) for rows in ratings_by_reviewer.values()]
+    return (sum(means)/5 + 3)/(len(means) + 5)
+
+
+def responsiveness_score(history):
+    """Share of recent incoming requests answered rather than left to expire, with a neutral prior."""
+    answered, expired = history.get('answered', 0), history.get('expired', 0)
+    return (answered + 1.5)/(answered + expired + 2)
+
+
+def request_history(profile_ids):
+    since = timezone.now() - HISTORY_WINDOW
+    rows = (HelpRequest.objects.filter(helper_profile_id__in=profile_ids).values('helper_profile_id').annotate(
+        answered=Count('pk', filter=Q(created_at__gte=since) & (Q(accepted_at__isnull=False) | Q(declined_at__isnull=False))),
+        expired=Count('pk', filter=Q(created_at__gte=since, status=HelpRequest.Status.EXPIRED)),
+        waiting=Count('pk', filter=Q(status=HelpRequest.Status.PENDING)),
+    ))
+    return {row['helper_profile_id']: row for row in rows}
+
+
+def shared_times(mine, theirs):
+    """Their weekly slots that overlap mine; 'flexible' matches any day or time."""
+    def fits(a, b):
+        return a == b or 'flexible' in (a, b)
+    return [slot for slot in theirs if any(fits(slot.day_of_week, day) and fits(slot.time_block, block) for day, block in mine)]
+
+
+def viewer_slots(user):
+    if not user or not user.is_authenticated:
+        return set()
+    return set(Availability.objects.filter(profile__user=user).values_list('day_of_week', 'time_block'))
+
 
 class RankedList(list):
     def __init__(self, rows=(), metadata=None):
@@ -50,13 +95,30 @@ def apply_discovery_filters(queryset, params, user=None):
     return queryset.distinct()
 
 
-def matching_skills(query):
+def matching_skills(query, corrections=None):
+    """Approved skills named in the query. Misspelled words close to a skill name or alias also
+    match, and are reported in `corrections` (for example "pyhton" -> Python)."""
     raw = query.casefold()
-    result = {}
+    result, vocabulary = {}, {}
     for tag in SkillTag.objects.filter(is_approved=True).only('id', 'name', 'slug', 'aliases'):
-        terms = [tag.name, tag.slug.replace('-', ' ')] + tag.aliases
-        if any(re.search(r'(?<!\w)' + re.escape(term.casefold()) + r'(?!\w)', raw) for term in terms if isinstance(term, str) and term):
+        terms = [term.casefold() for term in [tag.name, tag.slug.replace('-', ' ')] + tag.aliases if isinstance(term, str) and term]
+        if any(re.search(r'(?<!\w)' + re.escape(term) + r'(?!\w)', raw) for term in terms):
             result[tag.pk] = tag.name
+        for term in terms:
+            vocabulary.setdefault(term, tag)
+    words = [word for word in re.findall(r'[\w+#.]+', raw) if word not in STOPWORDS]
+    known = {word for term in vocabulary for word in term.split()}
+    if result:
+        return result  # The query already names a skill, so nearby ordinary words ("reach") aren't rewritten.
+    candidates = [word for word in words if len(word) >= 4 and word not in known]
+    candidates += [f'{first} {second}' for first, second in zip(words, words[1:]) if first not in known or second not in known]
+    for phrase in candidates:
+        close = get_close_matches(phrase, list(vocabulary), n=1, cutoff=.8)
+        if close and vocabulary[close[0]].pk not in result:
+            tag = vocabulary[close[0]]
+            result[tag.pk] = tag.name
+            if corrections is not None:
+                corrections.append(tag.name)
     return result
 
 
@@ -92,7 +154,8 @@ def retrieve_candidates(queryset, query, matched):
 
 def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=None):
     params = params or {}
-    matched = matching_skills(query)
+    corrections = []
+    matched = matching_skills(query, corrections)
     ids, text_scores, limited = retrieve_candidates(queryset, query, matched)
     # Semantic retrieval is independent; its IDs were selected after privacy/filter checks.
     semantic_scores = semantic_scores or {}
@@ -109,31 +172,63 @@ def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=No
         Prefetch('endorsements', queryset=endorsements, to_attr='verified_endorsements'))
     ranked = []
     now = timezone.now()
+    history = request_history(ids)
+    mine = viewer_slots(user)
     explicit = {item.strip().casefold() for item in ','.join([params.get('skill', ''), params.get('skills', '')]).split(',') if item.strip()}
+    tokens = [word for word in re.findall(r'[\w+#.]+', query.casefold()) if word not in STOPWORDS][:30]
     for profile in profiles:
         offered = profile.offered_skills
         hits = [ps for ps in offered if ps.skill_id in matched]
         skill_relevance = min(len(hits)/max(len(matched), 1), 1) if query else .5
         text = build_profile_search_text_cached(profile).casefold()
-        tokens = [word for word in re.findall(r'[\w+#.]+', query.casefold()) if word not in STOPWORDS][:30]
         lexical = text_scores.get(profile.pk, sum(word in text for word in tokens)/max(len(tokens), 1)) if query else .5
         semantic = semantic_scores.get(profile.pk)
         relevance = .6*skill_relevance + .25*(semantic or 0) + .15*lexical if semantic_scores else .8*skill_relevance + .2*lexical
+        # Skill trust: distinct members who endorsed or reviewed them for the skills being searched.
+        trust_skills = {ps.skill_id for ps in hits} if hits else {ps.skill_id for ps in offered}
+        backers = {e.endorser_id for e in profile.verified_endorsements if e.skill_id in trust_skills}
+        backers |= {r.reviewer_id for r in profile.verified_reviews if r.related_skill_id in trust_skills}
+        skill_trust = len(backers)/(len(backers) + 3)
+        by_reviewer = {}
+        for review in profile.verified_reviews:
+            by_reviewer.setdefault(review.reviewer_id, []).append(review.rating)
+        reliability = reliability_score(by_reviewer)
+        record = history.get(profile.pk, {})
+        responsiveness = responsiveness_score(record)
         availability = list(profile.availability.all())
-        availability_fit = 1 if params.get('availability_day') or params.get('availability_time') else .5
-        ratings = [row.rating for row in profile.verified_reviews]
-        reliability = (sum(ratings)/5 + 2.5)/(len(ratings)+5)  # Five neutral prior observations.
+        overlap = shared_times(mine, availability) if mine else []
+        if params.get('availability_day') or params.get('availability_time'):
+            availability_fit = 1
+        elif mine and availability:
+            availability_fit = 1 if overlap else .25
+        else:
+            availability_fit = .5
+        level = max((LEVEL_WEIGHT.get(ps.confidence_level, .5) for ps in hits), default=.5)
         recently_confirmed = bool(profile.availability_confirmed_at and profile.availability_confirmed_at >= now-timedelta(days=30))
-        score = .75*relevance + .10*availability_fit + .10*reliability + .05*recently_confirmed
+        score = (.55*relevance + .12*skill_trust + .10*availability_fit + .08*reliability + .08*responsiveness
+                 + .04*level + .03*recently_confirmed)
+        if record.get('waiting', 0) >= BUSY_WAITING:
+            score -= .05  # Spread new requests away from helpers who already have a queue.
         reasons = [f'Offers {ps.skill.name} help.' for ps in hits[:3]]
         if not reasons and semantic is not None:
             reasons.append('Published skill text is related to your search.')
         if not reasons and lexical > 0:
             reasons.append('Published profile text mentions your search terms.')
-        for window in availability[:1]:
-            reasons.append(f'Available {window.day_of_week.title()} {window.time_block}.')
-        if ratings:
-            reasons.append(f'Feedback from {len(ratings)} completed request(s).')
+        endorsers = {e.endorser_id for e in profile.verified_endorsements if e.skill_id in trust_skills}
+        if endorsers:
+            subject = f' for {hits[0].skill.name}' if hits else ''
+            reasons.append(f'Endorsed{subject} by {plural(len(endorsers), "member")}.')
+        if overlap:
+            reasons.append(f"You're both free {overlap[0].day_of_week.title()} {overlap[0].time_block}.")
+        else:
+            for window in availability[:1]:
+                reasons.append(f'Available {window.day_of_week.title()} {window.time_block}.')
+        asked = record.get('answered', 0) + record.get('expired', 0)
+        if asked >= 3:
+            reasons.append(f"Answered {record.get('answered', 0)} of {asked} recent requests.")
+        ratings = [row.rating for row in profile.verified_reviews]
+        if by_reviewer:
+            reasons.append(f'Feedback from {plural(len(by_reviewer), "member")}.')
         if not query:
             reasons = ['Willing to help.'] + reasons
         profile.match_score = round(score*100, 2)  # Internal ordering value, never confidence.
@@ -142,6 +237,7 @@ def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=No
         profile.average_rating = sum(ratings)/len(ratings) if ratings else None
         profile.review_count = len(ratings)
         profile.endorsement_count = len(profile.verified_endorsements)
+        profile.reliability = reliability
         profile.has_resume = any(c.credential_type == 'resume' and c.visibility == 'public' for c in profile.credentials.all())
         profile.availability_summary = ', '.join(f'{w.day_of_week} {w.time_block}' for w in availability[:2])
         exact_priority = bool(hits) or bool(explicit and any(ps.skill.name.casefold() in explicit or ps.skill.slug.casefold() in explicit for ps in offered))
@@ -151,7 +247,8 @@ def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=No
     if ordering == 'display_name':
         ranked.sort(key=lambda row: row[1].display_name.casefold())
     elif ordering == 'highest_rated':
-        ranked.sort(key=lambda row: (row[1].average_rating or 2.5, row[0], -row[1].pk), reverse=True)
+        # Prior-weighted, one vote per reviewer, so a single 5-star review can't top the list.
+        ranked.sort(key=lambda row: (row[1].reliability, row[0], -row[1].pk), reverse=True)
     elif ordering == 'most_endorsed':
         ranked.sort(key=lambda row: (row[1].endorsement_count, row[0], -row[1].pk), reverse=True)
     elif ordering == 'recently_active':
@@ -162,7 +259,7 @@ def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=No
         ranked.sort(key=lambda row: (len(row[1].availability.all()), row[0], -row[1].pk), reverse=True)
     else:
         ranked.sort(key=lambda row: (row[1]._exact_priority, row[0], -row[1].pk), reverse=True)
-    return RankedList(ranked, {'mode': 'hybrid' if semantic_scores else 'keyword_taxonomy', 'candidate_limit': CANDIDATE_LIMIT, 'bounded': limited, 'fallback_reason': 'paid_calls_disabled'})
+    return RankedList(ranked, {'mode': 'hybrid' if semantic_scores else 'keyword_taxonomy', 'candidate_limit': CANDIDATE_LIMIT, 'bounded': limited, 'fallback_reason': 'paid_calls_disabled', 'interpreted_as': corrections})
 
 
 def build_profile_search_text_cached(profile):
@@ -182,7 +279,11 @@ def recommend_profiles_for_user(user, queryset):
     profile = getattr(user, 'profile', None)
     goals = list(profile.learning_goals.filter(is_approved=True).values_list('name', flat=True)) if profile else []
     query = ' '.join(goals + ([profile.learning_goal_notes] if goals and profile.learning_goal_notes else []))
-    ranked = rank_profiles(queryset.exclude(user=user), query, user=user)
+    # People you already have an open request with are in your inbox, not new suggestions.
+    open_requests = HelpRequest.objects.filter(status__in=[HelpRequest.Status.PENDING, HelpRequest.Status.ACCEPTED])
+    engaged = set(open_requests.filter(seeker=user).values_list('helper_profile_id', flat=True))
+    engaged |= set(open_requests.filter(helper_profile__user=user).values_list('seeker__profile__id', flat=True))
+    ranked = rank_profiles(queryset.exclude(user=user).exclude(pk__in=engaged), query, user=user)
     ranked.metadata['recommendation_basis'] = 'learning_goals' if goals else 'discovery_suggestions'
     return ranked
 
@@ -205,19 +306,25 @@ def swap_matches_for_user(user, queryset):
         .prefetch_related('availability')
     )
     my_slots = set(mine.availability.values_list('day_of_week', 'time_block'))
+    pool = list(candidates.order_by('pk')[:CANDIDATE_LIMIT])
+    history = request_history([p.pk for p in pool])
+    ratings = {}
+    for row in visible_feedback(Review.objects.filter(profile__in=pool), user).values('profile_id', 'reviewer_id', 'rating'):
+        ratings.setdefault(row['profile_id'], {}).setdefault(row['reviewer_id'], []).append(row['rating'])
     ranked = []
-    for profile in candidates.order_by('pk')[:CANDIDATE_LIMIT]:
+    for profile in pool:
         summary = swap_summary(user, profile, sets)
         if not summary or not summary['is_mutual']:
             continue
-        shared = sum((slot.day_of_week, slot.time_block) in my_slots for slot in profile.availability.all())
+        shared = len(shared_times(my_slots, profile.availability.all()))
         profile.swap_match = summary
         profile.match_reasons = (
             [f"Can teach you {', '.join(s['name'] for s in summary['they_teach_you'][:2])}."]
             + [f"Wants to learn {', '.join(s['name'] for s in summary['you_can_teach'][:2])}, which you teach."]
             + ([f"You're both free at {shared} time{'' if shared == 1 else 's'}."] if shared else [])
         )
-        ranked.append(((len(summary['they_teach_you']) + len(summary['you_can_teach']), shared, -profile.pk), profile))
+        trust = reliability_score(ratings.get(profile.pk, {})) + responsiveness_score(history.get(profile.pk, {}))
+        ranked.append(((len(summary['they_teach_you']) + len(summary['you_can_teach']), shared, trust, -profile.pk), profile))
     ranked.sort(key=lambda row: row[0], reverse=True)
     return RankedList(ranked, {'basis': 'swap', 'reason': None if ranked else 'no_mutual_matches'})
 

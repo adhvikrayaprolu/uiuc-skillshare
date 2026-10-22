@@ -51,6 +51,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
+    "common.security.PermissionsPolicyMiddleware",
     "common.spa.SpaWhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -142,6 +144,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": (
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
+        "common.security.CreateRateThrottle",
     ),
     # Per-minute burst limits: daily caps locked out members who left the app open (notifications
     # poll every 30 seconds) and visitors sharing a campus NAT. Sign-in flows keep stricter limits.
@@ -150,6 +153,10 @@ REST_FRAMEWORK = {
         "user": "600/min",
         "auth_google": "10/min",
         "client_errors": "30/hour",
+        # Creation limits on top of the per-minute limits (common.security.CreateRateThrottle).
+        "request_create": "20/hour",
+        "feedback_create": "30/hour",
+        "report_create": "10/hour",
     },
 }
 CLIENT_ERROR_REPORTING = os.getenv("CLIENT_ERROR_REPORTING", "true").lower() == "true"
@@ -242,3 +249,7 @@ if AVATAR_STORAGE == "supabase":
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_STORAGE_KEY = os.getenv("SUPABASE_STORAGE_KEY", "")
 SUPABASE_AVATAR_BUCKET = os.getenv("SUPABASE_AVATAR_BUCKET", "avatars")
+
+# Content-Security-Policy (Django's built-in middleware); see common.security.
+from common.csp import content_security_policy  # noqa: E402
+SECURE_CSP = content_security_policy(google_sign_in=bool(GOOGLE_CLIENT_ID), avatar_origin=SUPABASE_URL if AVATAR_STORAGE == "supabase" else "")

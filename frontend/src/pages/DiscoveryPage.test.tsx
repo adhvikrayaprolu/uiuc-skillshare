@@ -4,19 +4,19 @@ import { MemoryRouter } from 'react-router-dom';
 import { DiscoveryPage } from './DiscoveryPage';
 import { ToastProvider } from '../components/ui/ToastProvider';
 
-const state = vi.hoisted(() => ({ pages: [] as (number | undefined)[], queries: [] as (string | undefined)[] }));
+const state = vi.hoisted(() => ({ pages: [] as (number | undefined)[], queries: [] as (string | undefined)[], interpreted: [] as string[] }));
 vi.mock('../hooks/useDiscoverySearch', () => ({
   useDiscoverySearch: (params: { page?: number; q?: string }) => {
     state.pages.push(params.page);
     state.queries.push(params.q);
-    return { isLoading: false, isFetching: false, isError: false, refetch: vi.fn(), data: { count: 40, profiles: [], next: '/api/discovery/search/?page=9' } };
+    return { isLoading: false, isFetching: false, isError: false, refetch: vi.fn(), data: { count: 40, profiles: [], next: '/api/discovery/search/?page=9', matching: { mode: 'keyword_taxonomy', candidate_limit: 200, bounded: false, interpreted_as: state.interpreted } } };
   },
 }));
 vi.mock('../hooks/useTaxonomy', () => ({ useTaxonomy: () => ({ data: { categories: [], skills: [] } }) }));
 vi.mock('../components/growth/ColdStartPanel', () => ({ ColdStartPanel: () => null }));
 vi.mock('../hooks/useSavedProfiles', () => ({ useSavedProfileActions: () => ({ savedProfileIds: new Set<number>(), toggleSaved: vi.fn() }) }));
 
-beforeEach(() => { vi.useFakeTimers(); state.pages = []; state.queries = []; });
+beforeEach(() => { vi.useFakeTimers(); state.pages = []; state.queries = []; state.interpreted = []; });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 const renderDiscover = (url = '/discover') => render(<MemoryRouter initialEntries={[url]}><ToastProvider><DiscoveryPage /></ToastProvider></MemoryRouter>);
@@ -39,4 +39,15 @@ it('returns to page 1 once a new search settles', () => {
   expect(screen.getByText('Page 1')).toBeTruthy();
   expect(state.queries.at(-1)).toBe('Figma');
   expect(state.pages.at(-1)).toBe(1);
+});
+
+it('says which skill a misspelled search was read as', () => {
+  state.interpreted = ['Figma'];
+  renderDiscover('/discover?q=figam');
+  expect(screen.getByText(/Showing results for/).textContent).toBe('Showing results for Figma.');
+});
+
+it('says nothing extra when the search was read as typed', () => {
+  renderDiscover('/discover?q=Figma');
+  expect(screen.queryByText(/Showing results for/)).toBeNull();
 });

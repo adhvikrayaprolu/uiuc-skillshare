@@ -147,7 +147,7 @@ function AllHelpersPanel() {
   const resultCount = discoveryQuery.data?.count ?? filteredProfiles.length;
   const getReasonText = (reasons?: string[]) => {
     if (!searchQuery.trim() || !reasons?.length) return undefined;
-    return reasons.slice(0, 2).join(' + ');
+    return reasons.slice(0, 2).join(' · ');
   };
 
   const clearAllFilters = () => {
@@ -353,6 +353,10 @@ function AllHelpersPanel() {
               <ChevronDown className="w-4 h-4" />
             </label>
           </div>
+
+          {discoveryQuery.data?.matching?.interpreted_as?.length ? (
+            <p className="mb-4 text-sm text-[#475569]">Showing results for <span className="font-semibold text-[#0F172A]">{discoveryQuery.data.matching.interpreted_as.join(', ')}</span>.</p>
+          ) : null}
 
           {/* Profile Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

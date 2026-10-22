@@ -25,6 +25,7 @@ class SavedProfileViewSet(viewsets.ModelViewSet):
 
 class ProfileReviewListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
+    create_throttle_scope = "feedback_create"
     serializer_class = ReviewSerializer
 
     def perform_create(self, serializer):
@@ -63,6 +64,7 @@ class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class ProfileEndorsementListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
+    create_throttle_scope = "feedback_create"
     serializer_class = EndorsementSerializer
 
     def perform_create(self, serializer):
@@ -99,6 +101,7 @@ class EndorsementDetailView(generics.DestroyAPIView):
 
 class HelpRequestViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsHelpRequestParticipant]
+    create_throttle_scope = "request_create"
     serializer_class = HelpRequestSerializer
     http_method_names = ["get", "post", "patch", "head", "options"]
 
@@ -135,6 +138,7 @@ class HelpRequestViewSet(viewsets.ModelViewSet):
 
 class ReportCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
+    create_throttle_scope = "report_create"
     serializer_class = ReportSerializer
 
 

@@ -94,6 +94,8 @@ Everyone in the screenshots and the video is fictional: they come from the seede
 - **A complete request lifecycle.** Pending, accepted, completed, with version checks, idempotency keys, a cap of five waiting requests, 14-day expiry with a reminder on day 7, and two-way reviews and endorsements on swaps.
 - **Retention without dark patterns.** Cold-start hints, an invite link, skill alerts when someone new teaches your goals, and an opt-in weekly digest sent through a retrying email outbox.
 - **Trust and safety.** Reason-coded reports go to a staff moderation queue with an audit trail. Policy pages, account export and confirmed deletion are built in.
+- **Ranking you can trust.** Search and recommendations weigh endorsements and reviews for the skill you searched (one vote per member), how reliably someone answers requests, and whether your free times overlap, then explain each reason on the card. Busy helpers get a breather, and typos like "pyhton" still find Python ([design](docs/ranking-and-trust.md)).
+- **Hardened by default.** A strict Content-Security-Policy, Permissions-Policy, HSTS and secure cookies in production, per-minute API limits and hourly limits on requests, feedback and reports.
 - **Launch basics.** Per-screen titles, Open Graph cards, a sitemap, `noindex` on signed-in screens, a crash-recovery screen, scrubbed first-party error reports and staff launch metrics.
 - **Tested like a product.**
   - 264 automated tests: 172 backend tests on PostgreSQL and 92 frontend tests.
@@ -175,6 +177,8 @@ flowchart LR
 | **Same-origin sessions with CSRF** (allauth), not tokens in the browser | Nothing sensitive in `localStorage`; Vite proxies `/api` in development so cookies behave the same |
 | **Transactional outbox** for notifications and email, leased to RQ with retries and backoff | A Redis or SMTP outage delays email without losing it, and no duplicate notifications |
 | **Explainable, bounded matching:** keyword and taxonomy ranking, capped at 200 candidates | Every result says why it matched; paid embeddings stay behind consent, a kill switch and a $0 default allowance ([matching design](docs/matching.md)) |
+| **Trust signals that resist gaming:** skill-specific endorsements and reviews count one per member, ratings use a neutral prior | Two friends can't inflate each other with repeat sessions, and one 5★ review can't top "Highest rated" ([ranking and trust](docs/ranking-and-trust.md)) |
+| **Strict Content-Security-Policy** from Django 6.1's built-in middleware | Scripts, styles and connections only from this site; Google's sign-in origins only when configured |
 | **Least-privilege database roles:** the app's runtime role can't change the schema | Only the one-shot migration service uses the owner role, and a disposable rehearsal proves backup and restore |
 | **Demo data that can't reach production:** `DEMO_MODE` is refused outside `ENVIRONMENT=local` | The one-click demo and seeded network exist only locally, and the production check verifies it |
 | **Screens load on demand** (React Router lazy routes) | A first visit downloads only the screen it shows: a 352 kB entry script instead of one 639 kB bundle |

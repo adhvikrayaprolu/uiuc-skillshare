@@ -79,3 +79,16 @@ class NotificationTests(APITestCase):
         with patch("common.notifications.send_notification_email") as send:
             deliver_email(EmailDelivery.objects.get().pk)
             send.assert_not_called()
+
+
+class NotificationContentTests(APITestCase):
+    setUp = InteractionTests.setUp
+
+    def test_each_notification_says_who_and_what(self):
+        interaction = HelpRequest.objects.create(seeker=self.user, helper_profile=self.helper_profile, topic="Git rebasing", message="Help")
+        notify_request(interaction, "created", self.user.pk)
+        Notification.objects.create(recipient=self.helper_user, peer=self.user, profile=self.profile, kind="skill_alert", event_key="alert", title="Self just joined and teaches GitHub")
+        self.client.force_authenticate(self.helper_user)
+        rows = {row["kind"]: row for row in self.client.get(reverse("notifications-list")).data["results"]}
+        self.assertEqual((rows["created"]["peer_name"], rows["created"]["detail"]), ("Self Profile", "“Git rebasing”"))
+        self.assertEqual((rows["skill_alert"]["peer_name"], rows["skill_alert"]["detail"]), ("Self Profile", "Help"))

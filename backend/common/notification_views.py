@@ -10,14 +10,24 @@ from .notifications import visible_notifications
 class NotificationSerializer(serializers.ModelSerializer):
     read = serializers.SerializerMethodField()
     href = serializers.SerializerMethodField()
+    peer_name = serializers.SerializerMethodField()
+    detail = serializers.SerializerMethodField()
     class Meta:
         model = Notification
-        fields = ["id", "kind", "title", "href", "read", "created_at"]
+        fields = ["id", "kind", "title", "peer_name", "detail", "href", "read", "created_at"]
         read_only_fields = fields
     def get_read(self, obj) -> bool:
         return obj.read_at is not None
     def get_href(self, obj) -> str:
         return obj.href
+    def get_peer_name(self, obj) -> str:
+        profile = getattr(obj.peer, "profile", None)
+        return profile.display_name if profile else ""
+    def get_detail(self, obj) -> str:
+        # What the notification is about: the request's topic, or a new member's headline.
+        if obj.help_request_id:
+            return f"“{obj.help_request.topic}”"
+        return obj.profile.headline if obj.profile_id else ""
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -26,7 +36,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Notification.objects.none()
-        return visible_notifications(self.request.user)
+        return visible_notifications(self.request.user).select_related("peer__profile", "help_request", "profile")
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
         response.data["unread_count"] = self.get_queryset().filter(read_at__isnull=True).count()

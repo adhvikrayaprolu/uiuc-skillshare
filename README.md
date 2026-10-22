@@ -206,7 +206,7 @@ make check
 With `make dev` running, two more checks use the demo network:
 
 - `make smoke` runs [`scripts/smoke.py`](scripts/smoke.py) through the app's public origin. It checks health, pages and share tags, signed-out refusal, CSRF, demo sign-in, Home, swaps, search, the inbox, a request, save and unsave, and sign-out.
-- `make a11y` runs axe on every screen at desktop and phone widths as a visitor, the demo student and the demo moderator, and fails on any console error or failed request.
+- `make a11y` runs axe on every screen at desktop and phone widths as a visitor, the demo student and the demo moderator, opens every internal link, presses every non-destructive control, and fails on any dead link, unnamed control, console error or failed request.
 
 [CI](.github/workflows/ci.yml) runs on every pull request and on `main`:
 

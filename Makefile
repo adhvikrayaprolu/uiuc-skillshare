@@ -23,7 +23,7 @@ reset-demo:
 smoke:
 	python3 scripts/smoke.py
 a11y:
-	docker compose --profile checks run --no-deps --build --rm browser-check npx playwright test --config e2e-tour/tour.config.ts a11y.spec.ts
+	docker compose --profile checks run --no-deps --build --rm browser-check npx playwright test --config e2e-tour/tour.config.ts a11y.spec.ts controls.spec.ts
 screenshots:
 	docker compose exec -T app python manage.py seed_demo --reset
 	docker compose --profile checks run --no-deps --build --rm -v ./docs/demo:/workspace/docs/demo browser-check npx playwright test --config e2e-tour/tour.config.ts tour.spec.ts; result=$$?; docker compose exec -T app python manage.py seed_demo --reset; exit $$result

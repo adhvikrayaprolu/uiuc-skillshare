@@ -53,7 +53,7 @@ export function NotificationDropdown({ items = [], loading = false, error = fals
               key={notification.id}
               to={notification.href}
               onClick={() => { onRead?.(notification.id); onNavigate?.(); }}
-              className={`px-4 py-3 hover:bg-[#F8FAFC] transition-colors cursor-pointer border-b border-[#E2E8F0] last:border-0 ${
+              className={`block px-4 py-3 hover:bg-[#F8FAFC] transition-colors cursor-pointer border-b border-[#E2E8F0] last:border-0 ${
                 !notification.read ? 'border-l-4 border-l-[#FF5F05] bg-[#FFFBF7]' : ''
               }`}
             >
@@ -68,7 +68,7 @@ export function NotificationDropdown({ items = [], loading = false, error = fals
                       <div className="w-2 h-2 bg-[#B83E00] rounded-full flex-shrink-0 mt-1"></div>
                     )}
                   </div>
-                  <p className="text-xs text-[#64748B] mb-1">{notification.description}</p>
+                  <p className="text-xs text-[#64748B] mb-1">{notification.from && <span className="font-medium text-[#334155]">{notification.from} · </span>}{notification.description}</p>
                   {notification.timeLabel && <p className="text-xs text-[#64748B]">{notification.timeLabel}</p>}
                 </div>
               </div>

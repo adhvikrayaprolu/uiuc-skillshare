@@ -106,7 +106,7 @@ jobs:
           test "$before" = "$(sha256sum .env)"
       - name: Smoke test through the public origin
         run: make smoke
-      - name: Accessibility and console sweep of every screen
+      - name: Accessibility, controls and console sweep of every screen
         run: make a11y
       - name: Sweep evidence
         if: failure()

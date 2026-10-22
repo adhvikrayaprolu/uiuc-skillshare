@@ -60,11 +60,30 @@ After either person marks the swap complete, **both** of them can rate the other
 
 ## The rest of the app
 
-| | |
+| Discover: swap matches | Discover: all helpers |
 |---|---|
-| ![Swap matches](docs/screenshots/swaps-desktop.png) **Discover: swap matches.** Every two-way match, each with its reason. | ![Discover search](docs/screenshots/discover-desktop.png) **Discover: all helpers.** Keyword and taxonomy search with filters and explainable ranking. |
-| ![Member profile](docs/screenshots/profile-desktop.png) **Profiles.** Why you matched, plus skills, goals, availability, reviews and endorsements. | ![Requests inbox](docs/screenshots/requests-desktop.png) **Requests.** Needs action, Active and Past, with the next step on every row. |
-| ![Launch metrics](docs/screenshots/launch-metrics-desktop.png) **Launch metrics (staff).** Setup completion, time to first match, acceptance, completion and feedback rates, computed from real records. | ![Mobile home](docs/screenshots/home-mobile.png) ![Mobile swaps](docs/screenshots/swaps-mobile.png) **Mobile.** The same four-item navigation on phones. |
+| ![Swap matches](docs/screenshots/swaps-desktop.png) | ![Discover search](docs/screenshots/discover-desktop.png) |
+| Every two-way match, each with its reason. | Keyword and taxonomy search with filters and explainable ranking. |
+
+| Profiles | Requests |
+|---|---|
+| ![Member profile](docs/screenshots/profile-desktop.png) | ![Requests inbox](docs/screenshots/requests-desktop.png) |
+| Why you matched, plus skills, goals, availability, reviews and endorsements. | Needs action, Active and Past, with the next step on every row. |
+
+| Notifications | Launch metrics (staff) |
+|---|---|
+| ![Notifications](docs/screenshots/notifications-desktop.png) | ![Launch metrics](docs/screenshots/launch-metrics-desktop.png) |
+| Who sent each update, what it's about, and when. | Setup completion, time to first match, acceptance, completion and feedback rates from real records. |
+
+**On a phone**, the same four-item navigation sits at the bottom of the screen:
+
+<p align="center">
+  <img src="docs/screenshots/home-mobile.png" alt="Home on a phone" width="240">
+  &nbsp;
+  <img src="docs/screenshots/swaps-mobile.png" alt="Swap matches on a phone" width="240">
+  &nbsp;
+  <img src="docs/screenshots/requests-mobile.png" alt="Requests on a phone" width="240">
+</p>
 
 Everyone in the screenshots and the video is fictional: they come from the seeded demo network. `make screenshots` regenerates all of them with a headless browser.
 
@@ -97,6 +116,7 @@ Then open **http://localhost:8080** and click **Try the demo**. You're signed in
 - `make dev` runs PostgreSQL, Redis, a local mail inbox, the app, the worker and the job dispatcher. It migrates the database and seeds the skill taxonomy and the fictional demo network.
 - You can also sign up with any `@illinois.edu` address. The code arrives in the local test inbox at **http://localhost:8025**, and the sign-in page links to it.
 - `make stop` stops everything and keeps your data, `make reset-demo` rebuilds the demo network, and `make logs` follows the app and workers.
+- Ports 8080 and 8025 already in use? `make dev` says which program holds them; run `APP_PORT=8081 MAIL_PORT=8026 make dev` or set those in `.env`.
 - Without Make, `docker compose up --build --wait` works with no configuration at all.
 
 <details>
@@ -186,7 +206,7 @@ make check
 With `make dev` running, two more checks use the demo network:
 
 - `make smoke` runs [`scripts/smoke.py`](scripts/smoke.py) through the app's public origin. It checks health, pages and share tags, signed-out refusal, CSRF, demo sign-in, Home, swaps, search, the inbox, a request, save and unsave, and sign-out.
-- `make a11y` runs axe on every screen at desktop and phone widths as a visitor, the demo student and the demo moderator, and fails on any console error or failed request.
+- `make a11y` runs axe on every screen at desktop and phone widths as a visitor, the demo student and the demo moderator, opens every internal link, presses every non-destructive control, and fails on any dead link, unnamed control, console error or failed request.
 
 [CI](.github/workflows/ci.yml) runs on every pull request and on `main`:
 

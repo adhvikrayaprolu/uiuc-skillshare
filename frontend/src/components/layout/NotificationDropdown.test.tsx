@@ -20,3 +20,4 @@ it('uses persistent read actions and server-wide unread counts with pagination',
  await userEvent.click(screen.getByRole('button',{name:'Next'})); expect(next).toHaveBeenCalledOnce();
  await userEvent.click(screen.getByRole('link',{name:/Help request Update/})); expect(read).toHaveBeenCalledWith('5');
 });
+it('says who sent each update and what it is about',()=>{render(<MemoryRouter><NotificationDropdown items={[{id:'1',type:'request',title:'New swap proposal',description:'“Python for Figma”',from:'Jamie Ortiz',href:'/requests/4',read:false,timeLabel:'3h ago'}]}/></MemoryRouter>);const link=screen.getByRole('link',{name:/New swap proposal/});expect(link.textContent).toContain('Jamie Ortiz · “Python for Figma”');expect(link.textContent).toContain('3h ago');expect(screen.getByText('JO')).toBeTruthy();});

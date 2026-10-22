@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { NotificationItem } from '../components/layout/NotificationDropdown';
+import { relativeTime } from '../lib/time';
 
 type NotificationPage = {
-  results: Array<{ id: number; kind: string; title: string; href: string; read: boolean; created_at: string }>;
+  results: Array<{ id: number; kind: string; title: string; peer_name?: string; detail?: string; href: string; read: boolean; created_at: string }>;
   next: string | null; previous: string | null; unread_count: number;
 };
 export function useNotifications() {
@@ -17,6 +18,6 @@ export function useNotifications() {
   });
   const markRead = useMutation({ mutationFn: async (id: string) => api.post(`/notifications/${id}/read/`), onSuccess: () => client.invalidateQueries({ queryKey: ['notifications'] }) });
   const markAllRead = useMutation({ mutationFn: async () => api.post('/notifications/read-all/'), onSuccess: () => client.invalidateQueries({ queryKey: ['notifications'] }) });
-  const items: NotificationItem[] = (query.data?.results || []).map(row => ({ id: String(row.id), type: row.kind === 'created' ? 'request' : 'accepted', title: row.title, description: 'Open the request for details.', href: row.href, read: row.read, timeLabel: new Date(row.created_at).toLocaleString() }));
+  const items: NotificationItem[] = (query.data?.results || []).map(row => ({ id: String(row.id), type: row.kind === 'created' ? 'request' : 'accepted', title: row.title, description: row.detail || 'Open for details.', from: row.peer_name || undefined, href: row.href, read: row.read, timeLabel: relativeTime(row.created_at) }));
   return { query, items, markRead, markAllRead, page, setPage };
 }

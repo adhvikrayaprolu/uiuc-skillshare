@@ -289,7 +289,7 @@ export interface DiscoveryAiMeta {
   query: string;
 }
 
-export interface MatchingMeta { mode: string; fallback_reason?: string | null; candidate_limit: number; bounded: boolean; recommendation_basis?: string; basis?: 'swap'; reason?: 'no_profile' | 'no_learning_goals' | 'no_teaching_skills' | 'no_mutual_matches' | null; }
+export interface MatchingMeta { mode: string; fallback_reason?: string | null; interpreted_as?: string[]; candidate_limit: number; bounded: boolean; recommendation_basis?: string; basis?: 'swap'; reason?: 'no_profile' | 'no_learning_goals' | 'no_teaching_skills' | 'no_mutual_matches' | null; }
 export type DiscoverySearchResponse = PaginatedResponse<ProfileListItem> & { matching?: MatchingMeta };
 
 export interface AnalyticsSummaryResponse {

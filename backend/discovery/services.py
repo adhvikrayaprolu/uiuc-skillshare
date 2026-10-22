@@ -1,5 +1,6 @@
 """Privacy-first, bounded retrieval and deterministic evidence-based ranking."""
 import re
+from difflib import get_close_matches
 from datetime import timedelta
 from django.db import connection
 from django.db.models import Count, F, Prefetch, Q
@@ -94,13 +95,30 @@ def apply_discovery_filters(queryset, params, user=None):
     return queryset.distinct()
 
 
-def matching_skills(query):
+def matching_skills(query, corrections=None):
+    """Approved skills named in the query. Misspelled words close to a skill name or alias also
+    match, and are reported in `corrections` (for example "pyhton" -> Python)."""
     raw = query.casefold()
-    result = {}
+    result, vocabulary = {}, {}
     for tag in SkillTag.objects.filter(is_approved=True).only('id', 'name', 'slug', 'aliases'):
-        terms = [tag.name, tag.slug.replace('-', ' ')] + tag.aliases
-        if any(re.search(r'(?<!\w)' + re.escape(term.casefold()) + r'(?!\w)', raw) for term in terms if isinstance(term, str) and term):
+        terms = [term.casefold() for term in [tag.name, tag.slug.replace('-', ' ')] + tag.aliases if isinstance(term, str) and term]
+        if any(re.search(r'(?<!\w)' + re.escape(term) + r'(?!\w)', raw) for term in terms):
             result[tag.pk] = tag.name
+        for term in terms:
+            vocabulary.setdefault(term, tag)
+    words = [word for word in re.findall(r'[\w+#.]+', raw) if word not in STOPWORDS]
+    known = {word for term in vocabulary for word in term.split()}
+    if result:
+        return result  # The query already names a skill, so nearby ordinary words ("reach") aren't rewritten.
+    candidates = [word for word in words if len(word) >= 4 and word not in known]
+    candidates += [f'{first} {second}' for first, second in zip(words, words[1:]) if first not in known or second not in known]
+    for phrase in candidates:
+        close = get_close_matches(phrase, list(vocabulary), n=1, cutoff=.8)
+        if close and vocabulary[close[0]].pk not in result:
+            tag = vocabulary[close[0]]
+            result[tag.pk] = tag.name
+            if corrections is not None:
+                corrections.append(tag.name)
     return result
 
 
@@ -136,7 +154,8 @@ def retrieve_candidates(queryset, query, matched):
 
 def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=None):
     params = params or {}
-    matched = matching_skills(query)
+    corrections = []
+    matched = matching_skills(query, corrections)
     ids, text_scores, limited = retrieve_candidates(queryset, query, matched)
     # Semantic retrieval is independent; its IDs were selected after privacy/filter checks.
     semantic_scores = semantic_scores or {}
@@ -240,7 +259,7 @@ def rank_profiles(queryset, query='', params=None, user=None, semantic_scores=No
         ranked.sort(key=lambda row: (len(row[1].availability.all()), row[0], -row[1].pk), reverse=True)
     else:
         ranked.sort(key=lambda row: (row[1]._exact_priority, row[0], -row[1].pk), reverse=True)
-    return RankedList(ranked, {'mode': 'hybrid' if semantic_scores else 'keyword_taxonomy', 'candidate_limit': CANDIDATE_LIMIT, 'bounded': limited, 'fallback_reason': 'paid_calls_disabled'})
+    return RankedList(ranked, {'mode': 'hybrid' if semantic_scores else 'keyword_taxonomy', 'candidate_limit': CANDIDATE_LIMIT, 'bounded': limited, 'fallback_reason': 'paid_calls_disabled', 'interpreted_as': corrections})
 
 
 def build_profile_search_text_cached(profile):

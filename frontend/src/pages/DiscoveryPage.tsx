@@ -354,6 +354,10 @@ function AllHelpersPanel() {
             </label>
           </div>
 
+          {discoveryQuery.data?.matching?.interpreted_as?.length ? (
+            <p className="mb-4 text-sm text-[#475569]">Showing results for <span className="font-semibold text-[#0F172A]">{discoveryQuery.data.matching.interpreted_as.join(', ')}</span>.</p>
+          ) : null}
+
           {/* Profile Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {filteredProfiles.map((profile) => (

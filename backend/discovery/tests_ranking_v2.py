@@ -119,3 +119,23 @@ class RankingSignalTests(SwapFixture):
             self.completed(fan, second, self.figma, rating=5)
         ids = [row["id"] for row in self.client.get(reverse("discovery-swaps")).data["results"]]
         self.assertLess(ids.index(second.pk), ids.index(first.pk))
+
+
+class TypoToleranceTests(SwapFixture):
+    def test_misspelled_skills_still_find_teachers_and_say_so(self):
+        _, teacher = self.member("teacher", teaches=[self.figma], goals=[])
+        for typo in ("figam", "Fgima"):
+            data = self.client.get(reverse("discovery-search"), {"q": typo}).data
+            self.assertIn(teacher.pk, [row["id"] for row in data["results"]], typo)
+            self.assertEqual(data["matching"]["interpreted_as"], ["Figma"])
+
+    def test_exact_matches_and_unrelated_words_are_not_rewritten(self):
+        self.member("teacher", teaches=[self.figma], goals=[])
+        self.assertEqual(self.client.get(reverse("discovery-search"), {"q": "figma"}).data["matching"]["interpreted_as"], [])
+        unrelated = self.client.get(reverse("discovery-search"), {"q": "xylophone"}).data
+        self.assertEqual((unrelated["results"], unrelated["matching"]["interpreted_as"]), ([], []))
+
+    def test_words_next_to_a_named_skill_are_left_alone(self):
+        self.member("teacher", teaches=[self.figma], goals=[])
+        data = self.client.get(reverse("discovery-search"), {"q": "figma pythn"}).data
+        self.assertEqual(data["matching"]["interpreted_as"], [])

@@ -114,7 +114,7 @@ test('two members onboard, discover, accept, complete, review, manage privacy an
     expect(alertBody!.Text).toContain(`/profiles/${seekerId}`); expect(alertBody!.HTML).toContain('View profile'); expect(alertBody!.Text).toContain('Turn off skill alerts');
     await h.goto('/home'); await h.getByRole('button',{name:'Notifications',exact:true}).click();
     await expect(h.locator(`a[href="/profiles/${seekerId}"]`).first()).toBeVisible(); await h.keyboard.press('Escape');
-    await expect(s.getByRole('link',{name:'View profile: Local test helper'})).toBeVisible(); await audit(s,'first matches');
+    await expect(s.getByRole('link',{name:'See swap with Local test helper'})).toBeVisible(); await audit(s,'first matches');
     await s.screenshot({path:path.resolve('test-results/journey/welcome-matches-desktop.png'),fullPage:true});
     await s.getByRole('link',{name:'Go to Home',exact:true}).click(); await expect(s).toHaveURL(/\/home$/);
     await expect(s.getByRole('heading',{name:'Hi, Local',level:1})).toBeVisible(); await audit(s,'home');

@@ -71,3 +71,13 @@ class DemoNetworkTests(APITestCase):
     def test_unseeded_database_explains_how_to_seed(self):
         User.objects.filter(email__endswith=DEMO_SUFFIX).delete()
         self.assertEqual(self.sign_in().status_code, 503)
+
+
+class LocalInboxHintTests(APITestCase):
+    @override_settings(LOCAL_INBOX_URL="http://localhost:8025")
+    def test_local_development_says_where_codes_arrive(self):
+        self.assertEqual(Client().get(reverse("auth-csrf")).json()["localInboxUrl"], "http://localhost:8025")
+
+    @override_settings(LOCAL_INBOX_URL="")
+    def test_no_inbox_is_advertised_otherwise(self):
+        self.assertIsNone(Client().get(reverse("auth-csrf")).json()["localInboxUrl"])

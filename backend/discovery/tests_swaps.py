@@ -58,6 +58,16 @@ class SwapMatchTests(SwapFixture):
         ids = [row["id"] for row in self.client.get(reverse("discovery-swaps")).data["results"]]
         self.assertEqual(ids, [overlap.pk, plain.pk])
 
+    def test_shared_free_times_read_naturally(self):
+        _, one = self.member("one", teaches=[self.figma], goals=[self.python], public_goals=True)
+        _, two = self.member("two", teaches=[self.figma], goals=[self.python], public_goals=True)
+        for day in ("monday", "tuesday"):
+            Availability.objects.create(profile=self.mine, day_of_week=day, time_block="evening")
+            Availability.objects.create(profile=two, day_of_week=day, time_block="evening")
+        Availability.objects.create(profile=one, day_of_week="monday", time_block="evening")
+        reasons = {row["id"]: row["match_reasons"][-1] for row in self.client.get(reverse("discovery-swaps")).data["results"]}
+        self.assertEqual(reasons, {one.pk: "You're both free at 1 time.", two.pk: "You're both free at 2 times."})
+
     def test_profile_detail_only_shows_goals_that_were_made_public(self):
         _, private = self.member("private", teaches=[self.figma], goals=[self.python])
         detail = self.client.get(reverse("profiles-detail", args=[private.pk])).data

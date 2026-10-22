@@ -157,6 +157,8 @@ CLIENT_ERROR_REPORTING = os.getenv("CLIENT_ERROR_REPORTING", "true").lower() == 
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 if DEMO_MODE and not LOCAL_DEVELOPMENT:
     raise ImproperlyConfigured("DEMO_MODE is only allowed with ENVIRONMENT=local.")
+# Where local sign-in codes can be read (Mailpit); never advertised outside local development.
+LOCAL_INBOX_URL = os.getenv("LOCAL_INBOX_URL", "") if LOCAL_DEVELOPMENT else ""
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

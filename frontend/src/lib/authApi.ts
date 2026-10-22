@@ -22,8 +22,10 @@ export async function confirmEmailCode(code: string) {
   clearAuth();
   return getCurrentUser();
 }
-export interface AuthConfig {csrfToken: string; googleEnabled: boolean; demoEnabled: boolean; authenticated: boolean}
-export async function getAuthConfig() {return (await api.get<AuthConfig>('/auth/csrf/')).data;}
+export interface AuthConfig {csrfToken: string; googleEnabled: boolean; demoEnabled: boolean; localInboxUrl: string | null; authenticated: boolean}
+// Startup calls time out so a stalled request can't leave the app restoring forever.
+const STARTUP_TIMEOUT_MS = 10_000;
+export async function getAuthConfig() {return (await api.get<AuthConfig>('/auth/csrf/', {timeout: STARTUP_TIMEOUT_MS})).data;}
 export async function startDemoSession(account?: 'staff') {
   await ensureCsrf();
   await api.post('/auth/demo/', null, {params: account ? {account} : undefined});
@@ -32,4 +34,4 @@ export async function startDemoSession(account?: 'staff') {
 }
 export async function resendEmailCode() {await api.post('/auth/email/resend/');}
 export async function logoutServer() {await api.post('/auth/logout/');}
-export async function getCurrentUser() {return (await api.get<User>('/auth/me/')).data;}
+export async function getCurrentUser() {return (await api.get<User>('/auth/me/', {timeout: STARTUP_TIMEOUT_MS})).data;}

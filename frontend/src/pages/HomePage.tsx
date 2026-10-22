@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Circle, Inbox, MessageCircle, Star, CheckCheck } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
 import { useRecommendedProfiles } from '../hooks/useRecommendedProfiles';
+import { useSwapMatches } from '../hooks/useSwapMatches';
+import { MatchCard } from '../components/profiles/MatchCard';
 import { useCurrentProfile } from '../hooks/useProfileEditor';
 import { useAuth } from '../hooks/useAuth';
 import { InitialsAvatar } from '../components/ui/InitialsAvatar';
@@ -22,6 +24,7 @@ export function HomePage() {
   const auth = useAuth();
   const dashboard = useDashboard();
   const recommended = useRecommendedProfiles();
+  const swaps = useSwapMatches();
   const profile = useCurrentProfile();
 
   const name = profile.data?.display_name || auth.user?.firstName || '';
@@ -30,7 +33,9 @@ export function HomePage() {
   const checklist = dashboard.data?.checklist ?? [];
   const remaining = checklist.filter((item) => !item.done);
   const doneCount = checklist.length - remaining.length;
-  const suggestions = (recommended.data?.profiles ?? []).slice(0, 3);
+  const swapMatches = (swaps.data?.profiles ?? []).slice(0, 3);
+  const swapIds = new Set(swapMatches.map((match) => match.id));
+  const suggestions = (recommended.data?.profiles ?? []).filter((person) => !swapIds.has(person.id)).slice(0, 3);
   const basedOnGoals = recommended.data?.matching?.recommendation_basis === 'learning_goals';
 
   return (
@@ -110,6 +115,21 @@ export function HomePage() {
           {!checklist.length && <p className="mt-2 text-sm text-[#475569]"><Link to="/me" className="font-medium text-[#13294B] underline">See your profile</Link> as others see it.</p>}
         </section>
       </div>
+
+      {swapMatches.length > 0 && (
+        <section aria-labelledby="swaps-heading" className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 id="swaps-heading" className="text-lg font-semibold text-[#0F172A]">You could swap with</h2>
+              <p className="text-sm text-[#475569]">They teach what you want to learn and want to learn what you teach.</p>
+            </div>
+            <Link to="/discover?tab=swaps" className="flex flex-shrink-0 items-center gap-1 text-sm font-medium text-[#13294B] hover:text-[#B83E00]">All swaps <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {swapMatches.map((match) => <MatchCard key={match.id} profile={match} />)}
+          </div>
+        </section>
+      )}
 
       <section aria-labelledby="suggested-heading" className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
         <div className="mb-4 flex items-center justify-between gap-3">

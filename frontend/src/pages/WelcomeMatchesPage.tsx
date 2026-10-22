@@ -70,7 +70,7 @@ export function WelcomeMatchesPage() {
         <>
           <h2 className="mb-3 text-lg font-semibold text-[#0F172A]">{swapMatches.length ? 'More people who teach what you want to learn' : basedOnGoals ? 'Teaches what you want to learn' : 'Suggested for you'}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            {matches.map((match) => <ProfileCard key={match.id} profile={match} reasonText={match.matchReasons?.slice(0, 2).join(' + ')} />)}
+            {matches.map((match) => <ProfileCard key={match.id} profile={match} reasonText={match.matchReasons?.slice(0, 2).join(' · ')} />)}
           </div>
         </>
       )}

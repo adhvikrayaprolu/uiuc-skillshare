@@ -147,7 +147,7 @@ function AllHelpersPanel() {
   const resultCount = discoveryQuery.data?.count ?? filteredProfiles.length;
   const getReasonText = (reasons?: string[]) => {
     if (!searchQuery.trim() || !reasons?.length) return undefined;
-    return reasons.slice(0, 2).join(' + ');
+    return reasons.slice(0, 2).join(' · ');
   };
 
   const clearAllFilters = () => {

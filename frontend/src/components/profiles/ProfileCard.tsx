@@ -68,7 +68,7 @@ export function ProfileCard({ profile, isSaved = false, onToggleSave, reasonText
               {relevanceLabel}
             </span>
           )}
-          {reasonText && <p className="line-clamp-1 text-xs text-[#334155]">Why this profile: {reasonText}</p>}
+          {reasonText && <p className="line-clamp-2 text-xs text-[#334155]">Why this profile: {reasonText}</p>}
         </div>
       )}
 
